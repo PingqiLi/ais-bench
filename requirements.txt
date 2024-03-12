@@ -1,0 +1,6 @@
+wheel
+pandas
+nltk
+tqdm
+jieba
+rouge_chinese
