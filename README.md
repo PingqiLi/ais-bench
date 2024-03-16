@@ -31,7 +31,7 @@ python version: >3.6
    Required-by:
    ```
 ### 卸载evaluate
-如果要卸载打点组件evaluate，可以使用如下命令：
+如果要卸载评测工具evaluate，可以使用如下命令：
 ```bash
 pip uninstall ais_bench_evaluate
 ```
@@ -178,13 +178,17 @@ pandas.dataframe
 
 ### 评测指标细节
 
-|评测指标名|说明|结果范围|额外参数|默认threshold|
+|评测指标名|说明|结果范围|额外参数|默认threshold(仅用于筛选功能)|
 |----|----|----|----|----|
 |accuracy|正确率|0，1|无|>=1|
 |edit-distance|编辑距离|[0, +∞)|无|<=5|
-|bleu|n-gram bleu score|[0, 1]|ngram: int，默认为1，可选：1，2，3，4|>=0.4|
-|rouge|rouge f-1 score|[0, 1]|rouge_type: str，默认为rouge-1，可选：rouge-1, rouge-2, rouge-l|>=0.4|
+|bleu|机器翻译质量评估指标|[0, 1]|ngram: int，默认为1，可选：1，2，3，4|>=0.4|
+|rouge|自动文本摘要评估指标|[0, 1]|rouge_type: str，默认为rouge-1，可选：rouge-1, rouge-2, rouge-l|>=0.4|
 |distinct|实际模型输出的多样性得分|[0, 1]|ngram: int，默认为2，可选：1，2，3，4|>=0.6|
 |abnormal-string-rate|实际模型输出的异常字符率|[0, 1]|无|<=0.3|
 |relative-distinct|相对多样性得分|[0, +∞)|ngram: int，默认为2，可选：1，2，3，4|>=0.8|
 |relative-abnormal-string-rate|相对异常字符率|[0, +∞)|无|<=1.2|
+
+### 参考样例
+* [全流程精度评测](sample/sample_evaluator.py)
+* [生成式大模型结果多维分析](sample/sample_filter.py)

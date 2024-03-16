@@ -30,4 +30,4 @@ filter.add_measurement("distinct", ngram=3)
 filter.do_measuring(result_dict)
 
 filter.do_filtering(out_dir) # use default threshold
-filter.do_filtering(out_dir, thresholds={"bleu": 0.7, "distinct": 0.7})
+filter.do_filtering(out_dir, thresholds={"bleu-1": 0.7, "distinct-3": 0.7})
