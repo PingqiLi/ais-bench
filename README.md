@@ -193,9 +193,14 @@ class Filter():
 |----|----|----|----|----|
 |accuracy|正确率|0，1|无|>=1|
 |edit-distance|编辑距离|[0, +∞)|无|<=5|
-|bleu|n-gram bleu score|[0, 1]|ngram：int，可取值：1，2，3，4，默认为1。|>=0.4|
-|rouge|rouge f-1 score|[0, 1]|rouge_type：str，可取值：rouge-1, rouge-2, rouge-l，默认为rouge-1。|>=0.4|
+|bleu|机器翻译质量评估指标|[0, 1]|ngram：int，可取值：1，2，3，4，默认为1。|>=0.4|
+|rouge|自动文本摘要评估指标|[0, 1]|rouge_type：str，可取值：rouge-1, rouge-2, rouge-l，默认为rouge-1。|>=0.4|
 |distinct|实际模型输出的多样性得分|[0, 1]|ngram：int，可取值：1，2，3，4，默认为2。|>=0.6|
 |abnormal-string-rate|实际模型输出的异常字符率|[0, 1]|无|<=0.3|
 |relative-distinct|相对多样性得分|[0, +∞)|ngram：int，可取值：1，2，3，4，默认为2。|>=0.8|
 |relative-abnormal-string-rate|相对异常字符率|[0, +∞)|无|<=1.2|
+
+###  参考样例
+
+- [全流程精度评测](https://gitee.com/aisbench/evaluate/blob/master/sample/sample_evaluator.py)
+- [生成式大模型结果多维分析](https://gitee.com/aisbench/evaluate/blob/master/sample/sample_filter.py)
