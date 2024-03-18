@@ -202,5 +202,5 @@ class Filter():
 
 ###  参考样例
 
-- [全流程精度评测](https://gitee.com/aisbench/evaluate/blob/master/sample/sample_evaluator.py)
-- [生成式大模型结果多维分析](https://gitee.com/aisbench/evaluate/blob/master/sample/sample_filter.py)
+- [全流程精度评测](sample/sample_evaluator.py)
+- [生成式大模型结果多维分析](sample/sample_filter.py)
