@@ -12,11 +12,11 @@ AISBench大模型精度评测工具evaluate（后简称evaluate工具）提供�
 
 ### 安装evaluate
 
-1. 获取whl包`ais_bench_evaluate-<version>-py3-none-any.whl`, 用pip安装：
+1. 从[evaluate发行版](https://gitee.com/aisbench/evaluate/releases/)获取whl包，`ais_bench_evaluate-<version>-py3-none-any.whl`, 通过`pip install`命令安装：
     ```bash
     pip install ais_bench_evaluate-<version>-py3-none-any.whl --force-reinstall
     ```
-2. 输入`pip show ais_bench_evaluate`确认安装完成，命令行打屏如下：
+2. 执行`pip show ais_bench_evaluate`确认安装完成，输出结果如下：
    ```bash
    Name: ais-bench-evaluate
    Version:
@@ -30,7 +30,7 @@ AISBench大模型精度评测工具evaluate（后简称evaluate工具）提供�
    Required-by:
    ```
 ### 卸载evaluate
-卸载evaluate工具命令示例如下：
+卸载evaluate工具可以使用如下命令：
 ```bash
 pip uninstall ais_bench_evaluate
 ```
