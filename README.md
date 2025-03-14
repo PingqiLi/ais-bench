@@ -1,208 +1,362 @@
-# 大模型精度评测组件evaluate使用说明
+# AISBench benchmark评测工具
+## 简介
+AISBench benchmark评测工具是基于opencompass开发的评测工具，兼容opencompass的配置文件、数据集、模型后端等具体实现。目前支持评测推理精度。
 
-## 工具介绍
+## 工具安装
+AISBench benchmark是由python开发的工具，要求`python == 3.10`
+本工具的依赖较多，推荐在conda虚拟环境下安装。
+```shell
+conda create --name ais_bench python=3.10 -y
+conda activate ais_bench
+```
 
-### 工具概述
-AISBench工具配套大模型精度评测组件，用于全流程大模型评测以及生成式大模型结果多维分析。
+目前只支持源码构建安装，请确保安装环境网络畅通：
 
-### 工具依赖
+```shell
+git clone https://gitee.com/aisbench/benchmark.git
+cd benchmark/
+pip3 install -e ./
+```
+安装过程中会自动安装基础依赖。
+因为当前工具的模型后端都是服务化api后端，因此需要额外安装服务化的依赖：
+```shell
+pip3 install -r requirements/api.txt
+```
 
-- OS：Linux
-- Python版本：Python 3.7及以上版本
+## 工具卸载
+执行命令：
+```shell
+pip3 uninstall ais_bench_benchmark
+```
 
-## 安装和卸载
+## 快速入门
+在本工具的评测中，每个评估任务由待评估的模型后端和数据集组成，可以通过两种方式来指定模型和数据集：命令行指定模型和数据集以及在配置文件中指定模型和数据集，两种方式二选一。当前工具支持的模型后端都是服务化api，以在gpu上部署的vllm推理服务上评测gsm8k数据集的精度为例，请先参考[vllm官方文档/启动服务器样例](https://vllm.hyper.ai/docs/tutorials/vLLM-stepbysteb#%E4%B8%89%E5%90%AF%E5%8A%A8-vllm-%E6%9C%8D%E5%8A%A1%E5%99%A8)在gpu服务器上拉起vllm的推理服务。<br>
+### gsm8k数据集准备
+参考[gsk8k数据集说明](ais_bench/benchmark/configs/datasets/gsm8k/README.md)准备数据集，将数据集放在ais_bench/datasets路径下。
 
-### 安装evaluate
+### 命令行指定模型和数据集
+命令行方式指定模型和数据集本质上是调用工具内置的.py配置文件指定的，需要先在`ais_bench/benchmark/configs/models/`中预置的模型配置文件中配置好服务化相关参数，以执行vllm_api_general的任务为例，需要在`ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py`中修改配置：
 
-1. 从[evaluate发行版](https://gitee.com/aisbench/evaluate/releases/)获取whl包，`ais_bench_evaluate-<version>-py3-none-any.whl`, 通过`pip install`命令安装：
-    ```bash
-    pip install ais_bench_evaluate-<version>-py3-none-any.whl --force-reinstall
-    ```
-2. 执行`pip show ais_bench_evaluate`确认安装完成，输出结果如下：
-   ```bash
-   Name: ais-bench-evaluate
-   Version:
-   Summary: ais_bench evaluate
-   Home-page:
-   Author:
-   Author-email:
-   License:
-   Location: /xxxx/site-packages
-   Requires:
-   Required-by:
-   ```
-### 卸载evaluate
-卸载evaluate工具可以使用如下命令：
+```python
+from ais_bench.benchmark.models import VLLMCustomAPI
+
+models = [
+    dict(
+        type=VLLMCustomAPI,
+        abbr='vllm-api-general',
+        max_seq_len = 4096,
+        query_per_second = 1,
+        rpm_verbose = False,
+        retry = 2,
+        host_ip = "localhost",
+        host_port = 8080,
+        enable_ssl = False,
+        generation_kwargs = dict(
+            temperature = 0.5,
+            top_k = 10,
+            top_p = 0.95,
+            seed = None,
+            repetition_penalty = 1.03,
+        )
+    )
+]
+```
+修改好配置文件后，执行如下命令启动评测：
+```
+ais_bench --models vllm_api_general --datasets gsm8k_gen
+```
+
+### 配置文件指定模型和数据集
+需要先在源码中提供的样例配置文件`ais_bench/configs/`中预置的模型配置文件中配置好服务化相关参数，例如我要执行的配置文件是`ais_bench/configs/api_examples/infer_api_vllm_general.py`中修改配置：
+
+```python
+from mmengine.config import read_base
+from ais_bench.benchmark.models import VLLMCustomAPI
+from ais_bench.benchmark.partitioners import NaivePartitioner
+from ais_bench.benchmark.runners.local_api import LocalAPIRunner
+from ais_bench.benchmark.tasks import OpenICLInferTask
+
+with read_base():
+    # from ais_bench.benchmark.configs.datasets.collections.chat_medium import datasets
+    from ais_bench.benchmark.configs.summarizers.medium import summarizer
+    from ais_bench.benchmark.configs.datasets.gsm8k.gsm8k_gen import gsm8k_datasets
+
+datasets = [
+    *gsm8k_datasets,
+]
+
+
+models = [
+    dict(
+        type=VLLMCustomAPI,
+        abbr='vllm-api-general',
+        max_seq_len = 4096,
+        query_per_second = 1,
+        rpm_verbose = False,
+        retry = 2,
+        host_ip = "localhost", # 指定服务化的 host ip
+        host_port = 8080, # 指定服务化的端口
+        enable_ssl = False,
+        max_out_len=512,
+    )
+]
+
+
+infer = dict(partitioner=dict(type=NaivePartitioner),
+             runner=dict(
+                 type=LocalAPIRunner,
+                 max_num_workers=2,
+                 concurrent_users=2,
+                 task=dict(type=OpenICLInferTask)), )
+
+work_dir = 'outputs/api_vllm_general/' # 指定落盘文件（执行过程、推理结果等）的落盘文件夹
+
+```
+修改好配置文件后，执行如下命令启动评测：
+```
+ais_bench ais_bench/configs/api_examples/infer_api_vllm_general.py
+```
+
+### 推理过程查看
+启动推理过程中可以在{work_dir}/{time_label}/logs/infer/{abbr_name}/gsm8k.out 中查看推理结果，例如执行
+```shell
+# 命令行指定模型和数据集运行方式
+tail -f outputs/default/20250126_165049/logs/infer/vllm-api-general/gsm8k.out
+
+# 配置文件指定模型和数据集运行方式
+tail -f outputs/api_vllm_general/20250126_165049/logs/infer/vllm-api-general/gsm8k.out
+```
+可以看到推理过程。
+其中`{work_dir}/{time_label}/`会在工具的打屏中显示
+
+### 推理结果查看
+推理完成后可以在{work_dir}/{time_label}/predictions/{abbr_name}/gsm8k.json 中查看推理结果，例如执行
+```shell
+# 命令行指定模型和数据集运行方式
+vim outputs/default/20250126_165049/predictions/vllm-api-general/gsm8k.json
+
+# 配置文件指定模型和数据集运行方式
+vim outputs/api_vllm_general/20250126_165049/predictions/vllm-api-general/gsm8k.json
+```
+可以看到推理结果
+
+### 测评结果查看
+在{work_dir}/{time_label}/results/{abbr_name}/gsm8k.json中查看评测出的精度，例如执行
+```shell
+# 命令行指定模型和数据集运行方式
+vim outputs/default/20250126_165049/results/vllm-api-general/gsm8k.json
+
+# 配置文件指定模型和数据集运行方式
+vim outputs/api_vllm_general/20250126_165049/results/vllm-api-general/gsm8k.json
+```
+可以得到类似如下结果：
+```json
+{
+    "accuracy": 59.34
+}
+```
+
+### 测评结果可视化
+评测过程结束后，工具会将markdown格式的结果打印出来，同时会落盘如下三种格式的结果：
+```
+{work_dir}/{time_label}/summary/summary_{time_label}.txt
+{work_dir}/{time_label}/summary/summary_{time_label}.csv
+{work_dir}/{time_label}/summary/summary_{time_label}.md
+```
+例如
+```
+outputs/api_vllm_general/20250126_165049/summary/summary_20250126_165049.txt
+outputs/api_vllm_general/20250126_165049/summary/summary_20250126_165049.csv
+outputs/api_vllm_general/20250126_165049/summary/summary_20250126_165049.md
+```
+
+## 完整命令行说明
+### 命令格式说明
+```shell
+ais_bench [OPTIONS]
+```
+其中[OPTIONS]为ais_bench的可选参数，具体参数如[参数说明](#参数说明)
+
+### 命令行示例
+```shell
+# 命令行指定模型和数据集
+ais_bench --models vllm_api_general --datasets gsm8k_gen
+# 配置文件指定模型和数据集
+ais_bench ais_bench/configs/api_examples/infer_api_vllm_general.py --debug
+```
+
+### 命令行参数说明
+|参数|说明|样例|
+| ----- | ----- | ---- |
+|config|启动用的配置文件路径(.py)，配置文件指定模型和数据集方式的必选配置，与命令行指定模型和数据集方式的参数二选一，为ais_bench命令行的第一个参数。自定义配置文件可参考[自定义配置文件样例列表](#自定义配置文件样例列表)|ais_bench xxx/yyy.py|
+|--models|指定模型推理后端任务名称（对应ais_bench/benchmark/configs/models路径下一个已经实现的默认模型配置文件），支持传入多个任务名称，支持的任务范围请参考[任务支持范围](#任务支持范围)章节<br>此参数在“命令行指定模型和数据集”方式中必须配置，与“配置文件指定模型和数据集”方式中配置的`config` 参数二选一|--models vllm_api_llama3_8b|
+|--datasets|指定数据集任务名称（对应ais_bench/benchmark/configs/datasets路径下一个已经实现的默认数据集配置文件），支持的任务范围请参考[任务支持范围](#任务支持范围)章节<br>此参数在“命令行指定模型和数据集”方式中必须配置，与“配置文件指定模型和数据集”方式中配置的`config`参数二选一||--datasets gsm8k_gen|
+|--summarizer|指定结果总结任务名称（对应ais_bench/benchmark/configs/summarizers路径下一个已经实现的默认模型配置文件），支持的任务范围请参考[任务支持范围](#任务支持范围)章节|--summarizer medium|
+|--debug|debug模式开关，配置该参数表示开启，未配置表示关闭，默认未配置|--debug|
+|--dry-run|dry run模式（只打屏不实际跑任务）开关，配置该参数表示开启，未配置表示关闭，默认未配置|--dry-run|
+|--mode 或 -m|可选["all", "infer", "eval", "viz"]，默认"all"，每个模式如何运行参考[运行模式说明](#运行模式说明)|--mode infer <br>-m all|
+|--reuse 或 -r|指定重复使用的工作路径下的文件夹时间戳，如果此可选命令不加参数，默认寻找--work_dir指定的工作路径下最新的时间戳|--reuse <br>-r 20250126_144254|
+|--work-dir 或 -w|评测任务的工作路径，用于落盘评测过程中的结果文件，默认outputs/default| --work-dir /path/to/work <br>-w /path/to/work|
+|--config-dir|models，datasets和summarizers配置文件所在的文件夹路径， 默认ais_bench/benchmark/configs|--config-dir /xxx/xxx|
+|--max-num-workers|并行运行的worker的最大个数，默认1|--max-num-workers 1|
+|--max-workers-per-gpu|预留参数，暂不支持使用。<br> 评测需要用到的NPU或GPU数量，默认1。|--max-workers-per-gpu 1|
+|--dump-eval-details|是否dump出评测过程细节的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--dump-eval-details|
+|--dump-extract-rate|是否dump出评测速度的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--dump-extract-rate|
+
+## 运行模式说明
+### all 模式
+
+all模式下评测工具会完整执行一次评测流程：
+```mermaid
+graph LR;
+A[基于给定数据集执行推理] --> B((推理结果));
+B --> C[基于推理结果测评]
+C --> D((精度数据))
+D --> E[基于精度数据汇总呈现]
+E --> F((呈现结果))
+```
+
+命令示例：
+```shell
+ais_bench --models vllm_api_general --datasets gsm8k_gen --mode all
+```
+
+生成结构目录结构：
 ```bash
-pip uninstall ais_bench_evaluate
+outputs/default/
+├── 20250220_120000
+├── 20250220_183030     # 每个实验一个文件夹
+│   ├── configs         # 用于记录的已转储的配置文件。如果在同一个实验文件夹中重新运行了不同的实验，可能会保留多个配置
+│   ├── logs            # 推理和评估阶段的日志文件
+│   │   ├── eval
+│   │   └── infer
+│   ├── predictions   # 每个任务的推理结果
+│   ├── results       # 每个任务的评估结果
+│   └── summary       # 单个实验的汇总评估结果
+├── ...
 ```
 
-## 工厂类使用方法
-### 导入依赖包
-```python
-from ais_bench.evaluate.interface import dataset_factory, measurement_factory
+### infer模式
+
+infer模式下评测工具仅会跑出数据集的推理结果：
+```mermaid
+graph LR;
+A[基于给定数据集执行推理] --> B((推理结果));
+```
+命令示例：
+```shell
+ais_bench --models vllm_api_general --datasets gsm8k_gen --mode infer
 ```
 
-### API使用介绍
-#### 评测数据集类工厂
-
- - 接口原型
-
-   ```python
-   dataset_instance = dataset_factory.get(dataset_name, dataset_path, shot)
-   ```
-
- - 参数说明
-
-   | 参数名       | 入参类型 | 说明                                                         | 是否必选 |
-   | ------------ | -------- | ------------------------------------------------------------ | -------- |
-   | dataset_name | str      | 数据集名称，支持的数据集详见“附录 > **支持的数据集**”。      | 是       |
-   | dataset_path | str      | 数据集路径，不设置时会自动下载到evaluate安装路径下的dataset目录下。 | 否       |
-   | shot         | int      | 构造输入中的prompt数量，0 <= shot <= 5。                     | 否       |
-
-#### 评测指标类工厂
-
- - 接口原型
-
-   ```python
-   measurement_instance = measurement_factory.get(measurement_name, **kwargs)
-   ```
- - 参数说明
-
-   | 参数名           | 入参类型 | 说明                                                    | 是否必选 |
-   | ---------------- | -------- | ------------------------------------------------------- | -------- |
-   | measurement_name | str      | 评测指标名称，支持的评测指标详见“附录 > **评测指标**”。 | 是       |
-   | kwargs           | -        | 额外参数，详见“附录 > **评测指标**”。                   | 否       |
-
-## 全流程评测使用方法（Evaluator类）
-### 导入依赖包
-```python
-from ais_bench.evaluate.interface import Evaluator
-```
-### API使用介绍
-#### Evaluator类
-- 类原型
-
-  ```python
-  class Evaluator(generate_func, dataset_instance, measurement_instance, rank=0):
-  ```
-- 初始化参数
-
-  | 参数名               | 入参类型        | 说明                                                         | 是否必选 |
-  | -------------------- | --------------- | ------------------------------------------------------------ | -------- |
-  | generate_func        | function object | 封装了大模型推理能力的函数对象，输入自然语言，输出自然语言。 | 是       |
-  | dataset_instance     | BaseDataset     | 评测数据集类实例。                                           | 是       |
-  | measurement_instance | BaseMeasurement | 评测指标类实例。                                             | 是       |
-  | rank                 | int             | 多进程推理情况下进程的标号，只有在0号进程中对数据进行评测。  | 否       |
-
-#### evaluate（评测接口）
-- 功能说明
-
-  进行评测，打屏评测结果，输出评测结果。
-
-- 函数原型
-
-  ```python
-  evaluate()
-  ```
-- 返回值
-
-  float, dict
-
-
-## 生成式大模型结果多维分析使用方法（Filter类）
-### 导入依赖包
-```python
-from ais_bench.evaluate.interface import Filter
+生成结构目录结构：
+```bash
+outputs/default/
+├── 20250220_120000
+├── 20250220_183030     # 每个实验一个文件夹
+│   ├── configs         # 用于记录的已转储的配置文件。如果在同一个实验文件夹中重新运行了不同的实验，可能会保留多个配置
+│   ├── logs            # 推理和评估阶段的日志文件
+│   │   ├── eval
+│   │   └── infer
+│   ├── predictions   # 每个任务的推理结果
+├── ...
 ```
 
-### API使用方法
-#### Filter类
-类原型
-
-```python
-class Filter():
+### eval模式
+eval模式下评测工具会基于已有的推理结果跑一遍评测流程和结果呈现的流程，需要结合--reuse命令使用：
+```mermaid
+graph LR;
+B((推理结果)) --> C[基于推理结果测评]
+C --> D((精度数据))
+D --> E[基于精度数据汇总呈现]
+E --> F((呈现结果))
 ```
 
-#### add_measurement（添加评测指标接口）
-- 功能说明
+命令示例：
+```shell
+ais_bench --models vllm_api_general --datasets gsm8k_gen --mode eval --reuse
+```
 
-  添加需要用于评测的指标，支持的指标及额外参数详见“附录 > **评测指标**”。
+生成结构目录结构：
+```bash
+outputs/default/
+├── 20250220_120000
+├── 20250220_183030     # 每个实验一个文件夹
+│   ├── configs         # 用于记录的已转储的配置文件。如果在同一个实验文件夹中重新运行了不同的实验，可能会保留多个配置
+│   ├── logs            # 推理和评估阶段的日志文件
+│   │   ├── eval
+│   │   └── infer
+│   ├── predictions   # 每个任务的推理结果
+│   ├── results       # 每个任务的评估结果 (eval新增)
+├── ...
+```
 
-- 函数原型
+### viz模式
+viz模式下评测工具会基于已有的精度数据跑一遍结果呈现的流程，需要结合--reuse命令使用：
+```mermaid
+graph LR;
+D((精度数据)) --> E[基于精度数据汇总呈现]
+E --> F((呈现结果))
+```
 
-  ```python
-  add_measurement(measurement: str, **kwargs)
-  ```
-- 返回值
+命令示例：
+```shell
+ais_bench --models vllm_api_general --datasets gsm8k_gen --mode viz --reuse
+```
 
-  None
+生成结构目录结构：
+```bash
+outputs/default/
+├── 20250220_120000
+├── 20250220_183030     # 每个实验一个文件夹
+│   ├── configs         # 用于记录的已转储的配置文件。如果在同一个实验文件夹中重新运行了不同的实验，可能会保留多个配置
+│   ├── logs            # 推理和评估阶段的日志文件
+│   │   ├── eval
+│   │   └── infer
+│   ├── predictions   # 每个任务的推理结果
+│   ├── results       # 每个任务的评估结果
+│   └── summary       # 单个实验的汇总评估结果 (viz新增)
+├── ...
+```
 
-#### do_measuring（执行评测接口）
-- 功能说明
+## 预设任务支持范围
+本节介绍当前ais_bench评测工具支持的评测任务的预设配置，通过ais_bench命令行指定任务名称，即可执行相应的评测任务。
+命令示例如下：
+```shell
+ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
+```
+### --models支持的模型推理后端
+|任务名称|简介|使用前提|支持的prompt格式(字符串格式或多轮对话)|对应源码配置文件路径|
+| --- | --- | --- | --- | --- |
+|vllm_api_general|通过vllm的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_general.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)|
+|vllm_api_old|通过vllm的api访问vllm(0.2.6版本)的推理服务化，访问服务链接的 generate子服务|基于支持generate子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_old.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_old.py)|
+|mindie_stream_api_general|通过mindie的流式api访问mindie的推理服务化，访问服务链接的 infer子服务|基于支持infer子服务的mindie版本，启动mindie推理服务|字符串格式|[mindie_stream_api_general.py](ais_bench/benchmark/configs/models/mindie_api/mindie_stream_api_general.py)|
 
-  用所有添加的评测的指标对传入的result_dict进行评测。
+**注意:** 服务化推理测评api默认使用的url为localhost，端口号为8080，实际使用时需要在具体使用的源码配置文件中修改为服务化后端配置的url和端口号。
 
-- 函数原型
+### --datasets支持的数据集
+--datasets 支持的数据集如下，每个数据集包含多种数据集任务，数据集的获取方式和支持的数据集任务请参考对应数据集的README。
+|数据集|数据集任务README|
+| ---- | ---- |
+|GSM8K|[ais_bench/benchmark/configs/datasets/gsm8k/README.md](ais_bench/benchmark/configs/datasets/gsm8k/README.md)|
+|MMLU|[ais_bench/benchmark/configs/datasets/mmlu/README.md](ais_bench/benchmark/configs/datasets/mmlu/README.md)|
+|BoolQ|[ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README.md](ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README.md)|
+|C-Eval|[ais_bench/benchmark/configs/datasets/ceval/README.md](ais_bench/benchmark/configs/datasets/ceval/README.md)|
+|MATH|[ais_bench/benchmark/configs/datasets/math/README.md](ais_bench/benchmark/configs/datasets/math/README.md)|
+|AIME2024|[ais_bench/benchmark/configs/datasets/aime2024/README.md](ais_bench/benchmark/configs/datasets/aime2024/README.md)|
+|GPQA|[ais_bench/benchmark/configs/datasets/gpqa/README.md](ais_bench/benchmark/configs/datasets/gpqa/README.md)|
 
-  ```python
-  do_measuring(result_dict: dict):
-  ```
-- result_dict格式
+### --summarizer支持的结果总结任务
+|任务名称|简介|对应源码配置文件路径|
+| --- | --- | --- |
+|medium|通用结果汇总模板，包含多种基本数据集，默认使用的模板|[medium.py](ais_bench/benchmark/configs/summarizers/medium.py)|
+|example|简单的汇总模板，覆盖目前所有支持的数据集|[example.py](ais_bench/benchmark/configs/summarizers/example.py)|
 
-  | key名         | value类型   | 说明               | 是否必选 |
-  | ------------- | ----------- | ------------------ | -------- |
-  | target_output | `List[str]` | 标杆模型输出列表。 | 是       |
-  | model_output  | `List[str]` | 实际模型输出列表。 | 是       |
-  | indexs        | `List[int]` | 索引。             | 是       |
+## 自定义配置文件样例列表
+|文件名|简介|
+| --- | --- |
+|[infer_api_vllm_general.py](ais_bench/configs/api_examples/infer_api_vllm_general.py)|基于gsm8k数据集使用vllm api评测，自定义了数据集路径|
+|[infer_api_mindie_stream_general.py](ais_bench/configs/api_examples/infer_api_mindie_stream_general.py)|基于gsm8k数据集使用mindie stream api评测，自定义了数据集路径|
 
-  三个List中的元素需要一一对应，List长度需要一致。
-
-
-
-- 返回值
-
-  None
-
-#### do_filtering（执行筛选接口）
-- 功能说明
-
-  对评测完的结果按照thresholds进行筛选，并且在out_dir下生成 `${pid}_${6位随机字符}_filtering_result.csv` 文件。可选参数thresholds为字典，key为评测指标名称，value为threshold。未配置或错误配置时使用默认threshold，详见附录 > **评测指标**"。
-
-- 函数原型
-
-  ```python
-  do_filtering(out_dir: str, thresholds=None: dict):
-  ```
-- 返回值
-
-  pandas.dataframe
-
-
-## 附录
-### 支持数据集
-
-|评测数据集名称|说明|
-|----|----|
-|ceval|一个用于基础模型评估的多层次多学科的中文评估套件。|
-|mmlu|大规模多任务语言理解数据集。|
-|gsm8k|小学数学题数据集。|
-
-
-### 评测指标
-
-|评测指标名|说明|结果范围|额外参数|默认threshold(仅用于筛选功能)|
-|----|----|----|----|----|
-|accuracy|正确率|0，1|无|>=1|
-|edit-distance|编辑距离|[0, +∞)|无|<=5|
-|bleu|机器翻译质量评估指标|[0, 1]|ngram：int，可取值：1，2，3，4，默认为1。|>=0.4|
-|rouge|自动文本摘要评估指标|[0, 1]|rouge_type：str，可取值：rouge-1, rouge-2, rouge-l，默认为rouge-1。|>=0.4|
-|distinct|实际模型输出的多样性得分|[0, 1]|ngram：int，可取值：1，2，3，4，默认为2。|>=0.6|
-|abnormal-string-rate|实际模型输出的异常字符率|[0, 1]|无|<=0.3|
-|relative-distinct|相对多样性得分|[0, +∞)|ngram：int，可取值：1，2，3，4，默认为2。|>=0.8|
-|relative-abnormal-string-rate|相对异常字符率|[0, +∞)|无|<=1.2|
-
-###  参考样例
-
-- [全流程精度评测](sample/sample_evaluator.py)
-- [生成式大模型结果多维分析](sample/sample_filter.py)
+## 其他特性
+### 自定义数据集
+参考文档[自定义数据集使用说明](doc/自定义数据集使用说明.md)
