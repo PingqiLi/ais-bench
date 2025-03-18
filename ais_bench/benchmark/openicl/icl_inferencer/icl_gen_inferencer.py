@@ -59,6 +59,7 @@ class GenInferencer(BaseInferencer):
             output_json_filepath: Optional[str] = './icl_inference_output',
             output_json_filename: Optional[str] = 'predictions',
             save_every: Optional[int] = 1,
+            is_synthetic: Optional[bool] = False,
             **kwargs) -> None:
         super().__init__(
             model=model,
@@ -78,6 +79,7 @@ class GenInferencer(BaseInferencer):
         if self.model.is_api and save_every is None:
             save_every = 1
         self.save_every = save_every
+        self.is_synthetic = is_synthetic
 
     def inference(self,
                   retriever: BaseRetriever,
@@ -85,6 +87,10 @@ class GenInferencer(BaseInferencer):
                   prompt_template: Optional[PromptTemplate] = None,
                   output_json_filepath: Optional[str] = None,
                   output_json_filename: Optional[str] = None) -> List:
+        # 0. Set synthetic if needed
+        if self.is_synthetic:
+            self.model.set_synthetic()
+            
         # 1. Preparation for output logs
         output_handler = GenInferencerOutputHandler()
 

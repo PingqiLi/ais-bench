@@ -48,6 +48,7 @@ class BaseModel:
             self.eos_token_id = meta_template['eos_token_id']
         self.generation_kwargs = generation_kwargs
         self.sync_rank = sync_rank
+        self.is_synthetic = False
 
     @abstractmethod
     def generate(self, inputs: List[str], max_out_len: int) -> List[str]:
@@ -145,6 +146,9 @@ class BaseModel:
         Returns:
             int: Length of the input tokens
         """
+    
+    def set_synthetic(self):
+        self.is_synthetic = True
 
     def parse_template(self, prompt_template: PromptType, mode: str) -> str:
         """Parse a prompt template, and wrap it with meta template if

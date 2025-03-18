@@ -11,7 +11,7 @@ from tqdm import tqdm
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.prompt import PromptList
 
-from ais_bench.benchmark.models.base_api import BaseAPIModel
+from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_input
 
 PromptType = Union[PromptList, str]
 
@@ -78,7 +78,8 @@ class MindieStreamApi(BaseAPIModel):
         Returns:
             List[str]: A list of generated strings.
         """
-        with ThreadPoolExecutor() as executor:
+        batch_size = len(inputs)
+        with ThreadPoolExecutor(max_workers=batch_size) as executor:
             results = list(
                 tqdm(executor.map(self._generate, inputs,
                                   [max_out_len] * len(inputs)),
@@ -86,6 +87,7 @@ class MindieStreamApi(BaseAPIModel):
                      desc='Inferencing'))
         return results
 
+    @handle_synthetic_input
     def _generate(self, input: PromptType, max_out_len: int) -> str:
         """Generate result given a input.
 
@@ -107,7 +109,6 @@ class MindieStreamApi(BaseAPIModel):
 
         max_num_retries = 0
         while max_num_retries < self.retry:
-            self.wait()
             max_num_retries += 1
             header = {
                 'Content-Type': 'application/json',
@@ -129,6 +130,7 @@ class MindieStreamApi(BaseAPIModel):
 
             except requests.ConnectionError:
                 self.logger.error('Got connection error, retrying...')
+                self.wait()
                 continue
             except Exception as e:
                 raise RuntimeError(f"Process response failed and the reason is {e}")

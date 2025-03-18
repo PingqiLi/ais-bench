@@ -15,7 +15,7 @@ from tqdm import tqdm
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.prompt import PromptList
 
-from .base_api import BaseAPIModel
+from .base_api import BaseAPIModel, handle_synthetic_input
 
 PromptType = Union[PromptList, str]
 OPENAI_API_BASE = os.path.join(
@@ -171,8 +171,8 @@ class OpenAI(BaseAPIModel):
         """
         if self.temperature is not None:
             temperature = self.temperature
-
-        with ThreadPoolExecutor() as executor:
+        batch_size = len(inputs)
+        with ThreadPoolExecutor(max_workers=batch_size) as executor:
             results = list(
                 tqdm(executor.map(self._generate, inputs,
                                   [max_out_len] * len(inputs),
@@ -181,6 +181,7 @@ class OpenAI(BaseAPIModel):
                      desc='Inferencing'))
         return results
 
+    @handle_synthetic_input
     def _generate(self, input: PromptType, max_out_len: int,
                   temperature: float) -> str:
         """Generate results given a list of inputs.
@@ -243,7 +244,6 @@ class OpenAI(BaseAPIModel):
 
         max_num_retries = 0
         while max_num_retries < self.retry:
-            self.wait()
 
             with Lock():
                 if len(self.invalid_keys) == len(self.keys):
@@ -334,6 +334,7 @@ class OpenAI(BaseAPIModel):
 
             except requests.ConnectionError:
                 self.logger.error('Got connection error, retrying...')
+                self.wait()
                 continue
             try:
                 response = raw_response.json()
