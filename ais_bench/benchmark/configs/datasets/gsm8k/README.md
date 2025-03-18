@@ -21,6 +21,23 @@ gsm8k/
 [http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gsm8k.zip](http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gsm8k.zip)
 
 ## 可用数据集任务
+
+### gsm8k_gen_ee684f
+#### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|gsm8k_gen|gsm8k数据集生成式任务|准确率(accuracy)|4-shot|string|[gsm8k_gen.py](gsm8k_gen_ee684f.py)|
+|gsm8k_gen_ee684f|gsm8k数据集生成式任务|accuracy|4-shot|string|[gsm8k_gen_ee684f.py](gsm8k_gen_ee684f.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets gsm8k_gen_ee684f
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.gsm8k.gsm8k_gen_ee684f import gsm8k_datasets
+datasets = [
+    *gsm8k_datasets,
+]
+```
+**注:** 数据集任务的详细配置的含义请参见配置文件的注释

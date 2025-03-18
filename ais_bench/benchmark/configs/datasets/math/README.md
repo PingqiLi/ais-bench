@@ -26,7 +26,42 @@ math
 [http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/math.zip](http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/math.zip)
 
 ## 可用数据集任务
+
+### math_prm800k_500_0shot_cot_gen
+#### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
 |math_prm800k_500_0shot_cot_gen|MATH500数据集生成式任务, 默认max out tokens长度取32768，prompt带逻辑链|accuracy(pass@1)|0-shot|string|[math_prm800k_500_0shot_cot_gen.py](math_prm800k_500_0shot_cot_gen.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets math_prm800k_500_0shot_cot_gen
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.math.math_prm800k_500_0shot_cot_gen import math_datasets
+datasets = [
+    *math_datasets,
+]
+```
+
+### math_prm800k_500_5shot_cot_gen
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
 |math_prm800k_500_5shot_cot_gen|MATH500数据集生成式任务, 默认max out tokens长度取32768，prompt带逻辑链|accuracy(pass@1)|5-shot|string|[math_prm800k_500_5shot_cot_gen.py](math_prm800k_500_5shot_cot_gen.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets math_prm800k_500_5shot_cot_gen
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.math.math_prm800k_500_5shot_cot_gen import math_datasets
+datasets = [
+    *math_datasets,
+]
+```
+**注:** 数据集任务的详细配置的含义请参见配置文件的注释

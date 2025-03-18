@@ -24,7 +24,23 @@ gpqa
 [http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gpqa.zip](http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gpqa.zip)
 
 ## 可用数据集任务
+### gpqa_gen_0_shot_str
+#### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
 |gpqa_gen_0_shot_str|gpqa数据集生成式任务, 默认max out tokens长度取32768|accuracy(pass@1)|0-shot|string|[gpqa_gen_0_shot_str.py](gpqa_gen_0_shot_str.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets gpqa_gen_0_shot_str
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.gpqa.gpqa_gen_0_shot_str import gpqa_datasets
+datasets = [
+    *gpqa_datasets,
+]
+```
+**注:** 数据集任务的详细配置的含义请参见配置文件的注释
 

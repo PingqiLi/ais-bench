@@ -179,8 +179,45 @@ ceval-exam
 [https://www.modelscope.cn/datasets/opencompass/ceval-exam/resolve/master/ceval-exam.zip](https://www.modelscope.cn/datasets/opencompass/ceval-exam/resolve/master/ceval-exam.zip)
 
 ## 可用数据集任务
+
+### ceval_zero_shot_gen_de7f40
+#### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
 |ceval_zero_shot_gen_de7f40|C-Eval数据集生成式任务, 默认max out tokens长度取512|accuracy|0-shot|string|[ceval_zero_shot_gen_de7f40.py](ceval_zero_shot_gen_de7f40.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets ceval_zero_shot_gen_de7f40
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.ceval.ceval_zero_shot_gen_de7f40 import ceval_datasets
+datasets = [
+    *ceval_datasets,
+]
+```
+
+### ceval_gen_5f30c7_str
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
 |ceval_gen_5f30c7_str||C-Eval数据集生成式任务, 默认max out tokens长度取1，prompt带逻辑链|accuracy|5-shot|string|[ceval_gen_5f30c7_str.py](ceval_gen_5f30c7_str.py)|
+
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets ceval_gen_5f30c7_str
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.ceval.ceval_gen_5f30c7_str import ceval_datasets
+datasets = [
+    *ceval_datasets,
+]
+```
+
+**注:** 数据集任务的详细配置的含义请参见配置文件的注释
 
