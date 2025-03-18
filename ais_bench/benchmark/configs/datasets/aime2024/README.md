@@ -3,7 +3,7 @@
 AIME2024数据集包含了 2024 年美国数学邀请赛[（AIME）I 卷](https://artofproblemsolving.com/wiki/index.php/2024_AIME_I?srsltid=AfmBOoqP9aelPNCpuFLO2bLyoG9_elEBPgqcYyZAj8LtiywUeG5HUVfF)和 [(AIME)II 卷](https://artofproblemsolving.com/wiki/index.php/2024_AIME_II_Problems/Problem_15)中的 30 道题目。其原始来源是[AI-MO/aimo-validation-aime](https://hf-mirror.com/datasets/AI-MO/aimo-validation-aime)，该来源包含了一个更大的题目集，涵盖 2022 - 2024 年美国数学邀请赛的 90 道题目。
 
 ## 数据集原始获取链接
-[https://hf-mirror.com/datasets/HuggingFaceH4/aime_2024](https://hf-mirror.com/datasets/HuggingFaceH4/aime_2024)
+[https://huggingface.co/datasets/HuggingFaceH4/aime_2024](https://huggingface.co/datasets/HuggingFaceH4/aime_2024)
 
 ## 数据集内容格式(处理后)
 ### 文件结构
