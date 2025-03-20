@@ -345,6 +345,9 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |MATH|[ais_bench/benchmark/configs/datasets/math/README.md](ais_bench/benchmark/configs/datasets/math/README.md)|
 |AIME2024|[ais_bench/benchmark/configs/datasets/aime2024/README.md](ais_bench/benchmark/configs/datasets/aime2024/README.md)|
 |GPQA|[ais_bench/benchmark/configs/datasets/gpqa/README.md](ais_bench/benchmark/configs/datasets/gpqa/README.md)|
+|DROP|[ais_bench/benchmark/configs/datasets/drop/README.md](ais_bench/benchmark/configs/datasets/drop/README.md)|
+|HumanEval|[ais_bench/benchmark/configs/datasets/humaneval/README.md](ais_bench/benchmark/configs/datasets/humaneval/README.md)|
+|MMLU-PRO|[ais_bench/benchmark/configs/datasets/mmlu_pro/README.md](ais_bench/benchmark/configs/datasets/mmlu_pro/README.md)|
 
 ### --summarizer支持的结果总结任务
 |任务名称|简介|对应源码配置文件路径|
