@@ -25,7 +25,7 @@ drop_simple_eval
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|drop_gen_a2697c_0shot|aime2024数据集生成式任务, 默认max out tokens长度取32768|accuracy(pass@1)|0-shot|string|[drop_gen_a2697c_0shot.py](drop_gen_a2697c_0shot.py)|
+|drop_gen_a2697c_0shot|drop数据集生成式任务, 默认max out tokens长度取32768|accuracy(pass@1)|0-shot|string|[drop_gen_a2697c_0shot.py](drop_gen_a2697c_0shot.py)|
 
 #### 命令行调用
 ```shell
@@ -36,6 +36,26 @@ ais_bench --models vllm_api_general --datasets drop_gen_a2697c_0shot
 from mmengine.config import read_base
 with read_base():
     from ais_bench.benchmark.configs.datasets.drop.drop_gen_a2697c_0shot import drop_datasets
+datasets = [
+    *drop_datasets,
+]
+```
+
+### drop_gen_a2697c_3shot
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
+|drop_gen_a2697c_3shot|drop数据集生成式任务, 默认max out tokens长度取32768|accuracy(pass@1)|3-shot|string|[drop_gen_a2697c_3shot.py](drop_gen_a2697c_3shot.py)|
+
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets drop_gen_a2697c_3shot
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.drop.drop_gen_a2697c_3shot import drop_datasets
 datasets = [
     *drop_datasets,
 ]
