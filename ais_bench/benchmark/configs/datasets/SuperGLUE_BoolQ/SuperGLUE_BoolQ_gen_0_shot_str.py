@@ -1,5 +1,5 @@
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
-from ais_bench.benchmark.openicl.icl_retriever import FixKRetriever
+from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import BoolQDatasetV2
@@ -11,22 +11,12 @@ BoolQ_reader_cfg = dict(
 )
 
 BoolQ_infer_cfg = dict(
-    ice_template=dict(
+    prompt_template=dict(
         type=PromptTemplate,
-        template=dict(
-            begin='</E>',
-            round=[
-                dict(
-                    role='HUMAN',
-                    prompt='{passage}\nQuestion: {question}\nA. Yes\nB. No\nAnswer:',
-                ),
-                dict(role='BOT', prompt='{label}'),
-            ],
-        ),
-        ice_token='</E>',
+        template='{passage}\nQuestion: {question}\nA. Yes\nB. No\nAnswer:'
     ),
-    retriever=dict(type=FixKRetriever, fix_id_list=[0, 2, 4, 6, 8]),
-    inferencer=dict(type=GenInferencer, max_out_len=50),
+    retriever=dict(type=ZeroRetriever),
+    inferencer=dict(type=GenInferencer, batch_size=1),
 )
 
 BoolQ_eval_cfg = dict(

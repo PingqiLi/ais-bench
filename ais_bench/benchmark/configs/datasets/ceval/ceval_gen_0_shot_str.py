@@ -1,5 +1,5 @@
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
-from ais_bench.benchmark.openicl.icl_retriever import FixKRetriever
+from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import CEvalDataset
@@ -67,13 +67,12 @@ for _split in ['val']:
     for _name in ceval_all_sets:
         _ch_name = ceval_subject_mapping[_name][1]
         ceval_infer_cfg = dict(
-            ice_template=dict(
+            prompt_template=dict(
                 type=PromptTemplate,
-                template=f'以下是中国关于{_ch_name}考试的单项选择题，请选出其中的正确答案。\n</E>{{question}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}\n答案: {{answer}}',
-                ice_token='</E>',
+                template=f'以下是中国关于{_ch_name}考试的单项选择题，请选出其中的正确答案。\n{{question}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}\n答案: {{answer}}',
             ),
-            retriever=dict(type=FixKRetriever, fix_id_list=[0, 1, 2, 3, 4]),
-            inferencer=dict(type=GenInferencer, max_out_len=1),
+            retriever=dict(type=ZeroRetriever),
+            inferencer=dict(type=GenInferencer, batch_size=1),
         )
 
         ceval_eval_cfg = dict(
@@ -95,5 +94,3 @@ for _split in ['val']:
                 infer_cfg=ceval_infer_cfg,
                 eval_cfg=ceval_eval_cfg,
             ))
-
-del _split, _name, _ch_name

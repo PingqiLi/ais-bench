@@ -3,7 +3,7 @@ from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import CEvalDataset
-from ais_bench.benchmark.utils.text_postprocessors import first_capital_postprocess
+from ais_bench.benchmark.utils import first_option_postprocess
 
 
 ceval_subject_mapping = {
@@ -67,17 +67,21 @@ for _split in ['val']:
     for _name in ceval_all_sets:
         _ch_name = ceval_subject_mapping[_name][1]
         ceval_infer_cfg = dict(
-            ice_template=dict(
+            prompt_template=dict(
                 type=PromptTemplate,
-                template=f'</E>{{question}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}\n',
-                ice_token='</E>',),
+                template=dict(
+                    round=[
+                        dict(role='HUMAN', prompt=f'以下是中国关于{_ch_name}考试的单项选择题，请选出其中的正确答案。\n{{question}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}\n答案: {{answer}}'),
+                    ],
+                )
+            ),
             retriever=dict(type=ZeroRetriever),
-            inferencer=dict(type=GenInferencer, max_out_len=512),
+            inferencer=dict(type=GenInferencer, batch_size=1),
         )
 
         ceval_eval_cfg = dict(
             evaluator=dict(type=AccEvaluator),
-            pred_postprocessor=dict(type=first_capital_postprocess))
+            pred_postprocessor=dict(type=first_option_postprocess, options='ABCD'))
 
         ceval_datasets.append(
             dict(
