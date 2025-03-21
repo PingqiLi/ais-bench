@@ -180,40 +180,60 @@ ceval-exam
 
 ## 可用数据集任务
 
-### ceval_zero_shot_gen_de7f40
+### ceval_gen_0_shot_str
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|ceval_zero_shot_gen_de7f40|C-Eval数据集生成式任务, 默认max out tokens长度取512|accuracy|0-shot|string|[ceval_zero_shot_gen_de7f40.py](ceval_zero_shot_gen_de7f40.py)|
+|ceval_gen_0_shot_str|C-Eval数据集生成式任务|accuracy|0-shot|string|[ceval_gen_0_shot_str.py](ceval_gen_0_shot_str.py)|
 #### 命令行调用
 ```shell
-ais_bench --models vllm_api_general --datasets ceval_zero_shot_gen_de7f40
+ais_bench --models vllm_api_general --datasets ceval_gen_0_shot_str
 ```
 #### 在自定义配置文件中导入
 ```python
 from mmengine.config import read_base
 with read_base():
-    from ais_bench.benchmark.configs.datasets.ceval.ceval_zero_shot_gen_de7f40 import ceval_datasets
+    from ais_bench.benchmark.configs.datasets.ceval.ceval_gen_0_shot_str import ceval_datasets
 datasets = [
     *ceval_datasets,
 ]
 ```
 
-### ceval_gen_5f30c7_str
+### ceval_gen_5_shot_str
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|ceval_gen_5f30c7_str||C-Eval数据集生成式任务, 默认max out tokens长度取1，prompt带逻辑链|accuracy|5-shot|string|[ceval_gen_5f30c7_str.py](ceval_gen_5f30c7_str.py)|
+|ceval_gen_5_shot_str||C-Eval数据集生成式任务|accuracy|5-shot|string|[ceval_gen_5_shot_str.py](ceval_gen_5_shot_str.py)|
 
 #### 命令行调用
 ```shell
-ais_bench --models vllm_api_general --datasets ceval_gen_5f30c7_str
+ais_bench --models vllm_api_general --datasets ceval_gen_5_shot_str
 ```
 #### 在自定义配置文件中导入
 ```python
 from mmengine.config import read_base
 with read_base():
-    from ais_bench.benchmark.configs.datasets.ceval.ceval_gen_5f30c7_str import ceval_datasets
+    from ais_bench.benchmark.configs.datasets.ceval.ceval_gen_5_shot_str import ceval_datasets
+datasets = [
+    *ceval_datasets,
+]
+```
+
+### ceval_gen_0_shot_chat_prompt
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
+|ceval_gen_0_shot_chat_prompt||C-Eval数据集生成式任务|accuracy|0-shot|chat prompt|[ceval_gen_0_shot_chat_prompt.py](ceval_gen_0_shot_chat_prompt.py)|
+
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general_chat --datasets ceval_gen_0_shot_chat_prompt
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.ceval.ceval_gen_0_shot_chat_prompt import ceval_datasets
 datasets = [
     *ceval_datasets,
 ]

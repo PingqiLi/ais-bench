@@ -40,4 +40,80 @@ datasets = [
     *gsm8k_datasets,
 ]
 ```
+
+### gsm8k_gen_4_shot_cot_str
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
+|gsm8k_gen_4_shot_cot_str|gsm8k数据集生成式任务，带逻辑链|accuracy|4-shot|string|[gsm8k_gen_4_shot_cot_str.py](gsm8k_gen_4_shot_cot_str.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets gsm8k_gen_4_shot_cot_str
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.gsm8k.gsm8k_gen_4_shot_cot_str import gsm8k_datasets
+datasets = [
+    *gsm8k_datasets,
+]
+```
+
+### gsm8k_gen_4_shot_cot_chat_prompt
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
+|gsm8k_gen_4_shot_cot_chat_prompt|gsm8k数据集生成式任务，带逻辑链|accuracy|4-shot|chat prompt|[gsm8k_gen_4_shot_cot_chat_prompt.py](gsm8k_gen_4_shot_cot_chat_prompt.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general_chat --datasets gsm8k_gen_4_shot_cot_chat_prompt
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.gsm8k.gsm8k_gen_4_shot_cot_chat_prompt import gsm8k_datasets
+datasets = [
+    *gsm8k_datasets,
+]
+```
+
+### gsm8k_gen_0_shot_cot_str
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
+|gsm8k_gen_0_shot_cot_str|gsm8k数据集生成式任务|accuracy|0-shot|string|[gsm8k_gen_0_shot_cot_str.py](gsm8k_gen_0_shot_cot_str.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets gsm8k_gen_0_shot_cot_str
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.gsm8k.gsm8k_gen_0_shot_cot_str import gsm8k_datasets
+datasets = [
+    *gsm8k_datasets,
+]
+```
+
+### gsm8k_gen_0_shot_cot_chat_prompt
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
+|gsm8k_gen_0_shot_cot_chat_prompt|gsm8k数据集生成式任务|accuracy|0-shot|chat prompt|[gsm8k_gen_0_shot_cot_chat_prompt.py](gsm8k_gen_0_shot_cot_chat_prompt.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general_chat --datasets gsm8k_gen_0_shot_cot_chat_prompt
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.gsm8k.gsm8k_gen_0_shot_cot_chat_prompt import gsm8k_datasets
+datasets = [
+    *gsm8k_datasets,
+]
+```
 **注:** 数据集任务的详细配置的含义请参见配置文件的注释

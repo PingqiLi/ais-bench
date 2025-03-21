@@ -194,21 +194,21 @@ mmlu/
 [http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/mmlu.zip](http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/mmlu.zip)
 
 ## 可用数据集任务
-### mmlu_gen_79e572
+### mmlu_gen_5_shot_str
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|mmlu_gen|MMLU数据集生成式任务|accuracy(naive_average)|5-shot|string|[mmlu_gen.py](mmlu_gen_79e572.py)|
+|mmlu_gen|MMLU数据集生成式任务|accuracy(naive_average)|5-shot|string|[mmlu_gen.py](mmlu_gen_5_shot_str.py)|
 
 #### 命令行调用
 ```shell
-ais_bench --models vllm_api_general --datasets mmlu_gen_79e572
+ais_bench --models vllm_api_general --datasets mmlu_gen_5_shot_str
 ```
 #### 在自定义配置文件中导入
 ```python
 from mmengine.config import read_base
 with read_base():
-    from ais_bench.benchmark.configs.datasets.mmlu.mmlu_gen_79e572 import mmlu_datasets
+    from ais_bench.benchmark.configs.datasets.mmlu.mmlu_gen_5_shot_str import mmlu_datasets
 datasets = [
     *mmlu_datasets,
 ]
