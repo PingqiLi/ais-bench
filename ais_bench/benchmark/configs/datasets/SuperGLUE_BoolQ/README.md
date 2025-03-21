@@ -39,39 +39,58 @@ datasets = [
 ]
 ```
 
-### SuperGLUE_BoolQ_cot_gen_1d56df_str
+### SuperGLUE_BoolQ_gen_0_shot_cot_str
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|SuperGLUE_BoolQ_cot_gen_1d56df_str|BoolQ数据集生成式任务，prompt带逻辑链|accuracy(naive_average)|0-shot|string|[SuperGLUE_BoolQ_cot_gen_1d56df_str.py](SuperGLUE_BoolQ_cot_gen_1d56df_str.py)|
+|SuperGLUE_BoolQ_gen_0_shot_cot_str|BoolQ数据集生成式任务，prompt带逻辑链|accuracy(naive_average)|0-shot|string|[SuperGLUE_BoolQ_gen_0_shot_cot_str.py](SuperGLUE_BoolQ_gen_0_shot_cot_str.py)|
 #### 命令行调用
 ```shell
-ais_bench --models vllm_api_general --datasets SuperGLUE_BoolQ_cot_gen_1d56df_str
+ais_bench --models vllm_api_general --datasets SuperGLUE_BoolQ_gen_0_shot_cot_str
 ```
 #### 在自定义配置文件中导入
 ```python
 from mmengine.config import read_base
 with read_base():
-    from ais_bench.benchmark.configs.datasets.SuperGLUE_BoolQ.SuperGLUE_BoolQ_cot_gen_1d56df_str import BoolQ_datasets
+    from ais_bench.benchmark.configs.datasets.SuperGLUE_BoolQ.SuperGLUE_BoolQ_gen_0_shot_cot_str import BoolQ_datasets
 datasets = [
     *BoolQ_datasets,
 ]
 ```
 
-### SuperGLUE_BoolQ_few_shot_gen_ba58ea_str
+### SuperGLUE_BoolQ_gen_5_shot_str
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|SuperGLUE_BoolQ_few_shot_gen_ba58ea_str|BoolQ数据集生成式任务，few-shot|accuracy(naive_average)|5-shot|string|[SuperGLUE_BoolQ_few_shot_gen_ba58ea_str.py](SuperGLUE_BoolQ_few_shot_gen_ba58ea_str.py)|
+|SuperGLUE_BoolQ_gen_5_shot_str|BoolQ数据集生成式任务，few-shot|accuracy(naive_average)|5-shot|string|[SuperGLUE_BoolQ_gen_5_shot_str.py](SuperGLUE_BoolQ_gen_5_shot_str.py)|
 #### 命令行调用
 ```shell
-ais_bench --models vllm_api_general --datasets SuperGLUE_BoolQ_few_shot_gen_ba58ea_str
+ais_bench --models vllm_api_general --datasets SuperGLUE_BoolQ_gen_5_shot_str
 ```
 #### 在自定义配置文件中导入
 ```python
 from mmengine.config import read_base
 with read_base():
-    from ais_bench.benchmark.configs.datasets.SuperGLUE_BoolQ.SuperGLUE_BoolQ_few_shot_gen_ba58ea_str import BoolQ_datasets
+    from ais_bench.benchmark.configs.datasets.SuperGLUE_BoolQ.SuperGLUE_BoolQ_gen_5_shot_str import BoolQ_datasets
+datasets = [
+    *BoolQ_datasets,
+]
+```
+
+### SuperGLUE_BoolQ_gen_0_shot_str
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
+|SuperGLUE_BoolQ_gen_0_shot_str|BoolQ数据集生成式任务，few-shot|accuracy(naive_average)|5-shot|string|[SuperGLUE_BoolQ_gen_0_shot_str.py](SuperGLUE_BoolQ_gen_0_shot_str.py)|
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general --datasets SuperGLUE_BoolQ_gen_0_shot_str
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.SuperGLUE_BoolQ.SuperGLUE_BoolQ_gen_0_shot_str import BoolQ_datasets
 datasets = [
     *BoolQ_datasets,
 ]

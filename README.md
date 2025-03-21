@@ -65,6 +65,7 @@ models = [
 ```
 ais_bench --models vllm_api_general --datasets gsm8k_gen
 ```
+**注:** --models支持的任务参考[--models支持的模型推理后端](#--models支持的模型推理后端)章节，--datasets 支持的任务参考[--datasets支持的数据集](#--datasets支持的数据集)章节。
 
 ### 配置文件指定模型和数据集
 需要先在源码中提供的样例配置文件`ais_bench/configs/`中预置的模型配置文件中配置好服务化相关参数，例如要执行的配置文件是`ais_bench/configs/api_examples/infer_api_vllm_general.py`，需要在此配置文件中修改配置：
@@ -329,6 +330,7 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |任务名称|简介|使用前提|支持的prompt格式(字符串格式或多轮对话)|对应源码配置文件路径|
 | --- | --- | --- | --- | --- |
 |vllm_api_general|通过vllm的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_general.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)|
+|vllm_api_general_chat|通过vllm的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|字符串格式、对话格式|[vllm_api_general_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py)|
 |vllm_api_old|通过vllm的api访问vllm(0.2.6版本)的推理服务化，访问服务链接的 generate子服务|基于支持generate子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_old.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_old.py)|
 |mindie_stream_api_general|通过mindie的流式api访问mindie的推理服务化，访问服务链接的 infer子服务|基于支持infer子服务的mindie版本，启动mindie推理服务|字符串格式|[mindie_stream_api_general.py](ais_bench/benchmark/configs/models/mindie_api/mindie_stream_api_general.py)|
 

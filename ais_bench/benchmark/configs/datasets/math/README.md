@@ -31,7 +31,7 @@ math
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|math_prm800k_500_0shot_cot_gen|MATH500数据集生成式任务, 默认max out tokens长度取32768，prompt带逻辑链|accuracy(pass@1)|0-shot|string|[math_prm800k_500_0shot_cot_gen.py](math_prm800k_500_0shot_cot_gen.py)|
+|math_prm800k_500_0shot_cot_gen|MATH500数据集生成式任务, 默认max out tokens长度取32768，prompt带逻辑链|accuracy(pass@1)|0-shot|字符串格式|[math_prm800k_500_0shot_cot_gen.py](math_prm800k_500_0shot_cot_gen.py)|
 #### 命令行调用
 ```shell
 ais_bench --models vllm_api_general --datasets math_prm800k_500_0shot_cot_gen
@@ -50,7 +50,7 @@ datasets = [
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|math_prm800k_500_5shot_cot_gen|MATH500数据集生成式任务, 默认max out tokens长度取32768，prompt带逻辑链|accuracy(pass@1)|5-shot|string|[math_prm800k_500_5shot_cot_gen.py](math_prm800k_500_5shot_cot_gen.py)|
+|math_prm800k_500_5shot_cot_gen|MATH500数据集生成式任务, 默认max out tokens长度取32768，prompt带逻辑链|accuracy(pass@1)|5-shot|字符串格式|[math_prm800k_500_5shot_cot_gen.py](math_prm800k_500_5shot_cot_gen.py)|
 #### 命令行调用
 ```shell
 ais_bench --models vllm_api_general --datasets math_prm800k_500_5shot_cot_gen
