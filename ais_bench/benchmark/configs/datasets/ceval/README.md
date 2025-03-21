@@ -184,7 +184,7 @@ ceval-exam
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|ceval_gen_0_shot_str|C-Eval数据集生成式任务|accuracy|0-shot|string|[ceval_gen_0_shot_str.py](ceval_gen_0_shot_str.py)|
+|ceval_gen_0_shot_str|C-Eval数据集生成式任务|accuracy|0-shot|字符串格式|[ceval_gen_0_shot_str.py](ceval_gen_0_shot_str.py)|
 #### 命令行调用
 ```shell
 ais_bench --models vllm_api_general --datasets ceval_gen_0_shot_str
@@ -203,7 +203,7 @@ datasets = [
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|ceval_gen_5_shot_str||C-Eval数据集生成式任务|accuracy|5-shot|string|[ceval_gen_5_shot_str.py](ceval_gen_5_shot_str.py)|
+|ceval_gen_5_shot_str||C-Eval数据集生成式任务|accuracy|5-shot|字符串格式|[ceval_gen_5_shot_str.py](ceval_gen_5_shot_str.py)|
 
 #### 命令行调用
 ```shell
@@ -223,7 +223,7 @@ datasets = [
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|ceval_gen_0_shot_chat_prompt||C-Eval数据集生成式任务|accuracy|0-shot|chat prompt|[ceval_gen_0_shot_chat_prompt.py](ceval_gen_0_shot_chat_prompt.py)|
+|ceval_gen_0_shot_chat_prompt||C-Eval数据集生成式任务|accuracy|0-shot|对话格式|[ceval_gen_0_shot_chat_prompt.py](ceval_gen_0_shot_chat_prompt.py)|
 
 #### 命令行调用
 ```shell
