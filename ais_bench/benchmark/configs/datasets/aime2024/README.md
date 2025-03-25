@@ -41,4 +41,24 @@ datasets = [
 ]
 ```
 
+### aime2024_gen_0_shot_chat_prompt
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
+|aime2024_gen_0_shot_chat_prompt|aime2024数据集生成式任务, 默认max out tokens长度取32768|accuracy(pass@1)|0-shot|字符串格式|[aime2024_gen_0_shot_chat_prompt.py](aime2024_gen_0_shot_chat_prompt.py)|
+
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general_chat --datasets aime2024_gen_0_shot_chat_prompt
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.aime.aime2024_gen_0_shot_chat_prompt import aime_datasets
+datasets = [
+    *aime_datasets,
+]
+```
+
 **注:** 数据集任务的详细配置的含义请参见配置文件的注释
