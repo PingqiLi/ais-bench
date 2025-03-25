@@ -214,4 +214,24 @@ datasets = [
 ]
 ```
 
+### mmlu_gen_0_shot_cot_chat_prompt
+#### 基本信息
+|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
+| --- | --- | --- | --- | --- | --- |
+|mmlu_gen|MMLU数据集生成式任务，prompt带逻辑链|accuracy(naive_average)|0-shot|字符串格式|[mmlu_gen.py](mmlu_gen_0_shot_cot_chat_prompt.py)|
+
+#### 命令行调用
+```shell
+ais_bench --models vllm_api_general_chat --datasets mmlu_gen_0_shot_cot_chat_prompt
+```
+#### 在自定义配置文件中导入
+```python
+from mmengine.config import read_base
+with read_base():
+    from ais_bench.benchmark.configs.datasets.mmlu.mmlu_gen_0_shot_cot_chat_prompt import mmlu_datasets
+datasets = [
+    *mmlu_datasets,
+]
+```
+
 **注:** 数据集任务的详细配置的含义请参见配置文件的注释
