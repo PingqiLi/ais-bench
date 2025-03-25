@@ -80,7 +80,7 @@ gsm8k_datasets = [
     dict(
         abbr='gsm8k',
         type=GSM8KDataset,
-        path='ais_bench/datasets/gsm8k',
+        path='ais_bench/datasets/gsm8k',  # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
         reader_cfg=gsm8k_reader_cfg,
         infer_cfg=gsm8k_infer_cfg,
         eval_cfg=gsm8k_eval_cfg)

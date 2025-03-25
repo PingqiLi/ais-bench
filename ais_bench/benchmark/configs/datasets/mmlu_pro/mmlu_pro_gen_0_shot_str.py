@@ -51,7 +51,7 @@ for category in categories:
         dict(
             abbr=f'mmlu_pro_{category.replace(" ", "_")}',
             type=MMLUProDataset,
-            path='ais_bench/datasets/mmlu_pro',
+            path='ais_bench/datasets/mmlu_pro',  # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
             category=category,
             reader_cfg=mmlu_pro_reader_cfg,
             infer_cfg=mmlu_pro_infer_cfg,

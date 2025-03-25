@@ -35,7 +35,7 @@ math_datasets = [
     dict(
         type=MATHDataset,
         abbr='math_prm800k_500',
-        path='ais_bench/datasets/math',
+        path='ais_bench/datasets/math',  # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
         file_name='test_prm800k_500.json',
         reader_cfg=math_reader_cfg,
         infer_cfg=math_infer_cfg,

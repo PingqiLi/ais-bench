@@ -30,7 +30,7 @@ BoolQ_datasets = [
     dict(
         abbr='BoolQ',
         type=BoolQDatasetV2,
-        path='ais_bench/datasets/SuperGLUE/BoolQ/val.jsonl',
+        path='ais_bench/datasets/SuperGLUE/BoolQ/val.jsonl',  # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
         reader_cfg=BoolQ_reader_cfg,
         infer_cfg=BoolQ_infer_cfg,
         eval_cfg=BoolQ_eval_cfg,

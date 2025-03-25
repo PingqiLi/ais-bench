@@ -1,12 +1,13 @@
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
-from ais_bench.benchmark.openicl.icl_retriever import FixKRetriever
+from ais_bench.benchmark.openicl.icl_retriever import FixKRetriever, ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import MMLUDataset
-from ais_bench.benchmark.utils.text_postprocessors import first_capital_postprocess
+from ais_bench.benchmark.utils.text_postprocessors import last_option_postprocess
 
 # None of the mmlu dataset in huggingface is correctly parsed, so we use our own dataset reader
 # Please download the dataset from https://people.eecs.berkeley.edu/~hendrycks/data.tar
+
 mmlu_reader_cfg = dict(
     input_columns=['input', 'A', 'B', 'C', 'D'],
     output_column='target',
@@ -72,39 +73,39 @@ mmlu_all_sets = [
     'conceptual_physics',
 ]
 
+
 mmlu_datasets = []
 for _name in mmlu_all_sets:
-    _hint = f'The following are multiple choice questions (with answers) about  {_name.replace("_", " ")}.\n\n'
+    _hint = f'There is a single choice question about {_name.replace("_", " ")}. Answer the question by replying A, B, C or D. ' + \
+            'The last line of your response should be of the form Answer: $ANSWER (without quotes) where $ANSWER is the answer to the question.'
     mmlu_infer_cfg = dict(
-        ice_template=dict(
-            type=PromptTemplate,
-            template=
-            '{input}\nA. {A}\nB. {B}\nC. {C}\nD. {D}\nAnswer: {target}\n',
-        ),
         prompt_template=dict(
             type=PromptTemplate,
-            template=
-            f'{_hint}</E>{{input}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}\nAnswer:',
-            ice_token='</E>',
+            template=dict(
+                round=[
+                    dict(
+                        role='HUMAN',
+                        prompt=
+                        f"{_hint}\nQuestion: {{input}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}\nLet's think step by step."
+                    ),
+                ],
+            ),
         ),
-        retriever=dict(type=FixKRetriever, fix_id_list=[0, 1, 2, 3, 4]),
-        inferencer=dict(type=GenInferencer, max_out_len=1, batch_size=64),
+        retriever=dict(type=ZeroRetriever),
+        inferencer=dict(type=GenInferencer, batch_size=32),
     )
 
     mmlu_eval_cfg = dict(
         evaluator=dict(type=AccEvaluator),
-        pred_postprocessor=dict(type=first_capital_postprocess),
-    )
+        pred_postprocessor=dict(type=last_option_postprocess, options='ABCD'))
 
     mmlu_datasets.append(
         dict(
             abbr=f'lukaemon_mmlu_{_name}',
             type=MMLUDataset,
-            path='ais_bench/datasets/mmlu',  # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
+            path='ais_bench/datasets/mmlu',
             name=_name,
             reader_cfg=mmlu_reader_cfg,
             infer_cfg=mmlu_infer_cfg,
             eval_cfg=mmlu_eval_cfg,
         ))
-
-del _name, _hint

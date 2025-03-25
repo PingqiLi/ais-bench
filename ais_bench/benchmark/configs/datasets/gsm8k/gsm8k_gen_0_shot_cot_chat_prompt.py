@@ -9,7 +9,7 @@ gsm8k_infer_cfg = dict(
         type=PromptTemplate,
         template=dict(
             round=[
-                dict(role='HUMAN', prompt="Question: {question}\nLet's think step by step\nAnswer:"),
+                dict(role='HUMAN', prompt='Answer the following question.The last line of the response should follow this format: "answer:$ANSWER" (without quotes), where ANSWER is a number. Let\'s think step by step.\n\nQuestion: {question}'),
             ],
         )),
     retriever=dict(type=ZeroRetriever),

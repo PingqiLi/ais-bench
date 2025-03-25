@@ -57,6 +57,12 @@ def last_capital_postprocess(text: str) -> str:
     return ''
 
 
+def first_option_postprocess_v1(text: str, options: str, cushion=True) -> str:
+    """Find first valid option for text, prioritizing the latest match in the text."""
+    cut_length = 200
+    cut_text = text[-cut_length:]
+    return first_option_postprocess(cut_text, options, cushion)
+
 def first_option_postprocess(text: str, options: str, cushion=True) -> str:
     """Find first valid option for text."""
 

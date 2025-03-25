@@ -11,6 +11,7 @@ from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.registry import LOAD_DATASET
+from ais_bench.benchmark.utils import get_data_path
 
 from .base import BaseDataset
 
@@ -85,7 +86,10 @@ class OptionSimAccEvaluator(BaseEvaluator):
 class CustomDataset(BaseDataset):
 
     @staticmethod
-    def load(path):
+    def load(path, file_name=None, local_mode=False):
+        path = get_data_path(path, local_mode=True)
+        if file_name is not None:
+            path = os.path.join(path, file_name)
         if path.endswith('.jsonl'):
             with open(path, 'r', encoding='utf-8-sig') as f:
                 data = [json.loads(line) for line in f]

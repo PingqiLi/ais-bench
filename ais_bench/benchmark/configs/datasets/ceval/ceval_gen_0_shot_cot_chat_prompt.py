@@ -3,7 +3,7 @@ from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import CEvalDataset
-from ais_bench.benchmark.utils import first_option_postprocess
+from ais_bench.benchmark.utils import last_option_postprocess
 
 
 ceval_subject_mapping = {
@@ -71,7 +71,7 @@ for _split in ['val']:
                 type=PromptTemplate,
                 template=dict(
                     round=[
-                        dict(role='HUMAN', prompt=f'以下是中国关于{_ch_name}考试的单项选择题，请选出其中的正确答案。\n{{question}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}\n答案: {{answer}}'),
+                        dict(role='HUMAN', prompt=f'以下是中国关于{_ch_name}考试的单项选择题，请选出其中的正确答案。回答的最后一行应采用以下格式：”answer:$LETTER“（不带引号），其中LETTER 是ABCD之一。回答之前先一步步思考。\n\n{{question}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}'),
                     ],
                 )
             ),
@@ -81,12 +81,12 @@ for _split in ['val']:
 
         ceval_eval_cfg = dict(
             evaluator=dict(type=AccEvaluator),
-            pred_postprocessor=dict(type=first_option_postprocess, options='ABCD'))
+            pred_postprocessor=dict(type=last_option_postprocess, options='ABCD'))
 
         ceval_datasets.append(
             dict(
                 type=CEvalDataset,
-                path='ais_bench/datasets/ceval/formal_ceval',
+                path='ais_bench/datasets/ceval/formal_ceval',  # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
                 name=_name,
                 abbr='ceval-' + _name if _split == 'val' else 'ceval-test-' +
                 _name,

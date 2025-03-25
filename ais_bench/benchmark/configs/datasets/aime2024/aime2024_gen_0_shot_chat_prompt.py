@@ -13,7 +13,14 @@ aime2024_reader_cfg = dict(
 aime2024_infer_cfg = dict(
     prompt_template=dict(
         type=PromptTemplate,
-        template='{question}\nPlease reason step by step, and put your final answer within \\boxed{}.'
+        template=dict(
+            round=[
+                dict(
+                    role='HUMAN',
+                    prompt='{question}\nPlease reason step by step, and put your final answer within \\boxed{}.'
+                ),
+            ],
+        ),
     ),
     retriever=dict(type=ZeroRetriever),
     inferencer=dict(type=GenInferencer, batch_size=1)

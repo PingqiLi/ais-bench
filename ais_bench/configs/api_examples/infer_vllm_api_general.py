@@ -5,14 +5,12 @@ from ais_bench.benchmark.runners.local_api import LocalAPIRunner
 from ais_bench.benchmark.tasks import OpenICLInferTask
 
 with read_base():
-    # from ais_bench.benchmark.configs.datasets.collections.chat_medium import datasets
-    from ais_bench.benchmark.configs.summarizers.medium import summarizer
-    from ais_bench.benchmark.configs.datasets.gsm8k.gsm8k_gen import gsm8k_datasets
+    from ais_bench.benchmark.configs.summarizers.example import summarizer
+    from ais_bench.configs.api_examples.all_dataset_configs import *
 
-datasets = [
-    *gsm8k_datasets,
+datasets = [ # all_dataset_configs.py中导入了其他数据集配置，可以将gsm8k_0_shot_cot_str替换为其他一个或多个数据集
+    *gsm8k_0_shot_cot_str,
 ]
-
 
 models = [
     dict(
@@ -22,10 +20,11 @@ models = [
         query_per_second = 1,
         rpm_verbose = False,
         retry = 2,
-        host_ip = "localhost",
-        host_port = 8080,
+        host_ip = "localhost", # 推理服务的IP
+        host_port = 8080, # 推理服务的端口
         enable_ssl = False,
-        generation_kwargs = dict(
+        max_out_len = 512, # 最大输出tokens长度
+        generation_kwargs = dict( # 后处理参数参考https://docs.vllm.ai/en/latest/api/inference_params.html#sampling-params 中的Parameters
             temperature = 0.5,
             top_k = 10,
             top_p = 0.95,
@@ -43,4 +42,4 @@ infer = dict(partitioner=dict(type=NaivePartitioner),
                  concurrent_users=2,
                  task=dict(type=OpenICLInferTask)), )
 
-work_dir = 'outputs/api_vllm_general/'
+work_dir = 'outputs/api-vllm-general/'
