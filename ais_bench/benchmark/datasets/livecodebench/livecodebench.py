@@ -10,7 +10,7 @@ from enum import Enum
 
 from datasets import DatasetDict, load_dataset, load_from_disk
 
-from opencompass.utils import get_data_path  # noqa: F401, F403
+from ais_bench.benchmark.utils import get_data_path  # noqa: F401, F403
 
 from ..base import BaseDataset
 from .prompts import SelfRepairPromptConstants  # noqa: F401, F403
@@ -51,7 +51,7 @@ class Test:
 class LCBCodeGenerationDataset(BaseDataset):
 
     @staticmethod
-    def load(path: str = 'opencompass/code_generation_lite',
+    def load(path: str = 'ais_bench/datasets/code_generation_lite',
              local_mode: bool = False,
              release_version: str = 'release_v1'):
 
@@ -97,7 +97,7 @@ class LCBCodeGenerationDataset(BaseDataset):
 
             return item
 
-        path = get_data_path(path, local_mode=local_mode)
+        path = get_data_path(path, local_mode=True)
 
         dataset = load_dataset(
             path,  # 'livecodebench/code_generation_lite'

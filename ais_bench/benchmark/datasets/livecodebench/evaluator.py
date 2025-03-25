@@ -7,9 +7,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import numpy as np
 from tqdm import tqdm
 
-from opencompass.openicl.icl_evaluator import BaseEvaluator
-from opencompass.registry import ICL_EVALUATORS
-from opencompass.utils import get_logger
+from ais_bench.benchmark.openicl.icl_evaluator import BaseEvaluator
+from ais_bench.benchmark.registry import ICL_EVALUATORS
+from ais_bench.benchmark.utils import get_logger
 
 from .execute_utils import BASE_IMPORTS, codeexecute_check_correctness
 from .extract_utils import (extract_code_execution, extract_code_generation,
