@@ -16,6 +16,7 @@ DATASETS_CONFIGS_LIST = [
     "math",
     "mmlu_pro",
     "mgsm",
+    "agieval"
 ]
 
 class TestClass:
@@ -698,3 +699,38 @@ class TestClass:
         assert os.path.exists(vis_txt_path)
         vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
         assert os.path.exists(vis_md_path)
+
+    def test_vllm_api_general_chat_agieval_gen_0_shot(self, monkeypatch):
+        from agieval_gen_0_shot_chat_prompt import agieval_all_sets
+        fake_prediction = "Answer: A"
+        fake_time_str = "agieval_gen_0_shot_chat_prompt"
+        datasets_abbr_name = "agieval-"
+        datasets_script_name = "agieval_gen_0_shot_chat_prompt"
+
+        monkeypatch.setattr('sys.argv',
+            ["ais_bench", "--models", "vllm_api_general_chat", "--datasets", datasets_script_name,
+            "--mode", "all", "-w", self.test_data_path])
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._get_service_model_path", lambda *arg: "qwen2")
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
+        main()
+
+        for category in agieval_all_sets:
+            curr_datasets_abbr_name = datasets_abbr_name + category.replace(" ", "_")
+
+            # check infer out
+            infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general-chat/{curr_datasets_abbr_name}.json")
+            assert os.path.exists(infer_outputs_json_path)
+            with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+            assert data.get(f"0").get("prediction") == fake_prediction
+
+            # check eval out
+            results_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/results/vllm-api-general-chat/{curr_datasets_abbr_name}.json")
+            with open(results_json_path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+            assert data.get("accuracy") is not None or data.get("score") is not None
+
+        # check vis
+        vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
+        assert os.path.exists(vis_csv_path)

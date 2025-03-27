@@ -4,9 +4,9 @@ from os import environ
 
 from datasets import Dataset
 
-from opencompass.openicl.icl_evaluator import BaseEvaluator
-from opencompass.registry import ICL_EVALUATORS, LOAD_DATASET
-from opencompass.utils import get_data_path
+from ais_bench.benchmark.openicl.icl_evaluator import BaseEvaluator
+from ais_bench.benchmark.registry import ICL_EVALUATORS, LOAD_DATASET
+from ais_bench.benchmark.utils import get_data_path
 
 from ..base import BaseDataset
 from .math_equivalence import is_equiv
