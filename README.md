@@ -350,6 +350,16 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |DROP|[ais_bench/benchmark/configs/datasets/drop/README.md](ais_bench/benchmark/configs/datasets/drop/README.md)|
 |HumanEval|[ais_bench/benchmark/configs/datasets/humaneval/README.md](ais_bench/benchmark/configs/datasets/humaneval/README.md)|
 |MMLU-PRO|[ais_bench/benchmark/configs/datasets/mmlu_pro/README.md](ais_bench/benchmark/configs/datasets/mmlu_pro/README.md)|
+|AGIEval|[ais_bench/benchmark/configs/datasets/agieval/README.md](ais_bench/benchmark/configs/datasets/agieval/README.md)|
+|ARC Challenge Set|[ais_bench/benchmark/configs/datasets/ARC_c/README.md](ais_bench/benchmark/configs/datasets/ARC_c/README.md)|
+|ARC Easy Set|[ais_bench/benchmark/configs/datasets/ARC_e/README.md](ais_bench/benchmark/configs/datasets/ARC_e/README.md)|
+|LiveCodeBench|[ais_bench/benchmark/configs/datasets/livecodebench/README.md](ais_bench/benchmark/configs/datasets/livecodebench/README.md)|
+|HellaSwag|[ais_bench/benchmark/configs/datasets/hellaswag/README.md](ais_bench/benchmark/configs/datasets/hellaswag/README.md)|
+|mgsm|[ais_bench/benchmark/configs/datasets/mgsm/README.md](ais_bench/benchmark/configs/datasets/mgsm/README.md)|
+|mbpp|[ais_bench/benchmark/configs/datasets/mbpp/README.md](ais_bench/benchmark/configs/datasets/mbpp/README.md)|
+|piqa|[ais_bench/benchmark/configs/datasets/piqa/README.md](ais_bench/benchmark/configs/datasets/piqa/README.md)|
+|TriviaQA|[ais_bench/benchmark/configs/datasets/triviaqa/README.md](ais_bench/benchmark/configs/datasets/triviaqa/README.md)|
+|WinoGrande|[ais_bench/benchmark/configs/datasets/winogrande/README.md](ais_bench/benchmark/configs/datasets/winogrande/README.md)|
 
 ### --summarizer支持的结果总结任务
 |任务名称|简介|对应源码配置文件路径|
@@ -360,8 +370,13 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 ## 自定义配置文件样例列表
 |文件名|简介|
 | --- | --- |
-|[infer_api_vllm_general.py](ais_bench/configs/api_examples/infer_api_vllm_general.py)|基于gsm8k数据集使用vllm api评测，自定义了数据集路径|
-|[infer_api_mindie_stream_general.py](ais_bench/configs/api_examples/infer_api_mindie_stream_general.py)|基于gsm8k数据集使用mindie stream api评测，自定义了数据集路径|
+|[infer_vllm_api_general.py](ais_bench/configs/api_examples/infer_vllm_api_general.py)|基于gsm8k数据集使用vllm api(0.6+版本)访问v1/completions子服务进行评测，prompt格式为字符串格式，自定义了数据集路径|
+|[infer_mindie_stream_api_general.py](ais_bench/configs/api_examples/infer_mindie_stream_api_general.py)|基于gsm8k数据集使用mindie stream api访问infer子服务进行评测，prompt格式为字符串格式，自定义了数据集路径|
+|[infer_vllm_api_old.py](ais_bench/configs/api_examples/infer_vllm_api_old.py)|基于gsm8k数据集使用vllm api(0.2.6版本)访问generate子服务进行评测，prompt格式为字符串格式，自定义了数据集路径|
+|[infer_vllm_api_general_chat.py](ais_bench/configs/api_examples/infer_vllm_api_general_chat.py)|基于gsm8k数据集使用vllm api(0.6+版本)访问v1/chat/completions子服务进行评测，prompt格式为对话格式，自定义了数据集路径|
+
+**注**: 上述自定义配置文件如果要评测其他数据集，请从[ais_bench/configs/api_examples/all_dataset_configs.py](ais_bench/configs/api_examples/all_dataset_configs.py)导入其他数据集。
+
 
 ## 其他特性
 ### 自定义数据集
