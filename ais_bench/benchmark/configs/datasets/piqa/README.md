@@ -51,7 +51,7 @@ datasets = [
 
 #### 命令行调用
 ```shell
-ais_bench --models vllm_api_general_chat --datasets piqa_gen_0_shot_str
+ais_bench --models vllm_api_general --datasets piqa_gen_0_shot_str
 ```
 #### 在自定义配置文件中导入
 ```python
