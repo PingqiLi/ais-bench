@@ -13,6 +13,8 @@ from .custom import *
 from .livecodebench import * # noqa: F401, F403
 from .mgsm import * # noqa: F401, F403
 from .piqa import *  # noqa: F401, F403
+from .agieval import * # noqa: F401, F403
+from .arc import * # noqa: F401, F403
 from .winogrande import * # noqa: F401, F403
 from .mbpp import * # noqa: F401，F403
 from .agieval import * # noqa: F401, F403
