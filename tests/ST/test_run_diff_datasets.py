@@ -1006,3 +1006,105 @@ class TestClass:
         assert os.path.exists(vis_txt_path)
         vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
         assert os.path.exists(vis_md_path)
+
+    def test_vllm_api_general_chat_hellaswag_0_shot(self, monkeypatch):
+        fake_prediction = "Answer: A"
+        fake_time_str = "hellaswag_gen_0_shot_chat_prompt"
+        datasets_abbr_name = "hellaswag"
+        datasets_script_name = "hellaswag_gen_0_shot_chat_prompt"
+        monkeypatch.setattr('sys.argv',
+            ["ais_bench", "--models", "vllm_api_general_chat", "--datasets", datasets_script_name, "--summarizer", "example",
+            "--mode", "all", "-w", self.test_data_path])
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._get_service_model_path", lambda *arg: "qwen2")
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
+        main()
+
+        # check infer out
+        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general-chat/{datasets_abbr_name}.json")
+        assert os.path.exists(infer_outputs_json_path)
+        with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get(f"0").get("prediction") == fake_prediction
+
+        # check eval out
+        results_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/results/vllm-api-general-chat/{datasets_abbr_name}.json")
+        with open(results_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get("accuracy") is not None
+
+        # check vis
+        vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
+        assert os.path.exists(vis_csv_path)
+        vis_txt_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.txt")
+        assert os.path.exists(vis_txt_path)
+        vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
+        assert os.path.exists(vis_md_path)
+
+    def test_vllm_api_general_chat_hellaswag_10_shot(self, monkeypatch):
+        fake_prediction = "Answer: A"
+        fake_time_str = "hellaswag_gen_10_shot_chat_prompt"
+        datasets_abbr_name = "hellaswag"
+        datasets_script_name = "hellaswag_gen_10_shot_chat_prompt"
+        monkeypatch.setattr('sys.argv',
+            ["ais_bench", "--models", "vllm_api_general_chat", "--datasets", datasets_script_name, "--summarizer", "example",
+            "--mode", "all", "-w", self.test_data_path])
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._get_service_model_path", lambda *arg: "qwen2")
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
+        main()
+
+        # check infer out
+        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general-chat/{datasets_abbr_name}.json")
+        assert os.path.exists(infer_outputs_json_path)
+        with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get(f"0").get("prediction") == fake_prediction
+
+        # check eval out
+        results_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/results/vllm-api-general-chat/{datasets_abbr_name}.json")
+        with open(results_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get("accuracy") is not None
+
+        # check vis
+        vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
+        assert os.path.exists(vis_csv_path)
+        vis_txt_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.txt")
+        assert os.path.exists(vis_txt_path)
+        vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
+        assert os.path.exists(vis_md_path)
+
+    def test_vllm_api_general_chat_triviaqa_5_shot(self, monkeypatch):
+        fake_prediction = "Answer: A"
+        fake_time_str = "triviaqa_gen_5_shot_chat_prompt"
+        datasets_abbr_name = "triviaqa_5shot"
+        datasets_script_name = "triviaqa_gen_5_shot_chat_prompt"
+        monkeypatch.setattr('sys.argv',
+            ["ais_bench", "--models", "vllm_api_general_chat", "--datasets", datasets_script_name, "--summarizer", "example",
+            "--mode", "all", "-w", self.test_data_path])
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._get_service_model_path", lambda *arg: "qwen2")
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
+        main()
+
+        # check infer out
+        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general-chat/{datasets_abbr_name}.json")
+        assert os.path.exists(infer_outputs_json_path)
+        with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get(f"0").get("prediction") == fake_prediction
+
+        # check eval out
+        results_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/results/vllm-api-general-chat/{datasets_abbr_name}.json")
+        with open(results_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get("score") is not None
+
+        # check vis
+        vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
+        assert os.path.exists(vis_csv_path)
+        vis_txt_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.txt")
+        assert os.path.exists(vis_txt_path)
+        vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
+        assert os.path.exists(vis_md_path)
