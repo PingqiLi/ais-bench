@@ -49,9 +49,9 @@ ais_bench --models vllm_api_general_chat --datasets mgsm_gen_0_shot_cot_chat_pro
 ```python
 from mmengine.config import read_base
 with read_base():
-    from ais_bench.benchmark.configs.datasets.mgsm.mgsm_gen_0_shot_cot_chat_prompt import mbpp_datasets
+    from ais_bench.benchmark.configs.datasets.mgsm.mgsm_gen_0_shot_cot_chat_prompt import mgsm_datasets
 datasets = [
-    *mbpp_datasets,
+    *mgsm_datasets,
 ]
 ```
 
