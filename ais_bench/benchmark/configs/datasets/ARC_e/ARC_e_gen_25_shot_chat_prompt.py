@@ -5,7 +5,7 @@ from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import ARCDataset
 from ais_bench.benchmark.utils.text_postprocessors import last_capital_postprocess
 
-ARC_c_reader_cfg = dict(
+ARC_e_reader_cfg = dict(
     input_columns=['question', 'textA', 'textB', 'textC', 'textD'],
     output_column='answerKey',
     train_split='Dev',
@@ -15,7 +15,7 @@ ARC_c_reader_cfg = dict(
 _hint = f'There is a single choice question. Answer the question by replying A, B, C or D. ' + \
         'The last line of your response should be of the form Answer: $ANSWER (without quotes) where $ANSWER is the answer to the question.'
 
-ARC_c_infer_cfg = dict(
+ARC_e_infer_cfg = dict(
     ice_template=dict(
         type=PromptTemplate,
         template=dict(
@@ -34,20 +34,20 @@ ARC_c_infer_cfg = dict(
     inferencer=dict(type=GenInferencer),
 )
 
-ARC_c_eval_cfg = dict(
+ARC_e_eval_cfg = dict(
     evaluator=dict(type=AccEvaluator),
     pred_role='BOT',
     pred_postprocessor=dict(type=last_capital_postprocess),
 )
 
-ARC_c_datasets = [
+ARC_e_datasets = [
     dict(
         abbr='ARC-e',
         type=ARCDataset,
         path='ais_bench/datasets/ARC/ARC-e',
         name='ARC-Easy',
-        reader_cfg=ARC_c_reader_cfg,
-        infer_cfg=ARC_c_infer_cfg,
-        eval_cfg=ARC_c_eval_cfg,
+        reader_cfg=ARC_e_reader_cfg,
+        infer_cfg=ARC_e_infer_cfg,
+        eval_cfg=ARC_e_eval_cfg,
     )
 ]

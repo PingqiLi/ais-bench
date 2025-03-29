@@ -43,3 +43,41 @@ with read_base():
 
     # livecodebench
     from ais_bench.benchmark.configs.datasets.livecodebench.livecodebench_code_generate_lite_gen_0_shot_chat import LCB_datasets as LCB_code_gen_lite_0_shot_chat
+
+    # piqa
+    from ais_bench.benchmark.configs.datasets.piqa.piqa_gen_0_shot_chat_prompt import piqa_datasets as piqa_0_shot_chat
+    from ais_bench.benchmark.configs.datasets.piqa.piqa_gen_0_shot_str import piqa_datasets as piqa_0_shot_str
+
+    # agieval
+    from ais_bench.benchmark.configs.datasets.agieval.agieval_gen_0_shot_chat_prompt import agieval_datasets as agieval_0_shot_chat
+
+    # cmmlu
+    from ais_bench.benchmark.configs.datasets.cmmlu.cmmlu_gen_0_shot_cot_chat_prompt import cmmlu_datasets as cmmlu_0_shot_chat
+    from ais_bench.benchmark.configs.datasets.cmmlu.cmmlu_gen_5_shot_cot_chat_prompt import cmmlu_datasets as cmmlu_5_shot_chat
+
+    # hellaswag
+    from ais_bench.benchmark.configs.datasets.hellaswag.hellaswag_gen_0_shot_chat_prompt import hellaswag_datasets as hellaswag_0_shot_chat
+    from ais_bench.benchmark.configs.datasets.hellaswag.hellaswag_gen_10_shot_chat_prompt import hellaswag_datasets as hellaswag_10_shot_chat
+
+    # mbpp
+    from ais_bench.benchmark.configs.datasets.mbpp.mbpp_passk_gen_3_shot_chat_prompt import mbpp_datasets as mbpp_3_shot_chat
+    from ais_bench.benchmark.configs.datasets.mbpp.sanitized_mbpp_passk_gen_3_shot_chat_prompt import sanitized_mbpp_datasets as sanitized_mbpp_3_shot_chat
+
+    # mgsm
+    from ais_bench.benchmark.configs.datasets.mgsm.mgsm_gen_0_shot_cot_chat_prompt import mgsm_datasets as mgsm_0_shot_chat
+    from ais_bench.benchmark.configs.datasets.mgsm.mgsm_gen_8_shot_cot_chat_prompt import mgsm_datasets as mgsm_8_shot_chat
+
+    # ARC_c
+    from ais_bench.benchmark.configs.datasets.ARC_c.ARC_c_gen_0_shot_chat_prompt import ARC_c_datasets as ARC_c_0_shot_chat
+    from ais_bench.benchmark.configs.datasets.ARC_c.ARC_c_gen_25_shot_chat_prompt import ARC_c_datasets as ARC_c_25_shot_chat
+
+    # ARC_e
+    from ais_bench.benchmark.configs.datasets.ARC_e.ARC_e_gen_0_shot_chat_prompt import ARC_e_datasets as ARC_e_0_shot_chat
+    from ais_bench.benchmark.configs.datasets.ARC_e.ARC_e_gen_25_shot_chat_prompt import ARC_e_datasets as ARC_e_25_shot_chat
+
+    # triviaqa
+    from ais_bench.benchmark.configs.datasets.triviaqa.triviaqa_gen_5_shot_chat_prompt import triviaqa_datasets as triviaqa_5_shot_chat
+
+    # winogrande
+    from ais_bench.benchmark.configs.datasets.winogrande.winogrande_gen_0_shot_chat_prompt import winogrande_datasets as winogrande_0_shot_chat
+    from ais_bench.benchmark.configs.datasets.winogrande.winogrande_gen_5_shot_chat_prompt import winogrande_datasets as winogrande_5_shot_chat
