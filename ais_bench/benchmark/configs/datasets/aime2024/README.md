@@ -25,7 +25,7 @@ aime
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|aime2024_gen_0_shot_str|aime2024数据集生成式任务, 默认max out tokens长度取32768|accuracy(pass@1)|0-shot|字符串格式|[aime2024_gen_0_shot_str.py](aime2024_gen_0_shot_str.py)|
+|aime2024_gen_0_shot_str|aime2024数据集生成式任务|accuracy(pass@1)|0-shot|字符串格式|[aime2024_gen_0_shot_str.py](aime2024_gen_0_shot_str.py)|
 
 #### 命令行调用
 ```shell
@@ -45,7 +45,7 @@ datasets = [
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|aime2024_gen_0_shot_chat_prompt|aime2024数据集生成式任务, 默认max out tokens长度取32768|accuracy(pass@1)|0-shot|字符串格式|[aime2024_gen_0_shot_chat_prompt.py](aime2024_gen_0_shot_chat_prompt.py)|
+|aime2024_gen_0_shot_chat_prompt|aime2024数据集生成式任务|accuracy(pass@1)|0-shot|字符串格式|[aime2024_gen_0_shot_chat_prompt.py](aime2024_gen_0_shot_chat_prompt.py)|
 
 #### 命令行调用
 ```shell
