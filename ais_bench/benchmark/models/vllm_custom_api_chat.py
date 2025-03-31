@@ -44,6 +44,7 @@ class VLLMCustomAPIChat(BaseAPIModel):
     is_api: bool = True
 
     def __init__(self,
+                 model: str = "",
                  max_seq_len: int = 4096,
                  query_per_second: int = 1,
                  rpm_verbose: bool = False,
@@ -58,8 +59,8 @@ class VLLMCustomAPIChat(BaseAPIModel):
         self.host_port = host_port
         self.enable_ssl = enable_ssl
         self.base_url = self._get_base_url()
-        path = self._get_service_model_path()
-        super().__init__(path=path,
+        self.model= model if model else self._get_service_model_path()
+        super().__init__(path="",
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
                          query_per_second=query_per_second,
@@ -68,8 +69,7 @@ class VLLMCustomAPIChat(BaseAPIModel):
                          verbose=verbose,
                          generation_kwargs=generation_kwargs)
 
-        self.logger.info("Running model path name is: " + path)
-        self.path = path
+        self.logger.info("Running model path name is: " + self.model)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -136,7 +136,7 @@ class VLLMCustomAPIChat(BaseAPIModel):
 
             try:
                 data = dict(
-                    model=self.path,
+                    model=self.model,
                     messages=messages,
                     max_tokens=max_out_len,
                 )
@@ -195,6 +195,7 @@ class VLLMCustomAPIChatStream(BaseAPIModel):
     is_api: bool = True
 
     def __init__(self,
+                 model: str = "",
                  max_seq_len: int = 4096,
                  query_per_second: int = 1,
                  rpm_verbose: bool = False,
@@ -209,9 +210,9 @@ class VLLMCustomAPIChatStream(BaseAPIModel):
         self.host_port = host_port
         self.enable_ssl = enable_ssl
         self.max_chunk_size = 32*2048
-        self.res_key = 'generated_text'
         self.base_url = self._get_base_url()
-        super().__init__(path='',
+        self.model= model if model else self._get_service_model_path()
+        super().__init__(path="",
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
                          query_per_second=query_per_second,
@@ -219,6 +220,7 @@ class VLLMCustomAPIChatStream(BaseAPIModel):
                          retry=retry,
                          generation_kwargs=generation_kwargs,
                          verbose=verbose)
+        self.logger.info("Running model path name is: " + self.model)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -287,19 +289,22 @@ class VLLMCustomAPIChatStream(BaseAPIModel):
 
             try:
                 data = dict(
-                    model=self.path,
+                    model=self.model,
                     stream=True,
                     messages=messages,
                     max_tokens=max_out_len,
                 )
                 data = data | self.generation_kwargs
                 response = list()
-                url = os.path.join(self.base_url, "v1/chat/completions")
+                url = os.path.join(self.base_url, "chat/completions")
                 raw_response = requests.post(url, headers=header, data=json.dumps(data), stream=True)
                 for res_ in self.process_response(raw_response):
-                    if self.res_key not in res_:
+                    if res_.get("choices" ) is None:
                         continue
-                    response.append(res_[self.res_key])
+                    else:
+                        if res_.get("choices")[0].get('delta') is None:
+                            continue
+                    response.append(res_.get("choices")[0].get('delta').get('content'))
 
             except requests.ConnectionError:
                 self.logger.error('Got connection error, retrying...')
@@ -358,5 +363,9 @@ class VLLMCustomAPIChatStream(BaseAPIModel):
 
     def _get_base_url(self):
         if self.enable_ssl:
-            return f"https://{self.host_ip}:{self.host_port}"
-        return f"http://{self.host_ip}:{self.host_port}"
+            return f"https://{self.host_ip}:{self.host_port}/v1"
+        return f"http://{self.host_ip}:{self.host_port}/v1"
+
+    def _get_service_model_path(self):
+        client = OpenAI(api_key="EMPTY", base_url=self.base_url)
+        return client.models.list().data[0].id

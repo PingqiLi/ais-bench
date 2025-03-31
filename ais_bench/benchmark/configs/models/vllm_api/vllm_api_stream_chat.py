@@ -1,9 +1,9 @@
-from ais_bench.benchmark.models import VLLMCustomAPI
+from ais_bench.benchmark.models import VLLMCustomAPIChatStream
 
 models = [
     dict(
-        type=VLLMCustomAPI,
-        abbr='vllm-api-general',
+        type=VLLMCustomAPIChatStream,
+        abbr='vllm-api-stream-chat',
         model="",
         max_seq_len = 4096,
         query_per_second = 1,

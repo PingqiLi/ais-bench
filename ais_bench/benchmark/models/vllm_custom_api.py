@@ -44,6 +44,7 @@ class VLLMCustomAPI(BaseAPIModel):
     is_api: bool = True
 
     def __init__(self,
+                 model: str = "",
                  max_seq_len: int = 4096,
                  query_per_second: int = 1,
                  rpm_verbose: bool = False,
@@ -58,8 +59,8 @@ class VLLMCustomAPI(BaseAPIModel):
         self.host_port = host_port
         self.enable_ssl = enable_ssl
         self.base_url = self._get_base_url()
-        path = self._get_service_model_path()
-        super().__init__(path=path,
+        self.model= model if model else self._get_service_model_path()
+        super().__init__(path="",
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
                          query_per_second=query_per_second,
@@ -68,8 +69,7 @@ class VLLMCustomAPI(BaseAPIModel):
                          verbose=verbose,
                          generation_kwargs=generation_kwargs)
 
-        self.logger.info("Running model path name is: " + path)
-        self.path = path
+        self.logger.info("Running model path name is: " + self.model)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -122,7 +122,7 @@ class VLLMCustomAPI(BaseAPIModel):
 
             try:
                 data = dict(
-                    model=self.path,
+                    model=self.model,
                     prompt=input,
                     max_tokens=max_out_len,
                 )

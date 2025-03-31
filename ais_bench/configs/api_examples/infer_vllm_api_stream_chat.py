@@ -1,5 +1,5 @@
 from mmengine.config import read_base
-from ais_bench.benchmark.models import VLLMCustomAPI
+from ais_bench.benchmark.models import VLLMCustomAPIChatStream
 from ais_bench.benchmark.partitioners import NaivePartitioner
 from ais_bench.benchmark.runners.local_api import LocalAPIRunner
 from ais_bench.benchmark.tasks import OpenICLInferTask
@@ -8,14 +8,14 @@ with read_base():
     from ais_bench.benchmark.configs.summarizers.example import summarizer
     from ais_bench.configs.api_examples.all_dataset_configs import *
 
-datasets = [ # all_dataset_configs.py中导入了其他数据集配置，可以将gsm8k_0_shot_cot_str替换为其他一个或多个数据集
-    *gsm8k_0_shot_cot_str,
+datasets = [ # all_dataset_configs.py中导入了其他数据集配置，可以将gsm8k_0_shot_cot_chat替换为其他一个或多个数据集
+    *gsm8k_0_shot_cot_chat,
 ]
 
 models = [
     dict(
-        type=VLLMCustomAPI,
-        abbr='vllm-api-general',
+        type=VLLMCustomAPIChatStream,
+        abbr='vllm-api-stream-chat',
         model="",
         max_seq_len = 4096,
         query_per_second = 1,
@@ -43,4 +43,4 @@ infer = dict(partitioner=dict(type=NaivePartitioner),
                  concurrent_users=2,
                  task=dict(type=OpenICLInferTask)), )
 
-work_dir = 'outputs/api-vllm-general/'
+work_dir = 'outputs/api-vllm-stream-chat/'
