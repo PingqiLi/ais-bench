@@ -331,6 +331,7 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 | --- | --- | --- | --- | --- |
 |vllm_api_general|通过vllm的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_general.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)|
 |vllm_api_general_chat|通过vllm的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|字符串格式、对话格式|[vllm_api_general_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py)|
+|vllm_api_stream_chat|通过vllm的流式api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|字符串格式、对话格式|[vllm_api_stream_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py)|
 |vllm_api_old|通过vllm的api访问vllm(0.2.6版本)的推理服务化，访问服务链接的 generate子服务|基于支持generate子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_old.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_old.py)|
 |mindie_stream_api_general|通过mindie的流式api访问mindie的推理服务化，访问服务链接的 infer子服务|基于支持infer子服务的mindie版本，启动mindie推理服务|字符串格式|[mindie_stream_api_general.py](ais_bench/benchmark/configs/models/mindie_api/mindie_stream_api_general.py)|
 
@@ -360,6 +361,7 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |piqa|[ais_bench/benchmark/configs/datasets/piqa/README.md](ais_bench/benchmark/configs/datasets/piqa/README.md)|
 |TriviaQA|[ais_bench/benchmark/configs/datasets/triviaqa/README.md](ais_bench/benchmark/configs/datasets/triviaqa/README.md)|
 |WinoGrande|[ais_bench/benchmark/configs/datasets/winogrande/README.md](ais_bench/benchmark/configs/datasets/winogrande/README.md)|
+|CMMLU|[ais_bench/benchmark/configs/datasets/cmmlu/README.md](ais_bench/benchmark/configs/datasets/cmmlu/README.md)|
 
 ### --summarizer支持的结果总结任务
 |任务名称|简介|对应源码配置文件路径|
@@ -374,6 +376,7 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |[infer_mindie_stream_api_general.py](ais_bench/configs/api_examples/infer_mindie_stream_api_general.py)|基于gsm8k数据集使用mindie stream api访问infer子服务进行评测，prompt格式为字符串格式，自定义了数据集路径|
 |[infer_vllm_api_old.py](ais_bench/configs/api_examples/infer_vllm_api_old.py)|基于gsm8k数据集使用vllm api(0.2.6版本)访问generate子服务进行评测，prompt格式为字符串格式，自定义了数据集路径|
 |[infer_vllm_api_general_chat.py](ais_bench/configs/api_examples/infer_vllm_api_general_chat.py)|基于gsm8k数据集使用vllm api(0.6+版本)访问v1/chat/completions子服务进行评测，prompt格式为对话格式，自定义了数据集路径|
+|[infer_vllm_api_stream_chat.py](ais_bench/configs/api_examples/infer_vllm_api_stream_chat.py)|基于gsm8k数据集使用vllm api(0.6+版本)访问v1/chat/completions子服务使用流式推理进行评测，prompt格式为对话格式，自定义了数据集路径|
 
 **注**: 上述自定义配置文件如果要评测其他数据集，请从[ais_bench/configs/api_examples/all_dataset_configs.py](ais_bench/configs/api_examples/all_dataset_configs.py)导入其他数据集。
 

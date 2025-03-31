@@ -24,7 +24,7 @@ humaneval
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|mmlu_pro_gen_0_shot_str|mmlu-pro数据集生成式任务, 默认max out tokens长度取32768|pass@1|0-shot|字符串格式|[mmlu_pro_gen_0_shot_str.py](mmlu_pro_gen_0_shot_str.py)|
+|mmlu_pro_gen_0_shot_str|mmlu-pro数据集生成式任务|pass@1|0-shot|字符串格式|[mmlu_pro_gen_0_shot_str.py](mmlu_pro_gen_0_shot_str.py)|
 
 #### 命令行调用
 ```shell
@@ -44,7 +44,7 @@ datasets = [
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|mmlu_pro_gen_5_shot_str|mmlu-pro数据集生成式任务, 默认max out tokens长度取32768|pass@1|0-shot|字符串格式|[mmlu_pro_gen_0_shot_str.py](mmlu_pro_gen_5_shot_str.py)|
+|mmlu_pro_gen_5_shot_str|mmlu-pro数据集生成式任务|pass@1|0-shot|字符串格式|[mmlu_pro_gen_0_shot_str.py](mmlu_pro_gen_5_shot_str.py)|
 
 #### 命令行调用
 ```shell
