@@ -28,7 +28,7 @@ BoolQ_infer_cfg = dict(
         template=QUERY_TEMPLATE,
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, max_out_len=1),
+    inferencer=dict(type=GenInferencer, batch_size=1),
 )
 
 BoolQ_eval_cfg = dict(

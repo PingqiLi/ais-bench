@@ -12,7 +12,8 @@ from mmengine.config import Config, DictAction
 from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
 from ais_bench.benchmark.summarizers import DefaultSummarizer
 from ais_bench.benchmark.utils import LarkReporter, get_logger
-from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg)
+from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
+from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg)
 
 def get_current_time_str():
     return datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -39,11 +40,10 @@ def parse_args():
                         default=False)
     parser.add_argument('-m',
                         '--mode',
-                        help='Running mode. You can choose "infer" if you '
-                        'only want the inference results, or "eval" if you '
-                        'already have the results and want to evaluate them, '
-                        'or "viz" if you want to visualize the results.',
-                        choices=['all', 'infer', 'eval', 'viz'],
+                        help='Running mode. Choose "perf" for performance evaluation, "infer" to run inference only, '
+                        '"eval" to evaluate existing inference results, or "viz" to visualize the results. '
+                        'The default mode is "all", which runs all steps.',
+                        choices=['all', 'infer', 'eval', 'viz', 'perf'],
                         default='all',
                         type=str)
     parser.add_argument('-r',
@@ -157,6 +157,15 @@ def main():
     # Config is intentally reloaded here to avoid initialized
     # types cannot be serialized
     cfg = Config.fromfile(output_config_path, format_python_code=False)
+    
+    if args.mode == 'perf':
+        fill_perf_cfg(cfg, args)
+        cfg.infer.partitioner['out_dir'] = osp.join(cfg['work_dir'],
+                                                    'performances')
+        partitioner = PARTITIONERS.build(cfg.infer.partitioner)
+        tasks = partitioner(cfg)
+        runner = RUNNERS.build(cfg.infer.runner)
+        runner(tasks)
 
     if args.mode in ['all', 'infer']:
         # "infer" in config, we will provide a default configuration

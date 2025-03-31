@@ -7,9 +7,10 @@ import tabulate
 from mmengine.config import Config
 
 from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
-from ais_bench.benchmark.partitioners import NaivePartitioner, NumWorkerPartitioner
+from ais_bench.benchmark.partitioners import NaivePartitioner, NumWorkerPartitioner, PerformancePartitioner
 from ais_bench.benchmark.runners import LocalAPIRunner, LocalRunner
-from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLInferTask
+from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLInferTask, OpenICLPerfTask
+from ais_bench.benchmark.openicl.icl_inferencer import GenPerfInferencer,GenInferencer
 from ais_bench.benchmark.utils import get_logger, match_files
 
 logger = get_logger()
@@ -187,6 +188,21 @@ def get_config_type(obj) -> str:
     return f'{obj.__module__}.{obj.__name__}'
 
 
+def fill_perf_cfg(cfg, args):
+    new_cfg = dict(infer=dict(
+    partitioner=dict(type=get_config_type(PerformancePartitioner)),
+    runner=dict(
+        max_num_workers=args.max_num_workers,
+        concurrent_users=2,
+        debug=args.debug,
+        task=dict(type=get_config_type(OpenICLPerfTask)),
+        type=get_config_type(LocalAPIRunner)
+    )), )
+    for data_config in cfg['datasets']:
+            data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenPerfInferencer)
+    cfg.merge_from_dict(new_cfg)
+    
+    
 def fill_infer_cfg(cfg, args):
     new_cfg = dict(infer=dict(
         partitioner=dict(type=get_config_type(NaivePartitioner)),

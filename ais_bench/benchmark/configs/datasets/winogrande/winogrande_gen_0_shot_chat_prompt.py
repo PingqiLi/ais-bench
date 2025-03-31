@@ -23,7 +23,7 @@ winogrande_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer),
+    inferencer=dict(type=GenInferencer, batch_size=1),
 )
 
 winogrande_eval_cfg = dict(

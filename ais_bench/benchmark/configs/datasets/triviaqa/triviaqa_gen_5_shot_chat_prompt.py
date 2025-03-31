@@ -20,7 +20,7 @@ for k in [5]:
                 )
             ),
             retriever=dict(type=ZeroRetriever),
-            inferencer=dict(type=GenInferencer, max_out_len=50)
+            inferencer=dict(type=GenInferencer, batch_size=1)
         )
     else:
         triviaqa_infer_cfg = dict(

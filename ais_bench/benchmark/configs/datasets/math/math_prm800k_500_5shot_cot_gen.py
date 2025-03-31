@@ -22,7 +22,7 @@ math_infer_cfg = dict(
         ice_token='</E>',
     ),
     retriever=dict(type=FixKRetriever, fix_id_list=[0, 1, 2, 3, 4]),
-    inferencer=dict(type=GenInferencer, max_out_len=32768)
+    inferencer=dict(type=GenInferencer, batch_size=1)
 )
 
 # postprocess v2

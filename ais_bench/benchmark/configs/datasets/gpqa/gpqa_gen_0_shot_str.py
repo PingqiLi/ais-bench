@@ -18,7 +18,7 @@ gpqa_infer_cfg = dict(
                                           '(D){D}\n'
                                           'Format your response as follows: "The correct answer is (insert answer here)"'),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, max_out_len=32768))
+    inferencer=dict(type=GenInferencer, batch_size=4))
 
 gpqa_eval_cfg = dict(evaluator=dict(type=GPQAEvaluator),
                      pred_postprocessor=dict(type=first_option_postprocess, options='ABCD'))

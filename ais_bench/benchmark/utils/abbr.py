@@ -48,6 +48,17 @@ def get_infer_output_path(model_cfg: ConfigDict,
     return osp.join(root_path, model_abbr, f'{dataset_abbr}.{file_extension}')
 
 
+def get_perf_output_path(model_cfg: ConfigDict,
+                          dataset_cfg: ConfigDict,
+                          root_path: str = None
+                          ) -> str:
+    # TODO: Rename this func
+    assert root_path is not None, 'default root_path is not allowed any more'
+    model_abbr = model_abbr_from_cfg(model_cfg)
+    dataset_type = osp.basename(dataset_cfg.get('path'))
+    return osp.join(root_path, model_abbr, f'{dataset_type}')
+
+
 def deal_with_judge_model_abbr(model_cfg, judge_model_cfg, meta=False):
     if isinstance(model_cfg, ConfigDict):
         model_cfg = (model_cfg, )

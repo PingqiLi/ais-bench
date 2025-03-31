@@ -64,6 +64,22 @@ class BaseModel:
         raise NotImplementedError(f'{self.__class__.__name__} does not support'
                                   ' gen-based evaluation yet, try ppl-based '
                                   'instead.')
+        
+    @abstractmethod
+    def _generate(self, input, max_out_len: int) -> List[str]:
+        """Generate result given a input.
+
+        Args:
+            input (PromptType): A string or PromptDict.
+                The PromptDict should be organized in AISBench'
+                API format.
+            max_out_len (int): The maximum length of the output.
+
+        Returns:
+            str: The generated string.
+        """
+        raise NotImplementedError(f'{self.__class__.__name__} does not supported'
+                                  ' to be called in base classes')
 
     @abstractmethod
     def get_ppl(self,
@@ -203,6 +219,22 @@ class BaseModel:
         if hasattr(self, 'sync_rank') and self.sync_rank:
             inputs = self.sync_inputs(inputs)
         return self.generate(inputs, max_out_len=max_out_len, **kwargs)
+    
+    def generate_single_from_template(self, templates: List[PromptType],
+                               max_out_len: int, **kwargs):
+        """Generate completion from a list of templates.
+
+        Args:
+            templates (List[PromptType]): A list of templates.
+            max_out_len (int): The maximum length of the output.
+        """
+        inputs = self.parse_template(templates, mode='gen')
+        if hasattr(self, 'sync_rank') and self.sync_rank:
+            inputs = self.sync_inputs(inputs)
+        if not inputs:
+             raise ValueError("No inputs were generated from the templates."
+                              "Please check your templates.")
+        return self._generate(inputs, max_out_len=max_out_len, **kwargs)
 
     def get_token_len_from_template(
             self,

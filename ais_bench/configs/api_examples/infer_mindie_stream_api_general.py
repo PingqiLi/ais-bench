@@ -16,6 +16,7 @@ datasets = [ # all_dataset_configs.py中导入了其他数据集配置，可以�
 models = [
     dict(
         type=MindieStreamApi,
+        path='', # 模型tokenizer词表文件路径
         abbr='mindie-stream-api-general',
         max_seq_len = 4096,
         query_per_second = 1,
@@ -29,7 +30,6 @@ models = [
             temperature = 0.5,
             top_k = 10,
             top_p = 0.95,
-            max_new_tokens = 512,
             do_sample = True,
             seed = None,
             repetition_penalty = 1.03,

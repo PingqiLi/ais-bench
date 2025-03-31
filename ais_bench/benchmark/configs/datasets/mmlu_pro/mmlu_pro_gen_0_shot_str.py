@@ -37,7 +37,7 @@ for category in categories:
             template=QUERY_TEMPLATE
         ),
         retriever=dict(type=ZeroRetriever),
-        inferencer=dict(type=GenInferencer, max_out_len=32768),
+        inferencer=dict(type=GenInferencer, batch_size=64),
     )
 
     mmlu_pro_eval_cfg = dict(
