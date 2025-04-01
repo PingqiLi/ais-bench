@@ -10,6 +10,8 @@ DATASETS_CONFIGS_LIST = [
     "mmlu",
     "gsm8k",
     "boolq",
+    "bbh",
+    "race",
     "ceval",
     "aime2024",
     "gpqa",
@@ -1179,6 +1181,115 @@ class TestClass:
             with open(results_json_path, 'r', encoding='utf-8') as file:
                 data = json.load(file)
             assert data.get("accuracy") is not None
+
+        # check vis
+        vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
+        assert os.path.exists(vis_csv_path)
+        vis_txt_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.txt")
+        assert os.path.exists(vis_txt_path)
+        vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
+        assert os.path.exists(vis_md_path)
+
+    def test_vllm_api_general_chat_bbh_3_shot_cot(self, monkeypatch):
+        from bbh_subset_settings import settings
+        fake_prediction = "So the answer is (A)."
+        fake_time_str = "bbh_gen_3_shot_cot_chat"
+        datasets_abbr_name = "bbh-"
+        datasets_script_name = "bbh_gen_3_shot_cot_chat"
+
+        monkeypatch.setattr('sys.argv',
+            ["ais_bench", "--models", "vllm_api_general_chat", "--datasets", datasets_script_name, "--summarizer", "example",
+            "--mode", "all", "-w", self.test_data_path])
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._get_service_model_path", lambda *arg: "qwen2")
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
+        main()
+
+        for name, _ in settings:
+            curr_datasets_abbr_name = datasets_abbr_name + name.replace(" ", "_")
+
+            # check infer out
+            infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general-chat/{curr_datasets_abbr_name}.json")
+            assert os.path.exists(infer_outputs_json_path)
+            with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+            assert data.get(f"0").get("prediction") == fake_prediction
+
+            # check eval out
+            results_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/results/vllm-api-general-chat/{curr_datasets_abbr_name}.json")
+            with open(results_json_path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+            assert data.get("score") is not None
+
+        # check vis
+        vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
+        assert os.path.exists(vis_csv_path)
+        vis_txt_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.txt")
+        assert os.path.exists(vis_txt_path)
+        vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
+        assert os.path.exists(vis_md_path)
+
+    def test_vllm_api_general_chat_race_middle_5_shot_cot(self, monkeypatch):
+        fake_prediction = "ANSWER: C"
+        fake_time_str = "race_middle_gen_5_shot_cot_chat"
+        datasets_abbr_name = "race-middle"
+        datasets_script_name = "race_middle_gen_5_shot_cot_chat"
+
+        monkeypatch.setattr('sys.argv',
+            ["ais_bench", "--models", "vllm_api_general_chat", "--datasets", datasets_script_name, "--summarizer", "example",
+            "--mode", "all", "-w", self.test_data_path])
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._get_service_model_path", lambda *arg: "qwen2")
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
+        main()
+
+        # check infer out
+        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general-chat/{datasets_abbr_name}.json")
+        assert os.path.exists(infer_outputs_json_path)
+        with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get(f"0").get("prediction") == fake_prediction
+
+        # check eval out
+        results_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/results/vllm-api-general-chat/{datasets_abbr_name}.json")
+        with open(results_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get("accuracy") is not None
+
+        # check vis
+        vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
+        assert os.path.exists(vis_csv_path)
+        vis_txt_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.txt")
+        assert os.path.exists(vis_txt_path)
+        vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
+        assert os.path.exists(vis_md_path)
+
+    def test_vllm_api_general_chat_race_high_5_shot_cot(self, monkeypatch):
+        fake_prediction = "ANSWER: C"
+        fake_time_str = "race_high_gen_5_shot_cot_chat"
+        datasets_abbr_name = "race-high"
+        datasets_script_name = "race_high_gen_5_shot_cot_chat"
+
+        monkeypatch.setattr('sys.argv',
+            ["ais_bench", "--models", "vllm_api_general_chat", "--datasets", datasets_script_name, "--summarizer", "example",
+            "--mode", "all", "-w", self.test_data_path])
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._get_service_model_path", lambda *arg: "qwen2")
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api_chat.VLLMCustomAPIChat._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
+        main()
+
+        # check infer out
+        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general-chat/{datasets_abbr_name}.json")
+        assert os.path.exists(infer_outputs_json_path)
+        with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get(f"0").get("prediction") == fake_prediction
+
+        # check eval out
+        results_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/results/vllm-api-general-chat/{datasets_abbr_name}.json")
+        with open(results_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        assert data.get("accuracy") is not None
 
         # check vis
         vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
