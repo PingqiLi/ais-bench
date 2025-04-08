@@ -13,7 +13,8 @@ from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
 from ais_bench.benchmark.summarizers import DefaultSummarizer
 from ais_bench.benchmark.utils import LarkReporter, get_logger
 from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
-from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg)
+from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg,
+    fill_merged_infer_cfg, fill_merged_eval_cfg)
 
 def get_current_time_str():
     return datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -98,6 +99,12 @@ def parse_args():
         action='store_true',
     )
 
+    parser.add_argument(
+        '--merge-ds',
+        help='Whether to merge dataset with multi files(mmlu, ceval)',
+        action='store_true',
+    )
+
     # set custom dataset args
     custom_dataset_parser = parser.add_argument_group('custom_dataset_args')
     parse_custom_dataset_args(custom_dataset_parser)
@@ -157,7 +164,7 @@ def main():
     # Config is intentally reloaded here to avoid initialized
     # types cannot be serialized
     cfg = Config.fromfile(output_config_path, format_python_code=False)
-    
+
     if args.mode == 'perf':
         fill_perf_cfg(cfg, args)
         cfg.infer.partitioner['out_dir'] = osp.join(cfg['work_dir'],
@@ -167,16 +174,21 @@ def main():
         runner = RUNNERS.build(cfg.infer.runner)
         runner(tasks)
 
+    if cfg.get('infer', None) is None:
+        if args.merge_ds:
+            fill_merged_infer_cfg(cfg, args)
+        else:
+            fill_infer_cfg(cfg, args)
+
     if args.mode in ['all', 'infer']:
         # "infer" in config, we will provide a default configuration
         # for infer
-        if cfg.get('infer', None) is None:
-            fill_infer_cfg(cfg, args)
 
         if args.debug:
             cfg.infer.runner.debug = True
         cfg.infer.partitioner['out_dir'] = osp.join(cfg['work_dir'],
                                                     'predictions/')
+        cfg.dump(output_config_path)
         partitioner = PARTITIONERS.build(cfg.infer.partitioner)
         tasks = partitioner(cfg)
         if args.dry_run:
@@ -189,11 +201,16 @@ def main():
                 task.attack = cfg.attack
         runner(tasks)
 
+    if cfg.get('eval', None) is None:
+        if args.merge_ds:
+            fill_merged_eval_cfg(cfg, args)
+        else:
+            fill_eval_cfg(cfg, args)
+
     if args.mode in ['all', 'eval']:
         # "eval" in config, we will provide a default configuration
         # for eval
-        if cfg.get('eval', None) is None:
-            fill_eval_cfg(cfg, args)
+
         if args.dump_eval_details:
             cfg.eval.runner.task.dump_details = True
         if args.dump_extract_rate:
@@ -201,6 +218,7 @@ def main():
         if args.debug:
             cfg.eval.runner.debug = True
         cfg.eval.partitioner['out_dir'] = osp.join(cfg['work_dir'], 'results/')
+        cfg.dump(output_config_path)
         partitioner = PARTITIONERS.build(cfg.eval.partitioner)
         tasks = partitioner(cfg)
         if args.dry_run:

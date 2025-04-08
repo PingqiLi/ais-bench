@@ -54,8 +54,13 @@ class BaseInferencer:
                              "Please set it in datasets config")
         self.output_json_filepath = output_json_filepath
         self.output_json_filename = output_json_filename
-        self.is_main_process = is_main_process()
+        self.is_main_process = self.is_main_process()
         os.makedirs(self.output_json_filepath, exist_ok=True)
+
+    def is_main_process(self):
+        if "ASCEND_RT_VISIBLE_DEVICES" in os.environ:
+            return int(os.getenv("RANK", "0")) == 0
+        return is_main_process()
 
     def inference(self,
                   retriever: BaseRetriever,

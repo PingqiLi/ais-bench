@@ -141,6 +141,8 @@ class VLLMCustomAPI(BaseAPIModel):
                                   str(raw_response.content))
                 continue
             self.logger.debug(str(response))
+            if response.get('choices') is None:
+                raise ValueError(f"Unexpect response: {response}")
             return response['choices'][0]['text']
 
         raise RuntimeError('Calling OpenAI failed after retrying for '

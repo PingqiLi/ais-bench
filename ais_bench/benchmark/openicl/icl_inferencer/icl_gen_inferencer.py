@@ -194,6 +194,7 @@ class GenInferencer(BaseInferencer):
             if osp.exists(tmp_json_filepath):
                 os.remove(tmp_json_filepath)
 
+
         if self.dump_timer and self.is_main_process:
             timer_filepath = os.path.join(output_json_filepath, 'timer',
                                           'time.jsonl')

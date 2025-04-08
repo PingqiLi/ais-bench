@@ -14,13 +14,15 @@ from mmengine.config import ConfigDict
 from tqdm import tqdm
 
 from ais_bench.benchmark.registry import RUNNERS, TASKS
-from ais_bench.benchmark.tasks import OpenICLInferTask, OpenICLPerfTask
+from ais_bench.benchmark.tasks import OpenICLInferTask, OpenICLPerfTask, OpenICLInferMergedTask
 from ais_bench.benchmark.tasks.base import BaseTask
 from ais_bench.benchmark.utils import (build_dataset_from_cfg, build_model_from_cfg,
                                get_infer_output_path, get_logger,
                                task_abbr_from_cfg)
 
 from .base import BaseRunner
+
+pbar_counter = 0
 
 def monkey_run_perf(self, tokens: SyncManager.Semaphore):
     self.logger.info(f"Task {task_abbr_from_cfg(self.cfg)}")
@@ -30,7 +32,8 @@ def monkey_run_perf(self, tokens: SyncManager.Semaphore):
         self.min_out_len = model_cfg.get("min_out_len", None)
 
         self.model = build_model_from_cfg(model_cfg)
-        self.set_performance_api()
+        if hasattr(dataset_cfgs, "abbr") and 'api' in dataset_cfgs['abbr']:
+            self.set_performance_api()
 
         for dataset_cfg in dataset_cfgs:
             self.model_cfg = model_cfg
@@ -54,6 +57,37 @@ def monkey_run_perf(self, tokens: SyncManager.Semaphore):
             self.golds.extend(golds)
         self.do_performance()
 
+def monkey_run_merged(self, tokens: SyncManager.Semaphore):
+    self.logger.info(f"Task {task_abbr_from_cfg(self.cfg)}")
+    for model_cfg, dataset_cfgs in zip(self.model_cfgs, self.dataset_cfgs):
+        self.max_out_len = model_cfg.get("max_out_len", None)
+        self.batch_size = model_cfg.get("batch_size", None)
+        self.min_out_len = model_cfg.get("min_out_len", None)
+
+        self.model = build_model_from_cfg(model_cfg)
+
+        for dataset_cfg in dataset_cfgs:
+            self.model_cfg = model_cfg
+            self.dataset_cfg = dataset_cfg
+            self.infer_cfg = self.dataset_cfg["infer_cfg"]
+            self.dataset = build_dataset_from_cfg(self.dataset_cfg)
+            self.build_inference()
+            self.sub_cfg = {
+                "models": [self.model_cfg],
+                "datasets": [[self.dataset_cfg]],
+            }
+            out_path = get_infer_output_path(
+                self.model_cfg,
+                self.dataset_cfg,
+                osp.join(self.work_dir, "predictions"),
+            )
+            if osp.exists(out_path):
+                continue
+            entry, golds = self.get_data_list()
+            self.entry.extend(entry)
+            self.golds.extend(golds)
+        self.do_inference()
+
 def monkey_run(self, tokens: SyncManager.Semaphore):
     """Hack for infer task run, add tokens for multiprocess."""
     self.logger.info(f'Task {task_abbr_from_cfg(self.cfg)}')
@@ -63,7 +97,7 @@ def monkey_run(self, tokens: SyncManager.Semaphore):
         self.batch_size = model_cfg.get('batch_size', 1)
         self.model = build_model_from_cfg(model_cfg)
         # add global tokens for concurrents
-        assert self.model.is_api, 'Only API model is supported.'
+        # assert self.model.is_api, 'Only API model is supported.'
         self.model.tokens = tokens
 
         for dataset_cfg in dataset_cfgs:
@@ -151,6 +185,10 @@ def launch(task: BaseTask, tokens: SyncManager.Semaphore):
             inferencer = OpenICLPerfTask(task.cfg)
             origin_run = inferencer.run
             inferencer.run = monkey_run_perf
+        elif task.name_prefix == 'OpenICLInferMerged':
+            inferencer = OpenICLInferMergedTask(task.cfg)
+            origin_run = inferencer.run
+            inferencer.run = monkey_run_merged
         else:
             inferencer = OpenICLInferTask(task.cfg)
             origin_run = inferencer.run
@@ -213,6 +251,9 @@ class LocalAPIRunner(BaseRunner):
             'OpenICLInferTask',
             'ais_bench.benchmark.tasks.openicl_infer.OpenICLInferTask',
             'ais_bench.benchmark.tasks.OpenICLInferTask',
+            'OpenICLInferMergedTask',
+            'ais_bench.benchmark.tasks.openicl_infer_merged.OpenICLInferMergedTask',
+            'ais_bench.benchmark.tasks.OpenICLInferMergedTask',
             'OpenICLPerfTask',
             'ais_bench.benchmark.tasks.openicl_perf.OpenICLPerfTask',
             'ais_bench.benchmark.tasks.OpenICLPerfTask',

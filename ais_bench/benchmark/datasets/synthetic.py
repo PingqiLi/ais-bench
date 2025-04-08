@@ -56,7 +56,17 @@ def check_range(name: str, value: Any, param: NumberRange):
         if gt or ge:
             raise ValueError(f"Parameter {name} is {value}, not within the required range {interval_str}")
 
-
+def get_config(path):
+    path = get_data_path(path)
+    path = os.path.join(path, "synthetic_config.json")
+    try:
+        with open(path, mode="r", encoding="utf-8") as file:
+            config = json.load(file)
+        return config
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        raise ValueError("Failed to load JSON config from `SyntheticConfigPath` file.") from e
+        return None
+    
 @LOAD_DATASET.register_module()
 class SyntheticDataset(BaseDataset):
 
@@ -158,14 +168,8 @@ class SyntheticDataset(BaseDataset):
         return data + str(num_expect_generated_tokens)
         
     def load(self, path, **kwargs):
-        path = get_data_path(path)
-        path = os.path.join(path, "synthetic_config.json")
+        config = get_config(path)
         dataset = []
-        try:
-            with open(path, mode="r", encoding="utf-8") as file:
-                config = json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            raise ValueError("Failed to load JSON config from `SyntheticConfigPath` file.") from e
         self._check_config_json(config)
         request_count = config.get("RequestCount")
         input_method = config["Input"]["Method"]
