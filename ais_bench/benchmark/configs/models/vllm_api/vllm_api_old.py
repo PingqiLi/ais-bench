@@ -2,6 +2,7 @@ from ais_bench.benchmark.models import VLLMCustomAPIOld
 
 models = [
     dict(
+        attr="service", # local or service
         type=VLLMCustomAPIOld,
         abbr='vllm-api-old',
         max_seq_len = 4096,

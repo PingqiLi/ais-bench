@@ -14,6 +14,7 @@ datasets = [ # all_dataset_configs.py中导入了其他数据集配置，可以�
 
 models = [
     dict(
+        attr="service", # model or service
         type=VLLMCustomAPI,
         abbr='vllm-api-general',
         model="",

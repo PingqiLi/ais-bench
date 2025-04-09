@@ -2,6 +2,7 @@ from ais_bench.benchmark.models import HuggingFaceBaseModel
 
 models = [
     dict(
+        attr="local", # local or service
         type=HuggingFaceBaseModel, #  transformers >= 4.33.0 用这个，prompt 构造成字符串格式
         abbr='hf-base-model',
         path='THUDM/chatglm-6b', # path to model dir, current value is just a example
@@ -20,6 +21,7 @@ models = [
             seed = None,
             repetition_penalty = 1.03,
         ),
+        run_cfg = dict(num_gpus=1, num_procs=1),  # 多卡/多机多卡 参数，使用torchrun拉起任务
         max_out_len=100,
         max_seq_len=2048,
         batch_padding=True,

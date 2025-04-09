@@ -2,6 +2,7 @@ from ais_bench.benchmark.models import VLLMCustomAPIChat
 
 models = [
     dict(
+        attr="service", # local or service
         type=VLLMCustomAPIChat,
         abbr='vllm-api-general-chat',
         model="",

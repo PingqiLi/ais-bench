@@ -2,6 +2,7 @@ from ais_bench.benchmark.models import MindieStreamApi
 
 models = [
     dict(
+        attr="service", # local or service
         type=MindieStreamApi,
         path='', # 模型tokenizer词表文件路径
         abbr='mindie-stream-api',

@@ -32,8 +32,7 @@ def monkey_run_perf(self, tokens: SyncManager.Semaphore):
         self.min_out_len = model_cfg.get("min_out_len", None)
 
         self.model = build_model_from_cfg(model_cfg)
-        if hasattr(dataset_cfgs, "abbr") and 'api' in dataset_cfgs['abbr']:
-            self.set_performance_api()
+        self.set_performance_api()
 
         for dataset_cfg in dataset_cfgs:
             self.model_cfg = model_cfg

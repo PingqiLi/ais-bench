@@ -10,7 +10,7 @@ from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
 from ais_bench.benchmark.partitioners import NaivePartitioner, NumWorkerPartitioner, PerformancePartitioner
 from ais_bench.benchmark.runners import LocalAPIRunner, LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLInferTask, OpenICLPerfTask, OpenICLInferMergedTask, OpenICLEvalMergedTask
-from ais_bench.benchmark.openicl.icl_inferencer import GenPerfInferencer,GenInferencer, GenMergedInferencer
+from ais_bench.benchmark.openicl.icl_inferencer import GenPerfInferencer, GenInferencer, GenMergedInferencer, GenModelPerfInferencer
 from ais_bench.benchmark.utils import get_logger, match_files
 
 logger = get_logger()
@@ -187,36 +187,74 @@ def get_config_from_arg(args) -> Config:
 def get_config_type(obj) -> str:
     return f'{obj.__module__}.{obj.__name__}'
 
+def get_models_attr(cfg):
+    attr_list = []
+    for model_cfg in cfg['models']:
+        attr = model_cfg.get('attr', 'service') # default service
+        if attr not in ['local', 'service']:
+            raise ValueError(f"Model config contain illegal attr, model abbr is {model_cfg.get('abbr')}")
+        if attr not in attr_list:
+            attr_list.append(attr)
+
+    if len(attr_list) != 1:
+        raise ValueError("Cannot run local and service model together! Please check parameters of --models!")
+
+    return attr_list[0]
+
+
 
 def fill_perf_cfg(cfg, args):
-    new_cfg = dict(infer=dict(
-    partitioner=dict(type=get_config_type(PerformancePartitioner)),
-    runner=dict(
-        max_num_workers=args.max_num_workers,
-        concurrent_users=2,
-        debug=args.debug,
-        task=dict(type=get_config_type(OpenICLPerfTask)),
-        type=get_config_type(LocalAPIRunner)
-    )), )
-    if hasattr(cfg, 'models') and len(cfg['models']) > 0 and hasattr(cfg['models'][0], 'abbr') and 'api' in cfg['models'][0]['type'].lower():
+    models_attr = get_models_attr(cfg)
+    if models_attr == "service":
+        new_cfg = dict(infer=dict(
+            partitioner=dict(type=get_config_type(PerformancePartitioner)),
+            runner=dict(
+                max_num_workers=args.max_num_workers,
+                concurrent_users=2,
+                debug=args.debug,
+                task=dict(type=get_config_type(OpenICLPerfTask)),
+                type=get_config_type(LocalAPIRunner)
+            )), )
         for data_config in cfg['datasets']:
             data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenPerfInferencer)
     else:
+        new_cfg = dict(infer=dict(
+            partitioner=dict(type=get_config_type(PerformancePartitioner)),
+            runner=dict(
+                max_num_workers=args.max_num_workers,
+                max_workers_per_gpu=args.max_workers_per_gpu,
+                debug=args.debug,
+                task=dict(type=get_config_type(OpenICLPerfTask)),
+                type=get_config_type(LocalRunner)
+            )), )
         for data_config in cfg['datasets']:
             data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenModelPerfInferencer)
+
     cfg.merge_from_dict(new_cfg)
 
 
 def fill_merged_infer_cfg(cfg, args):
-    new_cfg = dict(infer=dict(
-        partitioner=dict(type=get_config_type(PerformancePartitioner)),
-        runner=dict(
-            max_num_workers=args.max_num_workers,
-            concurrent_users=2,
-            debug=args.debug,
-            task=dict(type=get_config_type(OpenICLInferMergedTask)),
-            type=get_config_type(LocalAPIRunner),
-        )), )
+    models_attr = get_models_attr(cfg)
+    if models_attr == "service":
+        new_cfg = dict(infer=dict(
+            partitioner=dict(type=get_config_type(PerformancePartitioner)),
+            runner=dict(
+                max_num_workers=args.max_num_workers,
+                concurrent_users=2,
+                debug=args.debug,
+                task=dict(type=get_config_type(OpenICLInferMergedTask)),
+                type=get_config_type(LocalAPIRunner),
+            )), )
+    else:
+        new_cfg = dict(infer=dict(
+            partitioner=dict(type=get_config_type(PerformancePartitioner)),
+            runner=dict(
+                max_num_workers=args.max_num_workers,
+                max_workers_per_gpu=args.max_workers_per_gpu,
+                debug=args.debug,
+                task=dict(type=get_config_type(OpenICLInferMergedTask)),
+                type=get_config_type(LocalRunner)
+            )), )
 
     for data_config in cfg['datasets']:
         data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenMergedInferencer)
@@ -224,16 +262,28 @@ def fill_merged_infer_cfg(cfg, args):
 
 
 def fill_infer_cfg(cfg, args):
-    new_cfg = dict(infer=dict(
-        partitioner=dict(type=get_config_type(NaivePartitioner)),
-        runner=dict(
-            max_num_workers=args.max_num_workers,
-            concurrent_users=2,
-            debug=args.debug,
-            task=dict(type=get_config_type(OpenICLInferTask)),
-        )), )
+    models_attr = get_models_attr(cfg)
+    if models_attr == "service":
+        new_cfg = dict(infer=dict(
+            partitioner=dict(type=get_config_type(NaivePartitioner)),
+            runner=dict(
+                max_num_workers=args.max_num_workers,
+                concurrent_users=2,
+                debug=args.debug,
+                task=dict(type=get_config_type(OpenICLInferTask)),
+                type=get_config_type(LocalAPIRunner),
+            )), )
+    else:
+        new_cfg = dict(infer=dict(
+            partitioner=dict(type=get_config_type(NaivePartitioner)),
+            runner=dict(
+                max_num_workers=args.max_num_workers,
+                max_workers_per_gpu=args.max_workers_per_gpu,
+                debug=args.debug,
+                task=dict(type=get_config_type(OpenICLInferTask)),
+                type=get_config_type(LocalRunner),
+            )), )
 
-    new_cfg['infer']['runner']['type'] = get_config_type(LocalAPIRunner)
     cfg.merge_from_dict(new_cfg)
 
 
