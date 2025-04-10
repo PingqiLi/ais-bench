@@ -49,6 +49,7 @@ lcb_code_generation_eval_cfg = dict(
         type=LCBCodeGenerationEvaluator,
         num_process_evaluate=4,
         timeout=500,
+        release_version='v4_v5',
     ),
     pred_role='BOT',
 )
@@ -57,6 +58,7 @@ LCBCodeGeneration_dataset = dict(
     type=LCBCodeGenerationDataset,
     abbr='lcb_code_generation',
     path='ais_bench/datasets/code_generation_lite', # https://huggingface.co/datasets/livecodebench/code_generation_lite/tree/main
+    release_version='v4_v5', ## same with DeepSeek-R1 Evaluation: LiveCodeBench (Jain et al., 2024) (2024-08 – 2025-01)
     reader_cfg=lcb_code_generation_reader_cfg,
     infer_cfg=lcb_code_generation_infer_cfg,
     eval_cfg=lcb_code_generation_eval_cfg

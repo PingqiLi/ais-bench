@@ -103,7 +103,7 @@ class OpenICLPerfTask(BaseTask):
                     "models": [self.model_cfg],
                     "datasets": [[self.dataset_cfg]],
                 }
-                out_path = get_infer_output_path(
+                out_path = get_perf_output_path(
                     self.model_cfg,
                     self.dataset_cfg,
                     osp.join(self.work_dir, "performances"),
@@ -170,7 +170,7 @@ class OpenICLPerfTask(BaseTask):
         )
         out_dir, out_name = osp.split(out_path)
         mkdir_or_exist(out_dir)
-        self.inferencer.inference(self.entry, self.golds, out_path, out_name)
+        self.inferencer.inference(self.entry, self.golds, out_dir, out_name)
 
     def get_log_path(self, file_extension: str = "json") -> str:
         """Get the path to the log file.

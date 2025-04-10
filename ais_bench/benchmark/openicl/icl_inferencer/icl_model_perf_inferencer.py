@@ -4,6 +4,7 @@ import os.path as osp
 from typing import List, Optional, Tuple
 
 import torch
+from tqdm import tqdm
 
 from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
@@ -93,7 +94,7 @@ class GenModelPerfInferencer(GenInferencer):
         """
         if self.is_synthetic:
             self.model.set_synthetic()
-        
+
         self.model.set_performance()
 
         output_filepath = output_filepath or self.output_json_filepath
@@ -112,13 +113,13 @@ class GenModelPerfInferencer(GenInferencer):
         # Run inference
         with torch.no_grad():
             assert isinstance(entry, list) and len(entry) >= self.concurrency
-            for i in range(0, len(entry), self.concurrency):
+            for i in tqdm(range(0, len(entry), self.concurrency), desc="Processing", unit="batch", dynamic_ncols=True):
                 data = entry[i:i + self.concurrency]
                 results = self.model.generate_from_template(
-                        data, max_out_len=self.max_out_len, **extra_gen_kwargs) 
-        perf_results = self.model.handle_perf_result()
+                        data, max_out_len=self.max_out_len, **extra_gen_kwargs)
+        perf_results = self.model.handle_perf_result(output_filepath, output_filename)
 
-        #Save performance results 
+        #Save performance results
         if self.is_main_process:
             os.makedirs(output_filepath, exist_ok=True)
             dump_results_dict(
@@ -128,4 +129,4 @@ class GenModelPerfInferencer(GenInferencer):
         #Summary
         logger.info(f"Performance results is {perf_results}")
         logger.info(f"Performance task finished, results saved in {output_filepath}")
-        return 
+        return

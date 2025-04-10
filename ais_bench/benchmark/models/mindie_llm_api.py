@@ -1,5 +1,8 @@
 import os
 import sys
+import csv
+import json
+
 from typing import Dict, List, Optional, Union
 
 import numpy as np
@@ -7,6 +10,7 @@ import torch
 import transformers
 
 from ais_bench.benchmark.models.base import BaseModel
+from ais_bench.benchmark.models.performance import PerformanceModel
 from ais_bench.benchmark.models.base_api import APITemplateParser
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.logging import get_logger
@@ -17,7 +21,7 @@ DTYPE_MAP = {"bf16": torch.bfloat16, "fp16": torch.float16}
 
 
 @MODELS.register_module()
-class MindieLLMAPI(BaseModel):
+class MindieLLMModel(PerformanceModel):
     """
     Model wrapper around MindIE-LLM models.
     """
@@ -50,8 +54,20 @@ class MindieLLMAPI(BaseModel):
         self.input_length = kwargs.get('input_length')
         self.output_length = kwargs.get('output_length')
         self.decode_batch_size = kwargs.get('decode_batch_size')
+        self.input_token_len = kwargs.get('input_token_len', None)
         self.logger = get_logger()
         self.pa_runner = None
+        self.batch_latencies = []
+
+        for key, value in environ_kwargs.items():
+            os.environ[key] = value
+
+        if environ_kwargs.get("ATB_LLM_BENCHMARK_ENABLE") == "1":
+            cur_dir = os.path.dirname(os.path.abspath(__file__))
+            self.pa_runner_perf_file_path = os.path.join(cur_dir, "../../../benchmark.csv")
+            os.environ["ATB_LLM_BENCHMARK_FILEPATH"] = self.pa_runner_perf_file_path
+            self.ignore_eos = True # out len equal to max_out_len
+            self.detail_perf_datas = []
 
         self.get_model_or_runner(self.input_length, self.output_length)
         self.check_pa_runner()
@@ -61,18 +77,26 @@ class MindieLLMAPI(BaseModel):
                          max_seq_len=self.output_length,
                          tokenizer_only=False,
                          meta_template=None)
-        
-        for key, value in environ_kwargs.items():
-            os.environ[key] = value
 
     def check_pa_runner(self):
         if self.pa_runner == None:
             raise RuntimeError("Model loading failed")
-        
+
 
     def warm_up(self):
         self.pa_runner.warm_up()
 
+    def handle_perf_result(self, output_filepath, output_filename):
+        e2e_latency = sum(self.batch_latencies)
+        if self.pa_runner_perf_file_path is not None and self.input_token_len is not None: # get pa runner special performance data
+            if not os.path.exists(output_filepath):
+                os.makedirs(output_filepath, mode=0o750)
+            json_path = os.path.join(output_filepath, f"pa_runner_special_perf_data_{output_filename}.json")
+            with open(json_path, "w") as file:
+                json.dump(self.detail_perf_datas, file, ensure_ascii=False, indent=4)
+            self.logger.info(f"PARUNNER special performance datas saved in {json_path}")
+
+        return {"e2e_latency":str(round(e2e_latency * 1000, 4)) + ' ms'}
 
     def get_model_or_runner(self, input_length, output_length, warmup_bs=0):
 
@@ -152,15 +176,71 @@ class MindieLLMAPI(BaseModel):
         Returns:
             List[str]: A list of generated strings.
         """
+        if self.input_token_len is not None: # enable token_input
+            inputs = self._trans_to_input_ids(inputs)
+            inputs = [self._padding_input_ids(input_ids) for input_ids in inputs]
+
         with torch.no_grad():
-            generate_texts, _, _ = self.pa_runner.infer(inputs,
+            generate_texts, _, e2e_latency_per_bs = self.pa_runner.infer(inputs,
                                                         len(inputs),
                                                         max_out_len,
                                                         self.ignore_eos,
                                                         self.is_chat_model)
-            
-        return generate_texts
 
+        if hasattr(self, "is_performance") and self.is_performance:
+            self.batch_latencies.append(e2e_latency_per_bs)
+            if self.pa_runner_perf_file_path is not None and self.input_token_len is not None: # get pa runner special performance data
+                with open(self.pa_runner_perf_file_path, mode='r', encoding='utf-8') as file:
+                    csv_reader = csv.reader(file)
+                    next(csv_reader)
+                    second_row = next(csv_reader)
+                    first_token_time = float(second_row[4]) / 1000
+                    non_first_token_time = float(second_row[5]) / 1000
+                try:
+                    non_first_token_throughput = len(inputs) / non_first_token_time
+                except ZeroDivisionError:
+                    non_first_token_throughput = 0
+                e2e_throughput = len(inputs) * max_out_len / e2e_latency_per_bs
+
+                self.logger.info(
+                    "seq_len_in: %d, seq_len_out: %d, total_time(s): %f,"
+                    "first_token_time(ms): %f,"
+                    "non_first_token_time(ms): %f,"
+                    "non_first_token_throughput(1/s): %f,"
+                    "e2e_time(s): %f, e2e_throughput(tokens/s): %f",
+                    self.input_token_len, max_out_len, e2e_latency_per_bs,
+                    first_token_time * 1000,
+                    non_first_token_time * 1000,
+                    non_first_token_throughput,
+                    e2e_latency_per_bs, e2e_throughput
+                )
+
+                self.detail_perf_datas.append(
+                    dict(
+                        batch_size = len(inputs),
+                        seq_len_in = self.input_token_len,
+                        seq_len_out = max_out_len,
+                        total_time = e2e_latency_per_bs,
+                        first_token_time = first_token_time * 1000,
+                        non_first_token_time = non_first_token_time * 1000,
+                        e2e_time = e2e_latency_per_bs,
+                        e2e_throughput = e2e_throughput
+                    )
+                )
+            return None
+        else:
+            return generate_texts
+
+    def _trans_to_input_ids(self, inputs: List[str]):
+        input_ids_list = []
+        for input in inputs:
+            input_ids_list.append(self.tokenizer.encode(input))
+        return input_ids_list
+
+    def _padding_input_ids(self, input_ids: list):
+        while (len(input_ids) < self.input_token_len):
+            input_ids = input_ids.extend(input_ids)
+        return input_ids[:self.input_token_len]
 
     def get_token_len(self, prompt: str) -> int:
         """Get lengths of the tokenized strings.

@@ -65,12 +65,13 @@ def get_infer_merged_output_path(model_cfg: ConfigDict,
 
 def get_perf_output_path(model_cfg: ConfigDict,
                           dataset_cfg: ConfigDict,
-                          root_path: str = None
+                          root_path: str = None,
+                          file_extension: str = 'json',
                           ) -> str:
     # TODO: Rename this func
     assert root_path is not None, 'default root_path is not allowed any more'
     model_abbr = model_abbr_from_cfg(model_cfg)
-    dataset_type = osp.basename(dataset_cfg.get('path'))
+    dataset_type = dataset_cfg.get('type').split('.')[-1].lower()
     return osp.join(root_path, model_abbr, f'{dataset_type}')
 
 

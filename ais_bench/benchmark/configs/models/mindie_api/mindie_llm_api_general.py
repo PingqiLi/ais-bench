@@ -1,9 +1,9 @@
-from ais_bench.benchmark.models import MindieLLMAPI
+from ais_bench.benchmark.models import MindieLLMModel
 
 models = [
     dict(
+        type=MindieLLMModel,
         attr="local", # local or service
-        type=MindieLLMAPI,
         abbr='mindie-llm-api',
         max_out_len = 512,  # 推理接口调用时设定的最大输出长度，建议与下面的output_length相同
 
@@ -30,6 +30,7 @@ models = [
         ignore_eos = False,  # 是否忽略推理终止符
         input_length = 4096,  # 初始化推理对象参数，input长度
         output_length = 512,  # 初始化推理对象参数，output长度
+        input_token_len = 16,
         run_cfg = dict(num_gpus=2, num_procs=2),  # 多卡/多机多卡 参数，使用torchrun拉起任务
 
         environ_kwargs = dict(  # mindie-llm推理后端所需的环境变量配置, 此处是qwen模型所需的环境变量
@@ -40,6 +41,7 @@ models = [
             ATB_WORKSPACE_MEM_ALLOC_GLOBAL = "1",
             ATB_CONTEXT_WORKSPACE_SIZE = "0",
             ATB_LAUNCH_KERNEL_WITH_TILING = "1",
+            ATB_LLM_BENCHMARK_ENABLE="1", # dump pa runner特殊的debug性能数据 #
         ),
     )
 ]

@@ -22,9 +22,9 @@ class PerformanceModel(BaseModel):
             sync_rank,
         )
         self.do_performance = False
-        
-    def handle_perf_result(self, result):
+
+    def handle_perf_result(self, output_filepath, output_filename):
         pass
-    
+
     def set_performance(self):
         self.is_performance = True

@@ -190,10 +190,10 @@ class HuggingFacewithChatTemplate(PerformanceModel):
             if v is not None:
                 self.logger.warning(f'Unused argument {k}={v}')
 
-    def handle_perf_result(self):
+    def handle_perf_result(self, output_filepath, output_filename):
         e2e_latency = max(self.timestamps) - min(self.timestamps)
         return {"e2e_latency":str(round(e2e_latency, 4)) + ' ms'}
-    
+
     def _load_tokenizer(self, path: Optional[str], kwargs: dict, pad_token_id: Optional[int] = None):
         from transformers import AutoTokenizer, GenerationConfig
 
@@ -498,7 +498,7 @@ class HuggingFacewithChatTemplate(PerformanceModel):
         if hasattr(self, "is_performance") and self.is_performance:
             self.latencies.append(end_time - start_time)
             self.counts.append(batch_size)
-            self.timestamps.extend([end_time, start_time]) 
+            self.timestamps.extend([end_time, start_time])
             return None
         else:
             return decodeds
@@ -555,10 +555,10 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
             if v is not None:
                 self.logger.warning(f'Unused argument {k}={v}')
 
-    def handle_perf_result(self):
+    def handle_perf_result(self, output_filepath, output_filename):
         e2e_latency = max(self.timestamps) - min(self.timestamps)
         return {"e2e_latency":str(round(e2e_latency, 4)) + ' ms'}
-    
+
     def generate(self,
                  inputs: List[str],
                  max_out_len: int,
@@ -613,7 +613,7 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
         if hasattr(self, "is_performance") and self.is_performance:
             self.latencies.append(end_time - start_time)
             self.counts.append(batch_size)
-            self.timestamps.extend([end_time, start_time]) 
+            self.timestamps.extend([end_time, start_time])
             return None
         else:
             return decodeds
