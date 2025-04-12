@@ -220,7 +220,7 @@ class VLLMCustomAPIOld(BaseAPIModel):
         Returns:
             List[str]: A list of generated strings.
         """
-        batch_size = len(inputs)
+        batch_size = kwargs.get("batch_size", len(inputs))
         with ThreadPoolExecutor(max_workers=batch_size) as executor:
             results = list(
                 tqdm(executor.map(self._generate, inputs,

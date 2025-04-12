@@ -33,6 +33,9 @@ class OpenICLInferTask(BaseTask):
         run_cfg = self.model_cfgs[0].get('run_cfg', {})
         self.num_gpus = run_cfg.get('num_gpus', 0)
         self.num_procs = run_cfg.get('num_procs', 1)
+        self.nnodes = run_cfg.get('nnodes', 1)
+        self.node_rank = run_cfg.get('node_rank', 0)
+        self.master_addr = run_cfg.get('master_addr', "localhost")
         self.logger = get_logger()
 
     def get_command(self, cfg_path, template):
@@ -50,10 +53,18 @@ class OpenICLInferTask(BaseTask):
             key in str(self.model_cfgs[0].get('type', ''))
             or key in str(self.model_cfgs[0].get('llm', {}).get('type', ''))
             for key in backend_keys)
-        if self.num_gpus > 1 and not use_backend:
+        if self.num_gpus > 1 and not use_backend and self.nnodes == 1:
             port = random.randint(12000, 32000)
             command = (f'torchrun --master_port={port} '
                        f'--nproc_per_node {self.num_procs} '
+                       f'{script_path} {cfg_path}')
+        elif self.nnodes > 1:
+            port = 12345
+            command = (f'torchrun --master_port={port} '
+                       f'--nproc_per_node {self.num_procs} '
+                       f'--nnodes {self.nnodes} '
+                       f'--node_rank {self.node_rank} '
+                       f'--master_addr {self.master_addr} '
                        f'{script_path} {cfg_path}')
         else:
             python = sys.executable

@@ -21,3 +21,6 @@ from .agieval import * # noqa: F401, F403
 from .hellaswag import * # noqa: F401, F403
 from .triviaqa import * # noqa: F401, F403
 from .cmmlu import * # noqa: F401, F403
+from .humanevalx import humanevalx, humaneval_x_eval, humaneval_x_utils
+from .humanevalx.humanevalx import * # noqa: F401, F403
+

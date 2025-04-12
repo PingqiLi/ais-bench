@@ -55,7 +55,10 @@ class GenPerfInferencer(GenInferencer):
             **kwargs,
         )
         self.metrics_calculator = None
-        self.concurrency = batch_size if batch_size else 1
+        self.concurrency = kwargs.get('concurrency')
+        if not self.concurrency:
+            logger.info('"concurrency" is not set, use batchsize instead')
+            self.concurrency = batch_size if batch_size else 1
 
     def get_data_list(
         self,

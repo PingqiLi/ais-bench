@@ -171,7 +171,7 @@ class OpenAI(BaseAPIModel):
         """
         if self.temperature is not None:
             temperature = self.temperature
-        batch_size = len(inputs)
+        batch_size = kwargs.get("batch_size", len(inputs))
         with ThreadPoolExecutor(max_workers=batch_size) as executor:
             results = list(
                 tqdm(executor.map(self._generate, inputs,

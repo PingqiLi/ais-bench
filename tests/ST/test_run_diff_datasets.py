@@ -20,6 +20,7 @@ DATASETS_CONFIGS_LIST = [
     "mgsm",
     "agieval",
     "cmmlu",
+    "humanevalx",
 ]
 
 class TestClass:
@@ -270,6 +271,48 @@ class TestClass:
         assert os.path.exists(vis_txt_path)
         vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
         assert os.path.exists(vis_md_path)
+
+
+    def test_vllm_api_all_qwen2_7b_humanevalx_0_shot(self, monkeypatch): # 唯一的测试函数名
+        fake_prediction = "112" # 模拟的推理输出，随便写吧
+        fake_time_str = "humanevalx_0_shot" # 模拟的时间戳，需要确保和其他用例不重复
+        datasets_abbr_name = "humanevalx-" # 被测数据集配置文件中abbr的名称 humanevalx-
+        datasets_script_name = "humanevalx_gen_0_shot" # 被测数据集配置文件名称
+        languages = ['python', 'cpp', 'go', 'java', 'js']
+
+        monkeypatch.setattr('sys.argv',
+            ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
+            "--summarizer", "example","--mode", "all", "-w", self.test_data_path])
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
+        main()
+
+        for lang in languages:
+            curr_datasets_abbr_name = datasets_abbr_name + lang
+            # check infer out
+            infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general/{curr_datasets_abbr_name}.json")
+            assert os.path.exists(infer_outputs_json_path)
+            with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+            assert data.get(f"0").get("prediction") == fake_prediction
+
+            # check eval out
+            results_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/results/vllm-api-general/{curr_datasets_abbr_name}.json")
+
+            with open(results_json_path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+            assert data.get("accuracy") is not None
+
+
+            # check vis
+            vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
+            assert os.path.exists(vis_csv_path)
+            vis_txt_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.txt")
+            assert os.path.exists(vis_txt_path)
+            vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
+            assert os.path.exists(vis_md_path)
+
 
     def test_vllm_api_all_qwen2_7b_math500_0_shot(self, monkeypatch):
         fake_prediction = "11"

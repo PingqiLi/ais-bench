@@ -92,3 +92,6 @@ with read_base():
     # winogrande
     from ais_bench.benchmark.configs.datasets.winogrande.winogrande_gen_0_shot_chat_prompt import winogrande_datasets as winogrande_0_shot_chat
     from ais_bench.benchmark.configs.datasets.winogrande.winogrande_gen_5_shot_chat_prompt import winogrande_datasets as winogrande_5_shot_chat
+
+    # humanevalx
+    from ais_bench.benchmark.configs.datasets.humanevalx.humanevalx_gen_0_shot import import humanevalx_datasets as humanevalx_0_shot_str

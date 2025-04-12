@@ -30,6 +30,9 @@ class MindieLLMModel(PerformanceModel):
                  environ_kwargs: Optional[Dict] = None,
                  **kwargs):
 
+        for key, value in environ_kwargs.items():
+            os.environ[key] = value
+
         self.rank = int(os.getenv("RANK", "0"))
         self.local_rank = int(os.getenv("LOCAL_RANK", "0"))
         self.world_size = kwargs.get('world_size')
@@ -57,10 +60,15 @@ class MindieLLMModel(PerformanceModel):
         self.input_token_len = kwargs.get('input_token_len', None)
         self.logger = get_logger()
         self.pa_runner = None
+        self.rank_table_file = kwargs.get('rank_table_file')
+        if self.rank_table_file:
+            os.environ['RANKTABLEFILE'] = self.rank_table_file
+            try:
+                os.environ['WORLD_SIZE'] = str(self.world_size)
+            except Exception as e:
+                raise TypeError("world_size invalid") from e
+        
         self.batch_latencies = []
-
-        for key, value in environ_kwargs.items():
-            os.environ[key] = value
 
         if environ_kwargs.get("ATB_LLM_BENCHMARK_ENABLE") == "1":
             cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -77,6 +85,7 @@ class MindieLLMModel(PerformanceModel):
                          max_seq_len=self.output_length,
                          tokenizer_only=False,
                          meta_template=None)
+        
 
     def check_pa_runner(self):
         if self.pa_runner == None:
