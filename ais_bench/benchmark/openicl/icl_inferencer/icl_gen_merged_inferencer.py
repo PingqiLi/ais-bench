@@ -56,7 +56,24 @@ class GenMergedInferencer(GenInferencer):
             **kwargs,
         )
         self.metrics_calculator = None
-        self.concurrency = batch_size if batch_size else 1
+        self.concurrency = kwargs.get('concurrency')
+        self.is_synthetic = is_synthetic
+
+    def _build_extra_gen_kwargs(self) -> dict:
+        """
+        Builds extra keyword arguments for the model's generate method based on its signature.
+
+        Returns:
+            A dictionary of extra keyword arguments.
+        """
+        extra_kwargs = {}
+        sig = inspect.signature(self.model.generate)
+        if 'stopping_criteria' in sig.parameters:
+            extra_kwargs['stopping_criteria'] = self.stopping_criteria
+        if 'min_out_len' in sig.parameters:
+            extra_kwargs['min_out_len'] = self.min_out_len
+        extra_kwargs['batch_size'] = self.batch_size
+        return extra_kwargs
 
     def get_data_list(
         self,
@@ -104,68 +121,101 @@ class GenMergedInferencer(GenInferencer):
         output_handler = GenInferencerOutputHandler()
         tmp_json_filepath = os.path.join(output_json_filepath,
                                          'tmp_' + output_json_filename)
-        if osp.exists(tmp_json_filepath):
-            # TODO: move resume to output handler
-            try:
-                tmp_result_dict = mmengine.load(tmp_json_filepath)
-            except Exception:
-                pass
+
+        if self.concurrency: # continous batch run
+            if self.concurrency > 4096 or self.concurrency <= 0:
+                logger.warning(f'concurrency must be in [1, 4096], but get {self.concurrency}, '
+                               'continous infer will not be enable')
             else:
-                output_handler.results_dict = tmp_result_dict
-                index = len(tmp_result_dict)
-        else:
-            index = 0
-
-        logger.info('Starting inference process...')
-
-        start_time_stamp = time.time()
-        num_sample = 0
-        total_ds_len = len(entry)
-        if total_ds_len != len(golds):
-            raise ValueError("length of entry and golds is not equal")
-
-        round = math.ceil(total_ds_len / self.batch_size)
-        for i in tqdm(range(round), desc="Batch Infer Processing", unit="batch", dynamic_ncols=True):
-            if total_ds_len % self.batch_size != 0 and i == round - 1:
-                entry_per_bs = entry[i * self.batch_size:]
-                golds_per_bs = golds[i * self.batch_size:]
-            else:
-                entry_per_bs = entry[(i) * self.batch_size: (i + 1) * self.batch_size]
-                golds_per_bs = golds[(i) * self.batch_size: (i + 1) * self.batch_size]
-
-            # 5-1. Inference with local model
-            extra_gen_kwargs = {}
-            sig = inspect.signature(self.model.generate)
-            if 'stopping_criteria' in sig.parameters:
-                extra_gen_kwargs['stopping_criteria'] = self.stopping_criteria
-            if 'min_out_len' in sig.parameters:
-                extra_gen_kwargs['min_out_len'] = self.min_out_len
+                logger.warning('The concurrency is set, continous infer will be turned on, '
+                           'intermediate results will not be saved')
+            extra_gen_kwargs = self._build_extra_gen_kwargs()
+            num_return_sequences = getattr(self.model, 'generation_kwargs', {}).get('num_return_sequences', 1)
+            start_time_stamp = time.time()
             with torch.no_grad():
-                parsed_entries = self.model.parse_template(entry_per_bs, mode='gen')
+                parsed_entries = self.model.parse_template(entry, mode='gen')
                 results = self.model.generate_from_template(
-                    entry_per_bs, max_out_len=self.max_out_len, **extra_gen_kwargs)
+                    entry, max_out_len=self.max_out_len, **extra_gen_kwargs)
                 generated = results
-
-            num_return_sequences = getattr(self.model, 'generation_kwargs',
-                                           {}).get('num_return_sequences', 1)
-            # 5-3. Save current output
+            index = 0
             for prompt, prediction, gold in zip(
                     parsed_entries, batched(generated, num_return_sequences),
-                    golds_per_bs):
+                    golds):
+
                 if num_return_sequences == 1:
                     prediction = prediction[0]
                 output_handler.save_results(prompt,
                                             prediction,
                                             index,
                                             gold=gold)
-                index = index + 1
+                index += 1
 
-            # 5-4. Save intermediate results
-            if (self.save_every is not None and index % self.save_every == 0
-                    and self.is_main_process):
-                output_handler.write_to_json(output_json_filepath,
-                                             'tmp_' + output_json_filename)
-            num_sample += 1
+        else: # static batch run
+            if osp.exists(tmp_json_filepath):
+                # TODO: move resume to output handler
+                try:
+                    tmp_result_dict = mmengine.load(tmp_json_filepath)
+                except Exception:
+                    pass
+                else:
+                    output_handler.results_dict = tmp_result_dict
+                    index = len(tmp_result_dict)
+            else:
+                index = 0
+
+            logger.info('Starting inference process...')
+
+            start_time_stamp = time.time()
+            num_sample = 0
+            total_ds_len = len(entry)
+            if total_ds_len != len(golds):
+                raise ValueError("length of entry and golds is not equal")
+
+            end_round = math.ceil(total_ds_len / self.batch_size)
+            start_round = math.floor((index + 1) / self.batch_size)
+            index = self.batch_size * start_round
+
+            for i in tqdm(range(start_round, end_round), desc="Batch Infer Processing", unit="batch", dynamic_ncols=True):
+                if total_ds_len % self.batch_size != 0 and i == end_round - 1:
+                    entry_per_bs = entry[i * self.batch_size:]
+                    golds_per_bs = golds[i * self.batch_size:]
+                else:
+                    entry_per_bs = entry[(i) * self.batch_size: (i + 1) * self.batch_size]
+                    golds_per_bs = golds[(i) * self.batch_size: (i + 1) * self.batch_size]
+
+                # 5-1. Inference with local model
+                extra_gen_kwargs = {}
+                sig = inspect.signature(self.model.generate)
+                if 'stopping_criteria' in sig.parameters:
+                    extra_gen_kwargs['stopping_criteria'] = self.stopping_criteria
+                if 'min_out_len' in sig.parameters:
+                    extra_gen_kwargs['min_out_len'] = self.min_out_len
+                with torch.no_grad():
+                    parsed_entries = self.model.parse_template(entry_per_bs, mode='gen')
+                    results = self.model.generate_from_template(
+                        entry_per_bs, max_out_len=self.max_out_len, **extra_gen_kwargs)
+                    generated = results
+
+                num_return_sequences = getattr(self.model, 'generation_kwargs',
+                                            {}).get('num_return_sequences', 1)
+                # 5-3. Save current output
+                for prompt, prediction, gold in zip(
+                        parsed_entries, batched(generated, num_return_sequences),
+                        golds_per_bs):
+                    if num_return_sequences == 1:
+                        prediction = prediction[0]
+                    output_handler.save_results(prompt,
+                                                prediction,
+                                                index,
+                                                gold=gold)
+                    index = index + 1
+
+                # 5-4. Save intermediate results
+                if (self.save_every is not None and index % self.save_every == 0
+                        and self.is_main_process):
+                    output_handler.write_to_json(output_json_filepath,
+                                                'tmp_' + output_json_filename)
+                num_sample += 1
 
         end_time_stamp = time.time()
 

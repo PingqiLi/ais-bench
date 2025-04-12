@@ -245,6 +245,9 @@ def fill_merged_infer_cfg(cfg, args):
                 task=dict(type=get_config_type(OpenICLInferMergedTask)),
                 type=get_config_type(LocalAPIRunner),
             )), )
+        if not args.disable_cb:
+            for data_config in cfg['datasets']:
+                data_config['infer_cfg']['inferencer']['concurrency'] = 1
     else:
         new_cfg = dict(infer=dict(
             partitioner=dict(type=get_config_type(PerformancePartitioner)),
@@ -258,6 +261,7 @@ def fill_merged_infer_cfg(cfg, args):
 
     for data_config in cfg['datasets']:
         data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenMergedInferencer)
+
     cfg.merge_from_dict(new_cfg)
 
 
@@ -273,6 +277,9 @@ def fill_infer_cfg(cfg, args):
                 task=dict(type=get_config_type(OpenICLInferTask)),
                 type=get_config_type(LocalAPIRunner),
             )), )
+        if not args.disable_cb:
+            for data_config in cfg['datasets']:
+                data_config['infer_cfg']['inferencer']['concurrency'] = 1
     else:
         new_cfg = dict(infer=dict(
             partitioner=dict(type=get_config_type(NaivePartitioner)),
@@ -283,6 +290,7 @@ def fill_infer_cfg(cfg, args):
                 task=dict(type=get_config_type(OpenICLInferTask)),
                 type=get_config_type(LocalRunner),
             )), )
+
 
     cfg.merge_from_dict(new_cfg)
 

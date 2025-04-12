@@ -76,19 +76,12 @@ class GenInferencer(BaseInferencer):
         self.stopping_criteria = stopping_criteria
         self.dump_timer = kwargs.get('dump_timer', False)
         self.concurrency = kwargs.get('concurrency')
-        if self.concurrency:
-            if self.concurrency > 4096 or self.concurrency <= 0:
-                logger.warning(f'concurrency must be in [1, 4096], but get {self.concurrency}, '
-                               'continous infer will not be enable')
-            else:
-                logger.warning('The concurrency is set, continous infer will be turned on, '
-                           'intermediate results will not be saved')
 
         if self.model.is_api and save_every is None:
             save_every = 1
         self.save_every = save_every
         self.is_synthetic = is_synthetic
-    
+
     def extract_data(self, ds_reader, datum: Any) -> Tuple[List, List]:
         """
         Extracts input entries and corresponding gold answers from the given datum using the dataset reader.
@@ -110,7 +103,7 @@ class GenInferencer(BaseInferencer):
             entry = datum
             golds = [None for _ in range(len(entry))]
         return entry, golds
-    
+
     def _build_extra_gen_kwargs(self) -> dict:
         """
         Builds extra keyword arguments for the model's generate method based on its signature.
@@ -126,7 +119,7 @@ class GenInferencer(BaseInferencer):
             extra_kwargs['min_out_len'] = self.min_out_len
         extra_kwargs['batch_size'] = self.batch_size
         return extra_kwargs
-    
+
     def inference(self,
                   retriever: BaseRetriever,
                   ice_template: Optional[PromptTemplate] = None,
@@ -136,7 +129,7 @@ class GenInferencer(BaseInferencer):
         # 0. Set synthetic if needed
         if self.is_synthetic:
             self.model.set_synthetic()
-            
+
         # 1. Preparation for output logs
         output_handler = GenInferencerOutputHandler()
 
@@ -162,13 +155,19 @@ class GenInferencer(BaseInferencer):
         if ds_reader.output_column:
             gold_ans = ds_reader.dataset['test'][ds_reader.output_column]
             prompt_list = list(zip(prompt_list, gold_ans))
-            
+
         extra_gen_kwargs = self._build_extra_gen_kwargs()
         num_return_sequences = getattr(self.model, 'generation_kwargs', {}).get('num_return_sequences', 1)
-        
+
         tmp_json_filepath = os.path.join(output_json_filepath,
                                     'tmp_' + output_json_filename)
         if self.concurrency:
+            if self.concurrency > 4096 or self.concurrency <= 0:
+                logger.warning(f'concurrency must be in [1, 4096], but get {self.concurrency}, '
+                               'continous infer will not be enable')
+            else:
+                logger.warning('The concurrency is set, continous infer will be turned on, '
+                           'intermediate results will not be saved')
             start_time_stamp = time.time()
             entry, golds = self.extract_data(ds_reader, prompt_list)
             with torch.no_grad():
@@ -214,6 +213,12 @@ class GenInferencer(BaseInferencer):
             for datum in tqdm(dataloader, disable=not self.is_main_process):
                 entry, golds = self.extract_data(ds_reader, datum)
                 # 5-1. Inference with local model
+                extra_gen_kwargs = {}
+                sig = inspect.signature(self.model.generate)
+                if 'stopping_criteria' in sig.parameters:
+                    extra_gen_kwargs['stopping_criteria'] = self.stopping_criteria
+                if 'min_out_len' in sig.parameters:
+                    extra_gen_kwargs['min_out_len'] = self.min_out_len
                 with torch.no_grad():
                     parsed_entries = self.model.parse_template(entry, mode='gen')
                     results = self.model.generate_from_template(

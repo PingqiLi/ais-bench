@@ -105,6 +105,12 @@ def parse_args():
         action='store_true',
     )
 
+    parser.add_argument(
+        '--disable-cb',
+        help='Whether to disable infer with continous batch mode',
+        action='store_true',
+    )
+
     # set custom dataset args
     custom_dataset_parser = parser.add_argument_group('custom_dataset_args')
     parse_custom_dataset_args(custom_dataset_parser)
