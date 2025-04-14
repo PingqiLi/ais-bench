@@ -154,7 +154,7 @@ def get_config_from_arg(args) -> Config:
         raise ValueError('You must specify "--models"')
 
     # parse summarizer args
-    summarizer_arg = args.summarizer if args.summarizer is not None else 'medium'
+    summarizer_arg = args.summarizer if args.summarizer is not None else 'example'
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(script_dir)
     default_configs_dir = os.path.join(parent_dir, 'configs')

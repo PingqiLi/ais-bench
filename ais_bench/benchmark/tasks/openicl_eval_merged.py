@@ -10,6 +10,7 @@ import time
 from collections import Counter
 from inspect import signature
 from typing import List
+from datasets import concatenate_datasets
 
 import mmengine
 from mmengine.config import Config, ConfigDict
@@ -48,6 +49,13 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
 
     def run(self):
         for model_cfg, dataset_cfgs in zip(self.model_cfgs, self.dataset_cfgs):
+            self.merge_datasets_cfgs = {}
+            for dataset_cfg in dataset_cfgs:
+                merged_ds_abbr = dataset_cfg.get('type').split('.')[-1].lower()
+                if self.merge_datasets_cfgs.get(merged_ds_abbr) is None:
+                    self.merge_datasets_cfgs[merged_ds_abbr] = []
+                self.merge_datasets_cfgs[merged_ds_abbr].append(dataset_cfg)
+
             for dataset_cfg in dataset_cfgs:
                 self.model_cfg = model_cfg
                 self.dataset_cfg = dataset_cfg
@@ -75,7 +83,21 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
                 self._score()
 
     def _score(self):
-        self.output_column = 'gold'
+        merged_ds_abbr = self.dataset_cfg.get('type').split('.')[-1].lower()
+        test_set_list = [build_dataset_from_cfg(ds_cfg).test for ds_cfg in self.merge_datasets_cfgs.get(merged_ds_abbr)]
+
+        # Postprocess dataset if necessary
+        if 'dataset_postprocessor' in self.eval_cfg:
+            proc = self.eval_cfg['dataset_postprocessor']['type']
+            if isinstance(proc, str):
+                proc = TEXT_POSTPROCESSORS.get(proc)
+
+            def postprocess(sample):
+                s = sample[self.output_column]
+                sample[self.output_column] = proc(s)
+                return sample
+            test_set_list = [t_set.map(postprocess) for t_set in test_set_list]
+        test_set = concatenate_datasets(test_set_list)
 
         # Load predictions
         filename = get_infer_merged_output_path(
@@ -109,16 +131,6 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
             preds = {k: [pred.get(k) for pred in preds] for k in preds[0]}
 
             pred_strs = preds.pop('prediction', None)
-
-            test_set = preds.pop('gold', None)
-
-            if 'dataset_postprocessor' in self.eval_cfg:
-                proc = self.eval_cfg['dataset_postprocessor']['type']
-                if isinstance(proc, str):
-                    proc = TEXT_POSTPROCESSORS.get(proc)
-
-                test_set = [proc(s) for s in test_set]
-
             pred_list_flag = pred_strs is not None and isinstance(
                 pred_strs[0], list)
             if ('pred_role' in self.eval_cfg
@@ -192,7 +204,8 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
                 0]  # strip extension
 
             preds['predictions'] = pred_strs
-            preds['references'] = test_set
+            preds['references'] = (test_set[self.output_column]
+                                   if self.output_column else None)
             preds['test_set'] = test_set
             if 'origin_prompt' not in preds:
                 try:
@@ -226,7 +239,7 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
                 try:
                     result['details'] = self.format_details(
                         pred_strs, model_pred_strs,
-                        test_set, details, model_details,
+                        test_set[self.output_column], details, model_details,
                         pred_dicts)
                     self.logger.warning(
                         f"result['details'] : {result['details']}"),
