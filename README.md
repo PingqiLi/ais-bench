@@ -203,6 +203,9 @@ ais_bench ais_bench/configs/api_examples/infer_api_vllm_general.py --debug
 |--max-workers-per-gpu|预留参数，暂不支持使用。<br> 评测需要用到的NPU或GPU数量，默认1。|--max-workers-per-gpu 1|
 |--dump-eval-details|是否dump出评测过程细节的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--dump-eval-details|
 |--dump-extract-rate|是否dump出评测速度的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--dump-extract-rate|
+|--merge-ds|是否合并同类数据集为同一个任务来推理的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--merge-ds|
+|--disable-cb|是否关闭continous batch的推理方式，配置该参数表示关闭，未配置表示开启，默认未配置。此参数仅对--models指定为服务化API类型的推理后端时才有效。|--disable-cb|
+
 
 
 ## 运行模式说明
@@ -327,15 +330,23 @@ outputs/default/
 ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 ```
 ### --models支持的模型推理后端
-|任务名称|简介|使用前提|支持的prompt格式(字符串格式或多轮对话)|对应源码配置文件路径|
+--models支持两种后端：服务化推理API后端和本地模型后端，两种后端不能在--models中同时指定
+#### 服务化推理API后端
+|任务名称|简介|使用前提|支持的prompt格式(字符串格式或对话格式)|对应源码配置文件路径|
 | --- | --- | --- | --- | --- |
 |vllm_api_general|通过vllm的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_general.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)|
 |vllm_api_general_chat|通过vllm的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|字符串格式、对话格式|[vllm_api_general_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py)|
 |vllm_api_stream_chat|通过vllm的流式api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|字符串格式、对话格式|[vllm_api_stream_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py)|
 |vllm_api_old|通过vllm的api访问vllm(0.2.6版本)的推理服务化，访问服务链接的 generate子服务|基于支持generate子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_old.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_old.py)|
 |mindie_stream_api_general|通过mindie的流式api访问mindie的推理服务化，访问服务链接的 infer子服务|基于支持infer子服务的mindie版本，启动mindie推理服务|字符串格式|[mindie_stream_api_general.py](ais_bench/benchmark/configs/models/mindie_api/mindie_stream_api_general.py)|
-
 **注意:** 服务化推理测评api默认使用的url为localhost，端口号为8080，实际使用时需要在具体使用的源码配置文件中修改为服务化后端配置的url和端口号。
+
+#### 本地模型后端
+|任务名称|简介|使用前提|支持的prompt格式(字符串格式或对话格式)|对应源码配置文件路径|
+| --- | --- | --- | --- | --- |
+|hf_base_model|huggingface base模型后端|安装好评测工具的基础依赖，在源码配置文件中配置好huggingface模型权重路径(当前不支持自动下载权重)|字符串格式|[hf_base_model](ais_bench/benchmark/configs/models/hf_models/hf_base_model.py)|
+|hf_chat_model|huggingface chat模型后端|安装好评测工具的基础依赖，在源码配置文件中配置好huggingface模型权重路径(当前不支持自动下载权重)|对话格式|[hf_chat_model](ais_bench/benchmark/configs/models/hf_models/hf_chat_model.py)|
+
 
 ### --datasets支持的数据集
 --datasets 支持的数据集如下，每个数据集包含多种数据集任务，数据集的获取方式和支持的数据集任务请参考对应数据集的README。
@@ -377,6 +388,8 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |[infer_vllm_api_old.py](ais_bench/configs/api_examples/infer_vllm_api_old.py)|基于gsm8k数据集使用vllm api(0.2.6版本)访问generate子服务进行评测，prompt格式为字符串格式，自定义了数据集路径|
 |[infer_vllm_api_general_chat.py](ais_bench/configs/api_examples/infer_vllm_api_general_chat.py)|基于gsm8k数据集使用vllm api(0.6+版本)访问v1/chat/completions子服务进行评测，prompt格式为对话格式，自定义了数据集路径|
 |[infer_vllm_api_stream_chat.py](ais_bench/configs/api_examples/infer_vllm_api_stream_chat.py)|基于gsm8k数据集使用vllm api(0.6+版本)访问v1/chat/completions子服务使用流式推理进行评测，prompt格式为对话格式，自定义了数据集路径|
+|[infer_hf_base_model.py](ais_bench/configs/hf_example/infer_hf_base_model.py)|基于gsm8k数据集使用huggingface base模型的推理接口进行评测，prompt格式为字符串格式，自定义了数据集路径|
+|[infer_hf_chat_model.py](ais_bench/configs/hf_example/infer_hf_chat_model.py)|基于gsm8k数据集使用huggingface chat模型的推理接口进行评测，prompt格式为字符串格式，自定义了数据集路径|
 
 **注**: 上述自定义配置文件如果要评测其他数据集，请从[ais_bench/configs/api_examples/all_dataset_configs.py](ais_bench/configs/api_examples/all_dataset_configs.py)导入其他数据集。
 
