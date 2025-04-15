@@ -373,6 +373,7 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |TriviaQA|[ais_bench/benchmark/configs/datasets/triviaqa/README.md](ais_bench/benchmark/configs/datasets/triviaqa/README.md)|
 |WinoGrande|[ais_bench/benchmark/configs/datasets/winogrande/README.md](ais_bench/benchmark/configs/datasets/winogrande/README.md)|
 |CMMLU|[ais_bench/benchmark/configs/datasets/cmmlu/README.md](ais_bench/benchmark/configs/datasets/cmmlu/README.md)|
+|BBH|[ais_bench/benchmark/configs/datasets/bbh/README.md](ais_bench/benchmark/configs/datasets/bbh/README.md)|
 
 ### --summarizer支持的结果总结任务
 |任务名称|简介|对应源码配置文件路径|
