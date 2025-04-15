@@ -43,7 +43,13 @@ git clone https://huggingface.co/datasets/juletxara/mgsm
 
 #### 命令行调用
 ```shell
+# 每个数据集文件作为单一task来评测
+## 对话格式后端
 ais_bench --models vllm_api_general_chat --datasets mgsm_gen_0_shot_cot_chat_prompt
+
+# 合并多个数据集文件统一评测
+## 对话格式后端
+ais_bench --models vllm_api_general_chat --datasets mgsm_gen_0_shot_cot_chat_prompt --merge-ds
 ```
 #### 在自定义配置文件中导入
 ```python

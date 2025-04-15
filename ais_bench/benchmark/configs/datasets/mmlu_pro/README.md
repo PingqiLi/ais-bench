@@ -28,7 +28,18 @@ humaneval
 
 #### 命令行调用
 ```shell
+# 每个数据集文件作为单一task来评测
+## 字符串格式后端
 ais_bench --models vllm_api_general --datasets mmlu_pro_gen_0_shot_str
+## 对话格式后端
+ais_bench --models vllm_api_general_chat --datasets mmlu_pro_gen_0_shot_str
+
+# 合并多个数据集文件统一评测
+## 字符串格式后端
+ais_bench --models vllm_api_general --datasets mmlu_pro_gen_0_shot_str --merge-ds
+## 对话格式后端
+ais_bench --models vllm_api_general_chat --datasets mmlu_pro_gen_0_shot_str --merge-ds
+
 ```
 #### 在自定义配置文件中导入
 ```python
@@ -44,11 +55,21 @@ datasets = [
 #### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|mmlu_pro_gen_5_shot_str|mmlu-pro数据集生成式任务|pass@1|0-shot|字符串格式|[mmlu_pro_gen_0_shot_str.py](mmlu_pro_gen_5_shot_str.py)|
+|mmlu_pro_gen_5_shot_str|mmlu-pro数据集生成式任务|pass@1|0-shot|字符串格式|[mmlu_pro_gen_5_shot_str.py](mmlu_pro_gen_5_shot_str.py)|
 
 #### 命令行调用
 ```shell
+# 每个数据集文件作为单一task来评测
+## 字符串格式后端
 ais_bench --models vllm_api_general --datasets mmlu_pro_gen_5_shot_str
+## 对话格式后端
+ais_bench --models vllm_api_general_chat --datasets mmlu_pro_gen_5_shot_str
+
+# 合并多个数据集文件统一评测
+## 字符串格式后端
+ais_bench --models vllm_api_general --datasets mmlu_pro_gen_5_shot_str --merge-ds
+## 对话格式后端
+ais_bench --models vllm_api_general_chat --datasets mmlu_pro_gen_5_shot_str --merge-ds
 ```
 #### 在自定义配置文件中导入
 ```python
