@@ -61,6 +61,7 @@ class MindieLLMModel(PerformanceModel):
         self.logger = get_logger()
         self.pa_runner = None
         self.rank_table_file = kwargs.get('rank_table_file')
+        self.enable_detail_perf = kwargs.get('enable_detail_perf')
         if self.rank_table_file:
             os.environ['RANKTABLEFILE'] = self.rank_table_file
             try:
@@ -70,7 +71,8 @@ class MindieLLMModel(PerformanceModel):
 
         self.batch_latencies = []
 
-        if environ_kwargs.get("ATB_LLM_BENCHMARK_ENABLE") == "1":
+        if self.enable_detail_perf:
+            environ_kwargs.get("ATB_LLM_BENCHMARK_ENABLE") == "1"
             cur_dir = os.path.dirname(os.path.abspath(__file__))
             self.pa_runner_perf_file_path = os.path.join(cur_dir, "../../../benchmark.csv")
             os.environ["ATB_LLM_BENCHMARK_FILEPATH"] = self.pa_runner_perf_file_path
@@ -97,7 +99,7 @@ class MindieLLMModel(PerformanceModel):
 
     def handle_perf_result(self, output_filepath, output_filename):
         e2e_latency = sum(self.batch_latencies)
-        if self.pa_runner_perf_file_path is not None and self.input_token_len is not None: # get pa runner special performance data
+        if self.pa_runner_perf_file_path is not None and self.input_token_len is not None and self.rank == 0: # get pa runner special performance data
             if not os.path.exists(output_filepath):
                 os.makedirs(output_filepath, mode=0o750)
             json_path = os.path.join(output_filepath, f"pa_runner_special_perf_data_{output_filename}.json")
@@ -185,20 +187,19 @@ class MindieLLMModel(PerformanceModel):
         Returns:
             List[str]: A list of generated strings.
         """
-        if self.input_token_len is not None: # enable token_input
+        if self.enable_detail_perf and self.input_token_len is not None: # enable token_input
             inputs = self._trans_to_input_ids(inputs)
             inputs = [self._padding_input_ids(input_ids) for input_ids in inputs]
 
-        with torch.no_grad():
-            generate_texts, _, e2e_latency_per_bs = self.pa_runner.infer(inputs,
-                                                        len(inputs),
-                                                        max_out_len,
-                                                        self.ignore_eos,
-                                                        self.is_chat_model)
+        generate_texts, _, e2e_latency_per_bs = self.pa_runner.infer(inputs,
+                                                    len(inputs),
+                                                    max_out_len,
+                                                    self.ignore_eos,
+                                                    self.is_chat_model)
 
         if hasattr(self, "is_performance") and self.is_performance:
             self.batch_latencies.append(e2e_latency_per_bs)
-            if self.pa_runner_perf_file_path is not None and self.input_token_len is not None: # get pa runner special performance data
+            if self.pa_runner_perf_file_path is not None and self.input_token_len is not None and self.rank == 0: # get pa runner special performance data
                 with open(self.pa_runner_perf_file_path, mode='r', encoding='utf-8') as file:
                     csv_reader = csv.reader(file)
                     next(csv_reader)
@@ -247,6 +248,8 @@ class MindieLLMModel(PerformanceModel):
         return input_ids_list
 
     def _padding_input_ids(self, input_ids: list):
+        if len(input_ids) == 0:
+            raise RuntimeError("Input for model infer is empty, please check")
         while (len(input_ids) < self.input_token_len):
             input_ids = input_ids * 2
         return input_ids[:self.input_token_len]
