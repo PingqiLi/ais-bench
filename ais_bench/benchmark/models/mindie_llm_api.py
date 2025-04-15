@@ -67,7 +67,7 @@ class MindieLLMModel(PerformanceModel):
                 os.environ['WORLD_SIZE'] = str(self.world_size)
             except Exception as e:
                 raise TypeError("world_size invalid") from e
-        
+
         self.batch_latencies = []
 
         if environ_kwargs.get("ATB_LLM_BENCHMARK_ENABLE") == "1":
@@ -85,7 +85,7 @@ class MindieLLMModel(PerformanceModel):
                          max_seq_len=self.output_length,
                          tokenizer_only=False,
                          meta_template=None)
-        
+
 
     def check_pa_runner(self):
         if self.pa_runner == None:
@@ -248,7 +248,7 @@ class MindieLLMModel(PerformanceModel):
 
     def _padding_input_ids(self, input_ids: list):
         while (len(input_ids) < self.input_token_len):
-            input_ids = input_ids.extend(input_ids)
+            input_ids = input_ids * 2
         return input_ids[:self.input_token_len]
 
     def get_token_len(self, prompt: str) -> int:
