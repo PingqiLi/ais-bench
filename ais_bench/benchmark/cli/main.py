@@ -10,7 +10,7 @@ from datetime import datetime
 from mmengine.config import Config, DictAction
 
 from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
-from ais_bench.benchmark.summarizers import DefaultSummarizer
+from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
 from ais_bench.benchmark.utils import LarkReporter, get_logger
 from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
 from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg,
@@ -44,7 +44,7 @@ def parse_args():
                         help='Running mode. Choose "perf" for performance evaluation, "infer" to run inference only, '
                         '"eval" to evaluate existing inference results, or "viz" to visualize the results. '
                         'The default mode is "all", which runs all steps.',
-                        choices=['all', 'infer', 'eval', 'viz', 'perf'],
+                        choices=['all', 'infer', 'eval', 'viz', 'perf', 'perf_viz'],
                         default='all',
                         type=str)
     parser.add_argument('-r',
@@ -238,7 +238,7 @@ def main():
         else:
             runner(tasks)
 
-    # visualize
+    # visualize accuracy results
     if args.mode in ['all', 'eval', 'viz']:
         summarizer_cfg = cfg.get('summarizer', {})
 
@@ -269,6 +269,18 @@ def main():
             summarizer_cfg['config'] = cfg
             summarizer = build_from_cfg(summarizer_cfg)
             summarizer.summarize(time_str=cfg_time_str)
+
+    # visualize performance results
+    if args.mode in ['perf', 'perf_viz']:
+        summarizer_cfg = cfg.get('summarizer', {})
+        if not summarizer_cfg or summarizer_cfg.get('type', None) is None:
+            summarizer_cfg['type'] = DefaultPerfSummarizer
+        summarizer_cfg['config'] = cfg
+        summarizer_cfg.pop('dataset_abbrs', None)
+        summarizer_cfg.pop('summary_groups', None)
+        summarizer_cfg.pop('prompt_db', None)
+        summarizer = build_from_cfg(summarizer_cfg)
+        summarizer.summarize()
 
 
 if __name__ == '__main__':
