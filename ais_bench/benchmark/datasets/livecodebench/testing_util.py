@@ -14,6 +14,18 @@ from enum import Enum
 from io import StringIO
 # used for testing the code that reads from input
 from unittest.mock import mock_open, patch
+import inspect
+# 兼容性猴子补丁
+if not hasattr(inspect, 'getargspec'):
+    def _getargspec(func):
+        full_args = inspect.getfullargspec(func)
+        return inspect.ArgSpec(
+            full_args.args,
+            full_args.varargs,
+            full_args.varkw,
+            full_args.defaults
+        )
+    inspect.getargspec = _getargspec
 
 import numpy as np
 from pyext import RuntimeModule
