@@ -1,14 +1,15 @@
-from typing import Dict, List
+from typing import Dict, List, Any, Tuple, Set, Iterable
 import json
 import os
-from typing import Any, Tuple
 from dataclasses import dataclass
 
 import numpy as np
+import torch
 
 from datasets import Dataset
 from ais_bench.benchmark.registry import LOAD_DATASET
-from ais_bench.benchmark.utils import get_data_path
+from ais_bench.benchmark.utils import get_data_path, get_logger
+from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
 from .base import BaseDataset
 
 
@@ -27,9 +28,14 @@ def _check_keys_equal(got_keys, true_keys, comment):
     if got_keys != true_keys:
         raise ValueError(f"Expect keys {true_keys} for {comment}, but got keys {set(got_keys)}.")
 
+def _ensure_keys_present(check_keys: Iterable, required_keys:Set, comment:str):
+    if not required_keys.issubset(set(check_keys)):
+            raise ValueError(f"Missing required key(s): {{{required_keys - set(check_keys)}}} for {comment}.")
+
 def check_type(name: str, value: Any, types: Tuple):
     if not isinstance(value, types):
-        raise ValueError(f"Parameter {name} should have type {types}, but got {type(value)}.")
+        raise ValueError(f"Parameter {name} should have type {types} for SyntheticConfig,",
+                         f"but got {type(value).__name__}.")
 
 def check_range(name: str, value: Any, param: NumberRange):
     lower, upper = param.lower, param.upper
@@ -56,30 +62,34 @@ def check_range(name: str, value: Any, param: NumberRange):
         if gt or ge:
             raise ValueError(f"Parameter {name} is {value}, not within the required range {interval_str}")
 
-def get_config(path):
-    path = get_data_path(path)
-    path = os.path.join(path, "synthetic_config.json")
+def get_config(path, comment:str = None):
     try:
         with open(path, mode="r", encoding="utf-8") as file:
             config = json.load(file)
         return config
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        raise ValueError("Failed to load JSON config from `SyntheticConfigPath` file.") from e
+        raise ValueError(f"Failed to load JSON config from `{comment}` file.") from e
         return None
-    
+
+def get_synthetic_dataset_config(path):
+    try:
+        from ais_bench.datasets.synthetic.synthetic_config import synthetic_config
+        return synthetic_config
+    except Exception:
+        raise RuntimeError("Failed to import synthetic_config from",
+                        "ais_bench.datasets.synthetic.synthetic_config")
+
+def normalize_file_path(file_path:str) -> str:
+    return os.path.abspath(os.path.expanduser(file_path))
+
 @LOAD_DATASET.register_module()
 class SyntheticDataset(BaseDataset):
 
     @staticmethod
-    def _check_config_json(synthetic_config: Dict):
+    def check_synthetic_string_config(synthetic_config: Dict):
         input_str = "Input"
         output_str = "Output"
-        request_count_str = "RequestCount"
-        _check_keys_equal(synthetic_config.keys(), {input_str, output_str, request_count_str}, "SyntheticConfig")
-
-        request_count = synthetic_config.get(request_count_str)
-        check_type(request_count_str, request_count, (int,))
-        check_range(request_count_str, request_count, NumberRange(0, 2**20))
+        _ensure_keys_present(synthetic_config.keys(), {input_str, output_str}, "SyntheticConfig")
 
         for key in (input_str, output_str):
             conf = synthetic_config.get(key)
@@ -128,7 +138,60 @@ class SyntheticDataset(BaseDataset):
             if min_value > max_value:
                 raise ValueError(f'MinValue should less than MaxValue, '
                                  f'but got MinValue is {min_value}, and MaxValue is {max_value}.')
+
+    @staticmethod
+    def check_synthetic_tokenid_config(synthetic_config: Dict):
+        model_path_key = "ModelPath"
+        request_size_key = "RequestSize"
+        _ensure_keys_present(synthetic_config.keys(), {model_path_key, request_size_key}, "SyntheticConfig")
+
+        model_path_value = synthetic_config.get(model_path_key)
+        check_type(model_path_key, model_path_value, types=(str, ))
+        if not os.path.exists(normalize_file_path(model_path_value)):
+            raise ValueError(f"ModelPath does not exist: {str(model_path_value)}")
+        
+        request_size_value = synthetic_config.get(request_size_key)
+        check_type(request_size_key, request_size_value, types=(int, ))
+        check_range(request_size_key, request_size_value, NumberRange(1, 2**20))
     
+    @staticmethod
+    def _check_config_json(synthetic_config: Dict):
+        config_type_key = "Type"
+        request_count_key = "RequestCount"
+
+        required_keys = {config_type_key, request_count_key}
+        _ensure_keys_present(synthetic_config.keys(), required_keys, "SyntheticConfig")
+        
+        config_type_value = synthetic_config.get(config_type_key)
+        check_type(config_type_key, config_type_value, types=(str, ))
+        config_type_value = config_type_value.lower()
+        
+        request_count_value = synthetic_config.get(request_count_key)
+        check_type(request_count_key, request_count_value, types=(int, ))
+        check_range(request_count_key, request_count_value, NumberRange(1, 2**20))
+
+        check_map = {
+            "string": SyntheticDataset.check_synthetic_string_config,
+            "tokenid": SyntheticDataset.check_synthetic_tokenid_config
+        }
+        
+        check_func = check_map.get(config_type_value)
+        if not check_func:
+            raise ValueError(f"Expect type should from {check_map.keys()}(case-insensitive) for SyntheticConfig,",
+                             f"but got {config_type_value}.")
+        
+        type_config = {}
+        if config_type_value == "string":
+            string_config_key = "StringConfig"
+            _ensure_keys_present(synthetic_config.keys(), {string_config_key}, "SyntheticConfig")
+            type_config = synthetic_config.get(string_config_key)
+        elif config_type_value == "tokenid":
+            tokenid_config_key = "TokenIdConfig"
+            _ensure_keys_present(synthetic_config.keys(), {tokenid_config_key}, "SyntheticConfig")
+            type_config = synthetic_config.get(tokenid_config_key)
+
+        check_func(type_config)
+
     @staticmethod
     def sample_one_value(method: str, params: dict) -> int:
         # Sample one value, the args have been checked before
@@ -166,21 +229,123 @@ class SyntheticDataset(BaseDataset):
         num_input_token, num_expect_generated_tokens = line
         data = " ".join([default_str] * num_input_token)
         return data + str(num_expect_generated_tokens)
+    
+    @staticmethod
+    def find_first_file_path(search_path: str, search_file: str) -> str:
+        """
+        Recursively find the first search_file file path in a directory tree (Linux compatible).
+
+        Args:
+            search_path (str): Path to the root directory for searching
+            search_file (str): Full name of the expected file for searching
+
+        Returns:
+            str: Full path to the first found search_file file
+
+        Raises:
+            ValueError: If input path is invalid or not a directory
+            FileNotFoundError: If no search_file file is found in the directory tree
+
+        Note:
+            Uses breadth-first search strategy for finding files
+            Follows Linux filesystem case sensitivity rules
+        """
+        # Normalize path (expand ~ and resolve relative paths)
+        normalized_path = normalize_file_path(search_path)
         
+        # Validate input path
+        if not os.path.exists(normalized_path):
+            raise ValueError(f"Path does not exist: {normalized_path}")
+        if not os.path.isdir(normalized_path):
+            raise ValueError(f"Not a directory: {normalized_path}")
+
+        # Implement BFS search using os.walk
+        for root, dirs, files in os.walk(normalized_path):
+            # Check current directory first before descending into subdirectories
+            if search_file in files:
+                # Return immediately when first match is found
+                return os.path.join(root, search_file)
+        
+        # Handle case where no config file is found
+        raise FileNotFoundError(f"No {search_file} found in directory tree: {normalized_path}")
+
+    @staticmethod
+    def generate_valid_random_ids(vocab_size: int, 
+                             request_size: int, 
+                             all_special_ids: list) -> torch.Tensor:
+        """
+        Generates random integers in [0, vocab_size) excluding special IDs.
+        
+        Args:
+            vocab_size: Upper bound (exclusive) of random numbers
+            request_size: Number of random values to generate
+            all_special_ids: List of IDs to exclude from generation
+            
+        Returns:
+            Tensor of shape (request_size,) with dtype torch.int64
+        """
+        # Create mask of valid IDs
+        valid_ids = torch.ones(vocab_size, dtype=torch.bool)
+        original_array = np.array(all_special_ids)
+        filtered_array = original_array[original_array < vocab_size]
+        valid_ids[filtered_array.tolist()] = False
+        
+        # Generate random indices for valid IDs
+        valid_indices = torch.where(valid_ids)[0]
+        
+        # Randomly select from valid indices
+        rand_indices = torch.randint(0, len(valid_indices), (request_size,))
+        
+        return valid_indices[rand_indices].to(torch.int64)
+
     def load(self, path, **kwargs):
-        config = get_config(path)
+        self.logger = get_logger()
+        config = get_synthetic_dataset_config(path)
         dataset = []
         self._check_config_json(config)
         request_count = config.get("RequestCount")
-        input_method = config["Input"]["Method"]
-        input_params = config["Input"]["Params"]
-        output_method = config["Output"]["Method"]
-        output_params = config["Output"]["Params"]
-        num_input_output_tokens = [[self.sample_one_value(input_method, input_params),
-                                        self.sample_one_value(output_method, output_params)]
-                                    for _ in range(request_count)]
+        config_type = config.get("Type").lower()
+        if config_type == "string":
+            string_config = config.get("StringConfig")
+            input_method = string_config["Input"]["Method"]
+            input_params = string_config["Input"]["Params"]
+            output_method = string_config["Output"]["Method"]
+            output_params = string_config["Output"]["Params"]
+            num_input_output_tokens = [[self.sample_one_value(input_method, input_params),
+                                            self.sample_one_value(output_method, output_params)]
+                                        for _ in range(request_count)]
 
-        for num_input_output_token in num_input_output_tokens:
-            data = self.read_line(self, num_input_output_token)
-            dataset.append({"question":data,"answer":"aaa"})
+            for num_input_output_token in num_input_output_tokens:
+                data = self.read_line(self, num_input_output_token)
+                dataset.append({"question":data,"answer":"aaa"})
+
+        elif config_type == "tokenid":
+            tokenid_config = config.get("TokenIdConfig")
+            request_size = tokenid_config["RequestSize"]
+            model_path = tokenid_config["ModelPath"]
+
+            tokenizer_file_path = self.find_first_file_path(model_path, "tokenizer_config.json")
+            tokenizer = BenchmarkTokenizer(os.path.dirname(tokenizer_file_path))
+            if not tokenizer:
+                raise ValueError(f"Cannot get an expected tokenizer from {normalize_file_path(model_path)}")
+            tokenizer_model = tokenizer.tokenizer.tokenizer_model
+
+            vocab_size = tokenizer_model.vocab_size
+            vocab_size = tokenid_config.get("VocabSize") if not vocab_size else vocab_size # The vocab_size defined in the model has higher priority
+            if not vocab_size:
+                raise ValueError(f"The configuration vocab_size was not found in the dataset config file {normalize_file_path(path)}",
+                                 f"or tokenizer config file {tokenizer_file_path}")
+            
+            all_special_ids = tokenizer_model.all_special_ids
+            self.logger.info(f"Current tokenizer model: {tokenizer_model.__class__.__name__}")
+            self.logger.debug(f"Token id range: (0, {vocab_size}) excluding the values {all_special_ids}")
+
+            for _ in range(request_count):
+                input_ids = self.generate_valid_random_ids(vocab_size, request_size, all_special_ids)
+                decode_str = tokenizer.decode(input_ids)
+                dataset.append({"question":decode_str,"answer":"aaa"})
+
+        else:
+            raise ValueError(f"Invalid type:{config_type}. Should choose one from {{string, tokenid}}")
+
         return Dataset.from_list(dataset)

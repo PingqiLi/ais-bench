@@ -72,7 +72,7 @@ class MindieLLMModel(PerformanceModel):
         self.batch_latencies = []
 
         if self.enable_detail_perf:
-            environ_kwargs.get("ATB_LLM_BENCHMARK_ENABLE") == "1"
+            os.environ["ATB_LLM_BENCHMARK_ENABLE"] = "1"
             cur_dir = os.path.dirname(os.path.abspath(__file__))
             self.pa_runner_perf_file_path = os.path.join(cur_dir, "../../../benchmark.csv")
             os.environ["ATB_LLM_BENCHMARK_FILEPATH"] = self.pa_runner_perf_file_path
@@ -244,7 +244,7 @@ class MindieLLMModel(PerformanceModel):
     def _trans_to_input_ids(self, inputs: List[str]):
         input_ids_list = []
         for input in inputs:
-            input_ids_list.append(self.tokenizer.encode(input))
+            input_ids_list.append(self.tokenizer.encode(input, add_special_tokens=False))
         return input_ids_list
 
     def _padding_input_ids(self, input_ids: list):

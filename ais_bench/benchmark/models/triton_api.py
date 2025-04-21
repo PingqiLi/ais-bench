@@ -6,29 +6,27 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union
 
 import httpx
 import jieba
 import requests
 from tqdm import tqdm
 
-from openai import OpenAI
-
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.prompt import PromptList
 
 from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_input
+from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_input
 from ais_bench.benchmark.models.performance_api import PerformanceAPIModel
-from ais_bench.benchmark.clients import OpenAIChatStreamClient
-from ais_bench.benchmark.utils.results import MiddleData
+from ais_bench.benchmark.clients import TritonStreamClient
 
 PromptType = Union[PromptList, str]
 
 
 @MODELS.register_module()
-class VLLMCustomAPIChat(BaseAPIModel):
-    """Model wrapper around OpenAI's models. vllm 0.6 +
+class TritonCustomAPI(BaseAPIModel):
+    """Model wrapper around Triton's models. TGI 0.9.4
 
     Args:
         max_seq_len (int): The maximum allowed sequence length of a model.
@@ -48,7 +46,7 @@ class VLLMCustomAPIChat(BaseAPIModel):
     is_api: bool = True
 
     def __init__(self,
-                 model: str = "",
+                 model_name: str = "",
                  max_seq_len: int = 4096,
                  query_per_second: int = 1,
                  rpm_verbose: bool = False,
@@ -62,8 +60,8 @@ class VLLMCustomAPIChat(BaseAPIModel):
         self.host_ip = host_ip
         self.host_port = host_port
         self.enable_ssl = enable_ssl
+        self.model_name = model_name
         self.base_url = self._get_base_url()
-        self.model= model if model else self._get_service_model_path()
         super().__init__(path="",
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
@@ -72,8 +70,7 @@ class VLLMCustomAPIChat(BaseAPIModel):
                          retry=retry,
                          verbose=verbose,
                          generation_kwargs=generation_kwargs)
-
-        self.logger.info("Running model path name is: " + self.model)
+        self.logger.info("Running triton model name is: " + self.model_name)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -117,20 +114,6 @@ class VLLMCustomAPIChat(BaseAPIModel):
         if max_out_len <= 0:
             return ''
 
-        if isinstance(input, str):
-            messages = [{'role': 'user', 'content': input}]
-        else:
-            messages = []
-            for item in input:
-                msg = {'content': item['prompt']}
-                if item['role'] == 'HUMAN':
-                    msg['role'] = 'user'
-                elif item['role'] == 'BOT':
-                    msg['role'] = 'assistant'
-                elif item['role'] == 'SYSTEM':
-                    msg['role'] = 'system'
-                messages.append(msg)
-
         max_num_retries = 0
         while max_num_retries < self.retry:
             max_num_retries += 1
@@ -139,13 +122,14 @@ class VLLMCustomAPIChat(BaseAPIModel):
             }
 
             try:
+                parameters_dict = self.generation_kwargs
+                parameters_dict["max_new_tokens"] = max_out_len
                 data = dict(
-                    model=self.model,
-                    messages=messages,
-                    max_tokens=max_out_len,
+                    id=str(uuid.uuid4()),
+                    text_input=input,
+                    parameters=parameters_dict,
                 )
-                data = data | self.generation_kwargs
-                url = os.path.join(self.base_url, "chat/completions")
+                url = os.path.join(self.base_url, f"v2/models/{self.model_name}/generate")
                 raw_response = requests.post(url, headers=header, data=json.dumps(data))
 
             except requests.ConnectionError:
@@ -159,27 +143,22 @@ class VLLMCustomAPIChat(BaseAPIModel):
                                   str(raw_response.content))
                 continue
             self.logger.debug(str(response))
-            if response.get('choices') is None:
+            if response.get('text_output') is None:
                 raise ValueError(f"Unexpect response: {response}")
-            return  response['choices'][0]['message']['content'].strip()
+            return response['text_output']
 
-        raise RuntimeError('Calling OpenAI failed after retrying for '
+        raise RuntimeError('Calling triton text API failed after retrying for '
                            f'{max_num_retries} times. Check the logs for '
                            'details.')
 
     def _get_base_url(self):
         if self.enable_ssl:
-            return f"https://{self.host_ip}:{self.host_port}/v1"
-        return f"http://{self.host_ip}:{self.host_port}/v1"
-
-    def _get_service_model_path(self):
-        client = OpenAI(api_key="EMPTY", base_url=self.base_url)
-        return client.models.list().data[0].id
-
+            return f"https://{self.host_ip}:{self.host_port}/"
+        return f"http://{self.host_ip}:{self.host_port}/"
 
 @MODELS.register_module()
-class VLLMCustomAPIChatStream(PerformanceAPIModel):
-    """Model wrapper around OpenAI's models.
+class TritonCustomAPIStream(PerformanceAPIModel):
+    """Model wrapper around Triton's models. TGI 0.9.4
 
     Args:
         max_seq_len (int): The maximum allowed sequence length of a model.
@@ -199,8 +178,8 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
     is_api: bool = True
 
     def __init__(self,
-                 path,
-                 model: str = "",
+                 model_name: str = "",
+                 path: str = "",
                  max_seq_len: int = 4096,
                  query_per_second: int = 1,
                  rpm_verbose: bool = False,
@@ -214,59 +193,21 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
         self.host_ip = host_ip
         self.host_port = host_port
         self.enable_ssl = enable_ssl
-        self.max_chunk_size = 32*2048
+        self.model_name = model_name
         self.base_url = self._get_base_url()
-        self.endpoint_url = os.path.join(self.base_url, "chat/completions")
-        self.model = model if model else self._get_service_model_path()
-        self.client = OpenAIChatStreamClient(self.endpoint_url)
+        self.generation_kwargs = generation_kwargs
+        self.endpoint_url = os.path.join(self.base_url, f"v2/models/{self.model_name}/generate_stream")
+        self.client = TritonStreamClient(self.endpoint_url)
+
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
                          query_per_second=query_per_second,
                          rpm_verbose=rpm_verbose,
                          retry=retry,
-                         generation_kwargs=generation_kwargs,
-                         verbose=verbose)
-        self.logger.info("Running model path name is: " + self.model)
-
-    def encode(self, prompt: list) -> Tuple[float, List[int]]:
-        """Encode a string into tokens, measuring processing time."""
-        if not self.tokenizer:
-            self.logger.error("Tokenizer is not initialized.")
-            return 0.0, []
-
-        messages = [self.tokenizer.tokenizer.tokenizer_model.apply_chat_template(m, add_generation_prompt=True, tokenize=False) for m in prompt]
-        time_start = time.time()
-        tokens = self.tokenizer.batch_encode_plus(messages)
-        time_cost = (time.time() - time_start) * 1000  # Convert to milliseconds
-        sum_token_ids = []
-        for token_ids in tokens.get('input_ids'):
-            sum_token_ids.extend(token_ids)
-        return time_cost, sum_token_ids
-
-    def _input_decode(self, tokens: List):
-        if not self.tokenizer:
-            self.logger.error("Tokenizer is not initialized.")
-            return []
-        return self.tokenizer.decode(tokens)
-
-    def prepare_input_data(self, input_dict: Dict) -> MiddleData:
-        """Prepare input data, tokenize if performance mode is enabled."""
-        rrid = uuid.uuid4().hex
-        cache_data = self.result_cache[rrid]
-        with self.lock:
-            cache_data.data_id = str(self.data_id)
-            self.data_id += 1
-        cache_data.request_id = rrid
-        cache_data.input_data = input_dict
-
-        if self.do_performance and self.tokenizer:
-            time_cost, token_id = self.encode(input_dict)
-            cache_data.tokenized_time = time_cost
-            cache_data.input_token_id = token_id
-            cache_data.num_input_tokens = len(token_id)
-            cache_data.num_input_chars = len(self._input_decode(token_id))
-        return cache_data
+                         verbose=verbose,
+                         generation_kwargs=generation_kwargs)
+        self.logger.info("Running triton model name is: " + self.model_name)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -306,39 +247,16 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
             str: The generated string.
         """
         assert isinstance(input, str)
-
         if max_out_len <= 0:
             return ''
-
-        if isinstance(input, str):
-            messages = [{'role': 'user', 'content': input}]
-        else:
-            messages = []
-            for item in input:
-                msg = {'content': item['prompt']}
-                if item['role'] == 'HUMAN':
-                    msg['role'] = 'user'
-                elif item['role'] == 'BOT':
-                    msg['role'] = 'assistant'
-                elif item['role'] == 'SYSTEM':
-                    msg['role'] = 'system'
-                messages.append(msg)
-
-        self.generation_kwargs.update({"max_tokens": max_out_len})
-        data = dict(
-            model=self.model,
-            stream=True,
-            messages=messages,
-            max_tokens=max_out_len,
-        )
-        data = data | self.generation_kwargs
-        cache_data = self.prepare_input_data(data)
+        cache_data = self.prepare_input_data(input)
+        self.generation_kwargs.update({"max_new_tokens": max_out_len})
 
         max_num_retries = 0
         while max_num_retries < self.retry:
             max_num_retries += 1
             try:
-                response = self.client.request(cache_data)
+                response = self.client.request(cache_data, self.generation_kwargs)
                 self.update_decode(cache_data)
             except requests.ConnectionError:
                 self.logger.error('Got connection error, retrying...')
@@ -350,15 +268,11 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
             self.logger.debug(str(response))
             return ''.join(response)
 
-        raise RuntimeError('Calling OpenAI failed after retrying for '
+        raise RuntimeError('Calling Triton Stream API failed after retrying for '
                            f'{max_num_retries} times. Check the logs for '
                            'details.')
 
     def _get_base_url(self):
         if self.enable_ssl:
-            return f"https://{self.host_ip}:{self.host_port}/v1/"
-        return f"http://{self.host_ip}:{self.host_port}/v1/"
-
-    def _get_service_model_path(self):
-        client = OpenAI(api_key="EMPTY", base_url=self.base_url)
-        return client.models.list().data[0].id
+            return f"https://{self.host_ip}:{self.host_port}/"
+        return f"http://{self.host_ip}:{self.host_port}/"

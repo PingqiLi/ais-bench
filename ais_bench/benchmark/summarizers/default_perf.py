@@ -72,12 +72,14 @@ class DefaultPerfSummarizer:
         for model in self.model_abbrs:
             for dataset in self.dataset_abbrs:
                 perf_result_dir = osp.join(self.work_dir, "performances", model)
+                table_list = []
                 if osp.exists(osp.join(perf_result_dir, f"{dataset}.csv")):
-                    perf_tables[f"{model}/{dataset}"] = self._load_csv_to_table(osp.join(perf_result_dir, f"{dataset}.csv"))
-                elif osp.exists(osp.join(perf_result_dir, f"{dataset}.json")):
-                    perf_tables[f"{model}/{dataset}"] = self._load_json_to_table(osp.join(perf_result_dir, f"{dataset}.json"))
+                    table_list.append(self._load_csv_to_table(osp.join(perf_result_dir, f"{dataset}.csv")))
+                if osp.exists(osp.join(perf_result_dir, f"{dataset}.json")):
+                    table_list.append(self._load_json_to_table(osp.join(perf_result_dir, f"{dataset}.json")))
                 else:
-                    self.logger.warning(f"Can not find {dataset} performance results in {perf_result_dir}, skip.")
+                    self.logger.warning(f"Can not find {dataset} common performance results in {perf_result_dir}, skip.")
+                perf_tables[f"{model}/{dataset}"] = table_list
 
         return perf_tables
 
@@ -90,7 +92,7 @@ class DefaultPerfSummarizer:
         return table
 
     def _load_json_to_table(self, json_path):
-        table = [["Performance Parameters", "Average"]]
+        table = [["Common Metric", "Value"]]
         with open(json_path, 'r', encoding='utf-8') as file:
             data = json.load(file)
         for key, value in data.items():
@@ -98,19 +100,20 @@ class DefaultPerfSummarizer:
         return table
 
     def _output_to_screen(self, tables_dict: Dict):
-        for task_name, table in tables_dict.items():
+        for task_name, tables in tables_dict.items():
             self.logger.info(f"Performance Results of task: {task_name}: ")
-            print(
-                tabulate.tabulate(
-                    table,
-                    headers='firstrow',
-                    tablefmt="fancy_grid",  # 使用带边框的表格样式
-                    floatfmt=".2f",         # 保留两位小数
-                    numalign="center",      # 数字列居中对齐
-                    stralign="left",        # 文本列左对齐
-                    missingval="N/A",       # 处理空值
+            for table in tables:
+                print(
+                    tabulate.tabulate(
+                        table,
+                        headers='firstrow',
+                        tablefmt="fancy_grid",  # 使用带边框的表格样式
+                        floatfmt=".2f",         # 保留两位小数
+                        numalign="center",      # 数字列居中对齐
+                        stralign="left",        # 文本列左对齐
+                        missingval="N/A",       # 处理空值
+                    )
                 )
-            )
             model_name = task_name.split("/")[0]
             perf_result_dir = osp.join(self.work_dir, "performances", model_name)
             self.logger.info(f"Performance Result files locate in {perf_result_dir}.")
