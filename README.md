@@ -30,11 +30,12 @@ pip3 uninstall ais_bench_benchmark
 ```
 
 ## 快速入门
-在本工具的评测中，每个评估任务由待评估的模型后端和数据集组成，可以通过两种方式来指定模型和数据集：命令行指定模型和数据集以及在配置文件中指定模型和数据集，两种方式二选一。当前工具支持的模型后端都是服务化api，以在gpu上部署的vllm推理服务上评测gsm8k数据集的精度为例，请先参考[vllm官方文档/启动服务器样例](https://vllm.hyper.ai/docs/tutorials/vLLM-stepbysteb#%E4%B8%89%E5%90%AF%E5%8A%A8-vllm-%E6%9C%8D%E5%8A%A1%E5%99%A8)在gpu服务器上拉起vllm的推理服务。<br>
-### gsm8k数据集准备
+在本工具的评测中，每个评估任务由待评估的模型后端和数据集组成，可以通过两种方式来指定模型和数据集：命令行指定模型和数据集以及在配置文件中指定模型和数据集，两种方式二选一。当前工具支持的模型后端主要服务化api，以评测gpu上部署的vllm推理服务为例，请先参考[vllm官方文档/启动服务器样例](https://vllm.hyper.ai/docs/tutorials/vLLM-stepbysteb#%E4%B8%89%E5%90%AF%E5%8A%A8-vllm-%E6%9C%8D%E5%8A%A1%E5%99%A8)在gpu服务器上拉起vllm的推理服务。<br>
+### 精度评测场景
+#### gsm8k数据集准备
 参考[gsm8k数据集说明](ais_bench/benchmark/configs/datasets/gsm8k/README.md)准备数据集，将数据集放在ais_bench/datasets路径下。
 
-### 命令行指定模型和数据集
+#### 命令行指定模型和数据集
 命令行方式指定模型和数据集本质上是调用工具内置的.py配置文件指定的，需要先在`ais_bench/benchmark/configs/models/`中预置的模型配置文件中配置好服务化相关参数，以执行vllm_api_general的任务为例，需要在`ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py`中修改配置：
 
 ```python
@@ -43,6 +44,7 @@ from ais_bench.benchmark.models import VLLMCustomAPI
 models = [
     dict(
         type=VLLMCustomAPI,
+        attr='service',
         abbr='vllm-api-general',
         max_seq_len = 4096,
         query_per_second = 1,
@@ -67,7 +69,7 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen
 ```
 **注:** --models支持的任务参考[--models支持的模型推理后端](#--models支持的模型推理后端)章节，--datasets 支持的任务参考[--datasets支持的数据集](#--datasets支持的数据集)章节。
 
-### 配置文件指定模型和数据集
+#### 配置文件指定模型和数据集
 需要先在源码中提供的样例配置文件`ais_bench/configs/`中预置的模型配置文件中配置好服务化相关参数，例如要执行的配置文件是`ais_bench/configs/api_examples/infer_api_vllm_general.py`，需要在此配置文件中修改配置：
 
 ```python
@@ -90,6 +92,7 @@ datasets = [
 models = [
     dict(
         type=VLLMCustomAPI,
+        attr='service',
         abbr='vllm-api-general',
         max_seq_len = 4096,
         query_per_second = 1,
@@ -118,7 +121,7 @@ work_dir = 'outputs/api_vllm_general/' # 指定落盘文件（执行过程、推
 ais_bench ais_bench/configs/api_examples/infer_api_vllm_general.py
 ```
 
-### 推理过程查看
+#### 推理过程查看
 启动推理过程中可以在{work_dir}/{time_label}/logs/infer/{abbr_name}/gsm8k.out 中查看推理结果，例如执行
 ```shell
 # 命令行指定模型和数据集运行方式
@@ -130,7 +133,7 @@ tail -f outputs/api_vllm_general/20250126_165049/logs/infer/vllm-api-general/gsm
 可以看到推理过程。
 其中`{work_dir}/{time_label}/`会在工具的打屏中显示
 
-### 推理结果查看
+#### 推理结果查看
 推理完成后可以在{work_dir}/{time_label}/predictions/{abbr_name}/gsm8k.json 中查看推理结果，例如执行
 ```shell
 # 命令行指定模型和数据集运行方式
@@ -141,7 +144,7 @@ vim outputs/api_vllm_general/20250126_165049/predictions/vllm-api-general/gsm8k.
 ```
 可以看到推理结果
 
-### 测评结果查看
+#### 测评结果查看
 在{work_dir}/{time_label}/results/{abbr_name}/gsm8k.json中查看评测出的精度，例如执行
 ```shell
 # 命令行指定模型和数据集运行方式
@@ -157,7 +160,7 @@ vim outputs/api_vllm_general/20250126_165049/results/vllm-api-general/gsm8k.json
 }
 ```
 
-### 测评结果可视化
+#### 测评结果可视化
 评测过程结束后，工具会将markdown格式的结果打印出来，同时会落盘如下三种格式的结果：
 ```
 {work_dir}/{time_label}/summary/summary_{time_label}.txt
@@ -170,6 +173,11 @@ outputs/api_vllm_general/20250126_165049/summary/summary_20250126_165049.txt
 outputs/api_vllm_general/20250126_165049/summary/summary_20250126_165049.csv
 outputs/api_vllm_general/20250126_165049/summary/summary_20250126_165049.md
 ```
+
+### 性能评测场景
+#### 配置随机数据集
+
+
 
 ## 完整命令行说明
 ### 命令格式说明
