@@ -45,17 +45,17 @@ class BaseClient(ABC):
     @abstractmethod
     def update_middle_data(self, res, inputs):
         pass
-    
+
     def update_request_time(self, input:MiddleData, start_time):
         if not self.do_performance:
             return
         input.start_time = start_time
         input.end_time = time.time()
         input.req_latency = (input.end_time - input.start_time) * 1000
-        
+
     def set_performance(self):
         self.do_performance = True
-        
+
     def close(self):
         self._http_pool_manager.clear()
 

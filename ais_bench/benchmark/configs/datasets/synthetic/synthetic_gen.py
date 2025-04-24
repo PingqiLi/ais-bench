@@ -14,7 +14,7 @@ synthetic_infer_cfg = dict(
         template="{question}"
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, max_out_len=100, is_synthetic=True)
+    inferencer=dict(type=GenInferencer, is_synthetic=True)
 )
 
 synthetic_eval_cfg = dict(

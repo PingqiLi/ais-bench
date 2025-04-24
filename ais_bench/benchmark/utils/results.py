@@ -293,7 +293,7 @@ class MetricsCalculator:
 
     def __calc_common_metrics(self):
         self.common_metrics["Benchmark Duration"] = round(self.infer_time, 4)
-        self.common_metrics["Total Requeusts"] = self.data_count
+        self.common_metrics["Total Requests"] = self.data_count
         self.common_metrics["Failed Requests"] = self.data_count - self.success_count
         self.common_metrics["Success Requests"] = self.success_count
         self.common_metrics["Concurrency"] = round(
