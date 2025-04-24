@@ -50,10 +50,11 @@ models = [
         query_per_second = 1,
         rpm_verbose = False,
         retry = 2,
-        host_ip = "localhost",
-        host_port = 8080,
+        host_ip = "localhost", # 推理服务的IP
+        host_port = 8080, # 推理服务的端口
         enable_ssl = False,
-        generation_kwargs = dict(
+        max_out_len = 512, # 最大输出tokens长度
+        generation_kwargs = dict( # 后处理参数参考https://docs.vllm.ai/en/latest/api/inference_params.html#sampling-params 中的Parameters
             temperature = 0.5,
             top_k = 10,
             top_p = 0.95,
@@ -63,7 +64,7 @@ models = [
     )
 ]
 ```
-修改好配置文件后，执行如下命令启动评测：
+修改好配置文件后，执行如下命令启动精度评测：
 ```
 ais_bench --models vllm_api_general --datasets gsm8k_gen
 ```
@@ -94,14 +95,22 @@ models = [
         type=VLLMCustomAPI,
         attr='service',
         abbr='vllm-api-general',
+        path="",
         max_seq_len = 4096,
         query_per_second = 1,
         rpm_verbose = False,
         retry = 2,
-        host_ip = "localhost", # 指定服务化的 host ip
-        host_port = 8080, # 指定服务化的端口
+        host_ip = "localhost", # 推理服务的IP
+        host_port = 8080, # 推理服务的端口
         enable_ssl = False,
-        max_out_len=512,
+        max_out_len = 512, # 最大输出tokens长度
+        generation_kwargs = dict( # 后处理参数参考https://docs.vllm.ai/en/latest/api/inference_params.html#sampling-params 中的Parameters
+            temperature = 0.5,
+            top_k = 10,
+            top_p = 0.95,
+            seed = None,
+            repetition_penalty = 1.03,
+        )
     )
 ]
 
@@ -116,7 +125,7 @@ infer = dict(partitioner=dict(type=NaivePartitioner),
 work_dir = 'outputs/api_vllm_general/' # 指定落盘文件（执行过程、推理结果等）的落盘文件夹
 
 ```
-修改好配置文件后，执行如下命令启动评测：
+修改好配置文件后，执行如下命令启动精度评测：
 ```
 ais_bench ais_bench/configs/api_examples/infer_api_vllm_general.py
 ```
@@ -175,10 +184,120 @@ outputs/api_vllm_general/20250126_165049/summary/summary_20250126_165049.md
 ```
 
 ### 性能评测场景
+AISBench执行性能测评需指定--mode为perf，以在AISBench构造的指定长度的随机数据集，固定输出长度的性能评测场景为例（当前AISBench评测服务性能是基于流式API评测的）：
 #### 配置随机数据集
+打开随机数据集配置文件`ais_bench/datasets/synthetic.py`，按需求修改带注释的配置项的取值
 
+```py
+synthetic_config = {
+    "Type":"tokenid",
+    "RequestCount": 10, # 生成的请求条数
+    # .....
+    "TokenIdConfig" : {
+        "ModelPath": "ModelPath", # 模型权重路径，必须与模型侧配置文件中的weight_dir/model/path等表示模型或词汇表的路径相同
+        "RequestSize": 10 # 每条请求的长度，即每条请求中token id的个数，不能超过服务化中输入长度的限制
+    }
+}
+```
 
+#### 命令行指定模型和数据集
+命令行方式指定模型和数据集本质上是调用工具内置的.py配置文件指定的，需要先在`ais_bench/benchmark/configs/models/`中预置的模型配置文件中配置好服务化相关参数，以执行vllm_api_general的任务为例，需要在`ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_stream.py`中修改配置：
 
+```python
+from ais_bench.benchmark.models import VLLMCustomAPIStream
+
+models = [
+    dict(
+        type=VLLMCustomAPIStream,
+        attr='service',
+        abbr='vllm-api-general-stream',
+        path="/path/to/tokenizer" # tokenizer文件所在文件夹路径
+        max_seq_len = 4096,
+        query_per_second = 1,
+        rpm_verbose = False,
+        retry = 2,
+        host_ip = "localhost", # 推理服务的IP
+        host_port = 8080, # 推理服务的端口
+        enable_ssl = False,
+        max_out_len = 16, # 最大输出tokens长度
+        generation_kwargs = dict( # 后处理参数参考https://docs.vllm.ai/en/latest/api/inference_params.html#sampling-params 中的Parameters
+            temperature = 0, # 性能评测时需要设置为0
+            ignore_eos = True, # 确保服务化输出的token长度稳定为
+        )
+    )
+]
+```
+修改好配置文件后，执行如下命令启动性能评测：
+```
+ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf
+```
+**注:** --models支持的任务参考[--models支持的模型推理后端](#--models支持的模型推理后端)章节中的流式api。
+
+#### 推理过程查看
+启动推理过程中可以在{work_dir}/{time_label}/logs/performances/{abbr_name}/syntheticdataset.out 中查看推理结果，例如执行
+```shell
+# 命令行指定模型和数据集运行方式
+tail -f outputs/default/20250424_202220/logs/infer/vllm-api-general-stream/syntheticdataset.out
+```
+可以看到推理过程。
+其中`{work_dir}/{time_label}/`(例如outputs/default/20250424_202220/)会在工具的打屏中显示
+
+#### 性能结果查看
+性能结果打屏示例如下，具体性能参数的含义请参考：
+
+```bash
+04/24 20:22:24 - AISBench - INFO - Performance Results of task: vllm-api-general-stream/syntheticdataset:
+╒══════════════════════════╤══════════════════╤══════════════════╤═════════════════╤═════════════════╤══════════════════╤══════════════════╤══════════════════╤═════╕
+│ Performance Parameters   │ Average          │ Min              │ Max             │ Median          │ P75              │ P90              │ P99              │  N  │
+╞══════════════════════════╪══════════════════╪══════════════════╪═════════════════╪═════════════════╪══════════════════╪══════════════════╪══════════════════╪═════╡
+│ E2EL                     │ 247.3742 ms      │ 228.6353 ms      │ 333.7616 ms     │ 236.4125 ms     │ 242.6227 ms      │ 255.2081 ms      │ 325.9063 ms      │ 10  │
+├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
+│ TTFT                     │ 33.2358 ms       │ 25.2582 ms       │ 45.8889 ms      │ 28.3079 ms      │ 42.6303 ms       │ 45.2839 ms       │ 45.8284 ms       │ 10  │
+├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
+│ TPOT                     │ 14.258 ms        │ 12.1703 ms       │ 19.713 ms       │ 13.9914 ms      │ 14.3534 ms       │ 15.0067 ms       │ 19.2424 ms       │ 10  │
+├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
+│ ITL                      │ 14.258 ms        │ 0.0282 ms        │ 86.33 ms        │ 14.1294 ms      │ 14.5019 ms       │ 14.8771 ms       │ 18.1429 ms       │ 10  │
+├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
+│ InputTokens              │ 10.7             │ 10.0             │ 17.0            │ 10.0            │ 10.0             │ 10.7             │ 16.37            │ 10  │
+├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
+│ OutputTokens             │ 15.9             │ 15.0             │ 16.0            │ 16.0            │ 16.0             │ 16.0             │ 16.0             │ 10  │
+├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
+│ PrefillTokenThroughput   │ 338.2927 token/s │ 217.9176 token/s │ 455.58 token/s  │ 372.856 token/s │ 392.4314 token/s │ 401.8784 token/s │ 450.2098 token/s │ 10  │
+├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
+│ OutputTokenThroughput    │ 64.943 token/s   │ 47.9384 token/s  │ 67.8586 token/s │ 67.0042 token/s │ 67.7489 token/s  │ 67.8179 token/s  │ 67.8545 token/s  │ 10  │
+╘══════════════════════════╧══════════════════╧══════════════════╧═════════════════╧═════════════════╧══════════════════╧══════════════════╧══════════════════╧═════╛
+╒══════════════════════════╤══════════════════╕
+│ Common Metric            │ Value            │
+╞══════════════════════════╪══════════════════╡
+│ Benchmark Duration       │ 2.4813 ms        │
+├──────────────────────────┼──────────────────┤
+│ Total Requests           │ 10               │
+├──────────────────────────┼──────────────────┤
+│ Failed Requests          │ 0                │
+├──────────────────────────┼──────────────────┤
+│ Success Requests         │ 10               │
+├──────────────────────────┼──────────────────┤
+│ Concurrency              │ 0.9969           │
+├──────────────────────────┼──────────────────┤
+│ Max Concurrency          │ 1                │
+├──────────────────────────┼──────────────────┤
+│ Request Throughput       │ 4.0301 req/s     │
+├──────────────────────────┼──────────────────┤
+│ Total Input Tokens       │ 107              │
+├──────────────────────────┼──────────────────┤
+│ Prefill Token Throughput │ 321.9418 token/s │
+├──────────────────────────┼──────────────────┤
+│ Total Output Tokens      │ 159              │
+├──────────────────────────┼──────────────────┤
+│ Input Token Throughput   │ 43.1224 s        │
+├──────────────────────────┼──────────────────┤
+│ Output Token Throughput  │ 64.079 token/s   │
+├──────────────────────────┼──────────────────┤
+│ Total Token Throughput   │ 107.2014 token/s │
+╘══════════════════════════╧══════════════════╛
+04/24 20:22:24 - AISBench - INFO - Performance Result files locate in outputs/default/20250424_202220/performances/vllm-api-general-stream.
+
+```
 ## 完整命令行说明
 ### 命令格式说明
 ```shell
@@ -249,7 +368,7 @@ outputs/default/
 ├── ...
 ```
 
-### infer模式
+### infer模式【精度评测】
 
 infer模式下评测工具仅会跑出数据集的推理结果：
 ```mermaid
@@ -274,7 +393,7 @@ outputs/default/
 ├── ...
 ```
 
-### eval模式
+### eval模式【精度评测】
 eval模式下评测工具会基于已有的推理结果跑一遍评测流程和结果呈现的流程，需要结合--reuse命令使用：
 ```mermaid
 graph LR;
@@ -303,7 +422,7 @@ outputs/default/
 ├── ...
 ```
 
-### viz模式
+### viz模式【精度评测】
 viz模式下评测工具会基于已有的精度数据跑一遍结果呈现的流程，需要结合--reuse命令使用：
 ```mermaid
 graph LR;
@@ -330,6 +449,85 @@ outputs/default/
 │   └── summary       # 单个实验的汇总评估结果 (viz新增)
 ├── ...
 ```
+
+### perf模式【性能测评】
+
+perf模式下评测工具会完整执行一次性能评测流程：
+```mermaid
+graph LR;
+A[基于给定数据集执行推理] --> B((打点数据));
+B --> C[基于性能打点结果计算]
+C --> D((性能数据))
+D --> E[基于性能数据汇总呈现]
+E --> F((呈现结果))
+```
+
+命令示例：
+```shell
+ais_bench --models mindie_stream_api_general --datasets synthetic --mode perf
+```
+
+生成结构目录结构：
+```bash
+outputs/default/
+├── 20200220_120000
+├── 20230220_183030     # 每个实验一个文件夹
+│   ├── configs         # 用于记录的已转储的配置文件。如果在同一个实验文件夹中重新运行了不同的实验，可能会保留多个配置
+│   ├── logs            # 推理阶段的日志文件
+│   │   └── performance
+│   └── performance       # 性能测评结果
+│       └── mindie_stream_api  #后端模型，以mindie_stream_api为例
+│           ├── syntheticdataset.csv     #单个推理请求性能输出结果
+│           └── syntheticdataset.json    #端到端性能输出结果
+├── ...
+```
+
+## 性能测评结果说明
+性能测评结果包括单个推理请求性能输出结果和端到端性能输出结果，参数说明如下：
+
+### 单个推理请求性能输出结果
+部分统计指标解释如下所示：
++ P75：以DecodeTime为例，所有请求的DecodeTime的75分位。
++ P90：以DecodeTime为例，所有请求的DecodeTime的90分位。
++ P99：以DecodeTime为例，所有请求的DecodeTime的99分位。
++ E2EL：单个请求的时延
++ TTFT（Time To First Token）:首token时延
++ TPOT（Time Per Output Token）：每个输出token的平均时延，请求粒度，不含首token
++ ITL（Inter-token Latency）：token间时延，不含首token
++ InputTokens：输入token长度
++ OutputTokens：输出token长度
++ PrefillTokenThroughput：prefill吞吐率
++ OutputTokenThroughput：output吞吐率
++ Tokenizer：tokenizer时间
++ Detokenizer：detokenizer时间
+
+|Performance Parameters|Average|Max|Min|Median|P75|P90|P99|N|
+| ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+|E2EL|平均请求时延|最大请求时延|最小请求时延|请求时延中位数|请求时延75分位值|请求时延90分位值|请求时延99分位值|测试数据量，来源于输入参数|
+|TTFT|首个token平均时延|首个token最大时延|首个token最小时延|首个token中位数时延|首个token75分位时延|首个token90分位时延|首个token99分位时延|测试数据量，来源于输入参数|
+|TPOT|Decode阶段平均时延|最大Decode阶段时延|最小Decode阶段时延|Decode阶段中位数时延|75分位Decode阶段时延|90分位每条请求Decode阶段平均时延|99分位Decode阶段时延|测试数据量，来源于输入参数|
+|ITL|token间平均时延|token间最大时延|token间最小时延|token间中位数时延|token间75分位时延|token间90分位时延|token间99分位时延|测试数据量，来源于输入参数|
+|InputTokens|输入token平均长度|最大输入token长度|最小输入token长度|输入token中位数长度|75分位输入token长度|90分位输入token长度|99分位输入token长度|测试数据量，来源于输入参数|
+|OutputTokens|输出token平均长度|最大输出token长度|最小输出token长度|输出token中位数长度|75分位输出token长度|90分位输出token长度|99分位输出token长度|测试数据量，来源于输入参数|
+|PrefillTokenThroughput|平均prefill吞吐|最大prefill吞吐|最小prefill吞吐|中位数prefill吞吐|prefill吞吐75分位|prefill吞吐90分位|prefill吞吐99分位|测试数据量，来源于输入参数|
+|OutputTokenThroughput|平均输出吞吐|最大输出吞吐|最小输出吞吐|中位数输出吞吐|输出吞吐75分位|输出吞吐90分位|输出吞吐99分位|测试数据量，来源于输入参数|
+
+### 端到端性能输出结果
+|参数|说明|
+| ---- | ---- |
+|Benchmark Duration|测试总耗时|
+|Total Requests|测试数据量|
+|Failed Requests|失败请求数据量（包含空和未返回数据的响应）|
+|Success Requests|返回请求总数据量（包含非空和空）|
+|Concurrency|实际测试并发数|
+|Max Concurrency|最大测试并发数|
+|Request Throughput|请求吞吐率|
+|Total Input Tokens|输入总token数|
+|Prefill Token Throughput|prefill吞吐率|
+|Total Output Tokens|输出总token数|
+|Input Token Throughput|输入吞吐率|
+|Output Token Throughput|输出吞吐率|
+|Total Token Throughput|总吞吐率|
 
 ## 预设任务支持范围
 本节介绍当前ais_bench评测工具支持的评测任务的预设配置，通过ais_bench命令行指定任务名称，即可执行相应的评测任务。
