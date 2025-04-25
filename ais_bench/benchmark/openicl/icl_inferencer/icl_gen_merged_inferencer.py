@@ -131,7 +131,7 @@ class GenMergedInferencer(GenInferencer):
                            'intermediate results will not be saved')
             extra_gen_kwargs = self._build_extra_gen_kwargs()
             num_return_sequences = getattr(self.model, 'generation_kwargs', {}).get('num_return_sequences', 1)
-            start_time_stamp = time.time()
+            start_time_stamp = time.perf_counter()
             with torch.no_grad():
                 parsed_entries = self.model.parse_template(entry, mode='gen')
                 results = self.model.generate_from_template(
@@ -165,7 +165,7 @@ class GenMergedInferencer(GenInferencer):
 
             logger.info('Starting inference process...')
 
-            start_time_stamp = time.time()
+            start_time_stamp = time.perf_counter()
             num_sample = 0
             total_ds_len = len(entry)
             if total_ds_len != len(golds):
@@ -217,7 +217,7 @@ class GenMergedInferencer(GenInferencer):
                                                 'tmp_' + output_json_filename)
                 num_sample += 1
 
-        end_time_stamp = time.time()
+        end_time_stamp = time.perf_counter()
 
         # 6. Output
         if self.is_main_process:

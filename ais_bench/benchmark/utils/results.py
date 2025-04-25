@@ -22,8 +22,6 @@ class MiddleData:
     decode_batch_size: list[int] = field(default_factory=list)
     prefill_batch_size: int = 0
     post_process_time: float = 0.0
-    tokenized_time: float = 0.0
-    detokenized_time: list[float] = field(default_factory=list)
     queue_wait_time: list[float] = field(default_factory=list)
     data_option: list = field(default_factory=list)
     output: str = ""
@@ -71,8 +69,6 @@ class MiddleData:
             * 1000,
             "input_characters_len": len(self.input_data),
             "generate_characters_len": self.num_generated_chars,
-            "tokenizer_time": self.tokenized_time,
-            "detokenizer_time": self.detokenized_time,
             "characters_per_token": (
                 self.num_generated_chars / self.num_generated_tokens
                 if self.num_generated_tokens
@@ -184,8 +180,6 @@ class MetricsCalculator:
             "generate_tokens_len": "OutputTokens",
             "prefill_throughput": "PrefillTokenThroughput",
             "generate_tokens_speed": "OutputTokenThroughput",
-            "tokenizer_time": "Tokenizer",
-            "detokenizer_time": "Detokenizer",
             "prefill_batch_size": "PrefillBatchsize",
             "decode_batch_size": "DecoderBatchsize",
             "queue_wait_time": "QueueWaitTime",

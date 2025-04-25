@@ -49,8 +49,7 @@ class TestClass:
         self.perf_csv_headers = ['Performance Parameters', 'Average', 'Min', 'Max',
                                   'Median', 'P75', 'P90', 'P99', 'N']
         self.perf_csv_params = ['Latency', 'TTFT', 'TPOT', 'InputTokens', 'OutputTokens',
-                                'PrefillTokenThroughput', 'OutputTokenThroughput',
-                                'Tokenizer', 'Detokenizer']
+                                'PrefillTokenThroughput', 'OutputTokenThroughput']
 
     # mode infer
     def test_triton_stream_api_infer(self, monkeypatch):
@@ -83,8 +82,7 @@ class TestClass:
                             'decode_max_token_latency': 28.4, 'seq_latency': 2700.04,
                             'input_tokens_len': 2, 'generate_tokens_len': 3,
                             'generate_tokens_speed': 37.03, 'input_characters_len': 3,
-                            'generate_characters_len': 6, 'tokenizer_time': 11.4,
-                            'detokenizer_time': [0.02, 0.02], 'characters_per_token': 2.0,
+                            'generate_characters_len': 6, 'characters_per_token': 2.0,
                             'prefill_batch_size': 0, 'decode_batch_size': [], 'queue_wait_time': [],
                             'request_id': '591c69416c694a6ab3194a06d6e1ed17',
                             'start_time': 1742952029.5993671, 'end_time': 1742952032.299417,

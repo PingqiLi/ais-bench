@@ -108,7 +108,7 @@ class GenPerfInferencer(GenInferencer):
         output_filename = output_filename or self.output_json_filename
 
         logger.info("Starting performance inference process...")
-        start_time_stamp = time.time()
+        start_time_stamp = time.perf_counter()
 
         # Prepare inference parameters
         extra_gen_kwargs = {}
@@ -153,7 +153,7 @@ class GenPerfInferencer(GenInferencer):
                 gold=gold,
             )
 
-        end_time_stamp = time.time()
+        end_time_stamp = time.perf_counter()
 
         if self.is_main_process:
             os.makedirs(output_filepath, exist_ok=True)

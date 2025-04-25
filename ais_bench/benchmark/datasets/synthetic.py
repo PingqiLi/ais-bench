@@ -2,6 +2,7 @@ from typing import Dict, List, Any, Tuple, Set, Iterable
 import json
 import os
 from dataclasses import dataclass
+from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -149,11 +150,11 @@ class SyntheticDataset(BaseDataset):
         check_type(model_path_key, model_path_value, types=(str, ))
         if not os.path.exists(normalize_file_path(model_path_value)):
             raise ValueError(f"ModelPath does not exist: {str(model_path_value)}")
-        
+
         request_size_value = synthetic_config.get(request_size_key)
         check_type(request_size_key, request_size_value, types=(int, ))
         check_range(request_size_key, request_size_value, NumberRange(1, 2**20))
-    
+
     @staticmethod
     def _check_config_json(synthetic_config: Dict):
         config_type_key = "Type"
@@ -161,11 +162,11 @@ class SyntheticDataset(BaseDataset):
 
         required_keys = {config_type_key, request_count_key}
         _ensure_keys_present(synthetic_config.keys(), required_keys, "SyntheticConfig")
-        
+
         config_type_value = synthetic_config.get(config_type_key)
         check_type(config_type_key, config_type_value, types=(str, ))
         config_type_value = config_type_value.lower()
-        
+
         request_count_value = synthetic_config.get(request_count_key)
         check_type(request_count_key, request_count_value, types=(int, ))
         check_range(request_count_key, request_count_value, NumberRange(1, 2**20))
@@ -174,12 +175,12 @@ class SyntheticDataset(BaseDataset):
             "string": SyntheticDataset.check_synthetic_string_config,
             "tokenid": SyntheticDataset.check_synthetic_tokenid_config
         }
-        
+
         check_func = check_map.get(config_type_value)
         if not check_func:
             raise ValueError(f"Expect type should from {check_map.keys()}(case-insensitive) for SyntheticConfig,",
                              f"but got {config_type_value}.")
-        
+
         type_config = {}
         if config_type_value == "string":
             string_config_key = "StringConfig"
@@ -211,7 +212,7 @@ class SyntheticDataset(BaseDataset):
         else:
             raise ValueError(f"Unknown method: {method}, method should be one of {{uniform, gaussian, zipf}}.")
         return int(value)
-    
+
     @staticmethod
     def read_line(self, line: List[int]) -> Dict:
         """Get a data dict according to line.
@@ -229,7 +230,7 @@ class SyntheticDataset(BaseDataset):
         num_input_token, num_expect_generated_tokens = line
         data = " ".join([default_str] * num_input_token)
         return data + str(num_expect_generated_tokens)
-    
+
     @staticmethod
     def find_first_file_path(search_path: str, search_file: str) -> str:
         """
@@ -252,7 +253,7 @@ class SyntheticDataset(BaseDataset):
         """
         # Normalize path (expand ~ and resolve relative paths)
         normalized_path = normalize_file_path(search_path)
-        
+
         # Validate input path
         if not os.path.exists(normalized_path):
             raise ValueError(f"Path does not exist: {normalized_path}")
@@ -265,37 +266,26 @@ class SyntheticDataset(BaseDataset):
             if search_file in files:
                 # Return immediately when first match is found
                 return os.path.join(root, search_file)
-        
+
         # Handle case where no config file is found
         raise FileNotFoundError(f"No {search_file} found in directory tree: {normalized_path}")
 
     @staticmethod
-    def generate_valid_random_ids(vocab_size: int, 
-                             request_size: int, 
-                             all_special_ids: list) -> torch.Tensor:
+    def generate_valid_random_ids(valid_indices, request_size: int) -> torch.Tensor:
         """
         Generates random integers in [0, vocab_size) excluding special IDs.
-        
+
         Args:
-            vocab_size: Upper bound (exclusive) of random numbers
+            valid_indices: valid indices in tokenizer file
             request_size: Number of random values to generate
-            all_special_ids: List of IDs to exclude from generation
-            
+
         Returns:
             Tensor of shape (request_size,) with dtype torch.int64
         """
-        # Create mask of valid IDs
-        valid_ids = torch.ones(vocab_size, dtype=torch.bool)
-        original_array = np.array(all_special_ids)
-        filtered_array = original_array[original_array < vocab_size]
-        valid_ids[filtered_array.tolist()] = False
-        
-        # Generate random indices for valid IDs
-        valid_indices = torch.where(valid_ids)[0]
-        
+
         # Randomly select from valid indices
         rand_indices = torch.randint(0, len(valid_indices), (request_size,))
-        
+
         return valid_indices[rand_indices].to(torch.int64)
 
     def load(self, path, **kwargs):
@@ -315,9 +305,9 @@ class SyntheticDataset(BaseDataset):
                                             self.sample_one_value(output_method, output_params)]
                                         for _ in range(request_count)]
 
-            for num_input_output_token in num_input_output_tokens:
+            for num_input_output_token in tqdm(num_input_output_tokens, desc="Constructing synthetic string datasets ..."):
                 data = self.read_line(self, num_input_output_token)
-                dataset.append({"question":data,"answer":"aaa"})
+                dataset.append({"question": data, "answer": "aaa"})
 
         elif config_type == "tokenid":
             tokenid_config = config.get("TokenIdConfig")
@@ -335,13 +325,22 @@ class SyntheticDataset(BaseDataset):
             if not vocab_size:
                 raise ValueError(f"The configuration vocab_size was not found in the dataset config file {normalize_file_path(path)}",
                                  f"or tokenizer config file {tokenizer_file_path}")
-            
+
             all_special_ids = tokenizer_model.all_special_ids
             self.logger.info(f"Current tokenizer model: {tokenizer_model.__class__.__name__}")
             self.logger.debug(f"Token id range: (0, {vocab_size}) excluding the values {all_special_ids}")
 
-            for _ in range(request_count):
-                input_ids = self.generate_valid_random_ids(vocab_size, request_size, all_special_ids)
+            # Create mask of valid IDs
+            valid_ids = torch.ones(vocab_size, dtype=torch.bool)
+            original_array = np.array(all_special_ids)
+            filtered_array = original_array[original_array < vocab_size]
+            valid_ids[filtered_array.tolist()] = False
+
+            # Generate random indices for valid IDs
+            valid_indices = torch.where(valid_ids)[0]
+
+            for _ in tqdm(range(request_count), desc="Constructing synthetic tokenid datasets ..."):
+                input_ids = self.generate_valid_random_ids(valid_indices, request_size)
                 decode_str = tokenizer.decode(input_ids)
                 dataset.append({"question":decode_str,"answer":"aaa"})
 

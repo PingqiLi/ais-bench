@@ -84,7 +84,7 @@ class NaiveExtractor:
         )
         self.retry = retry
 
-        t = time.time()
+        t = time.perf_counter()
         retry = self.retry
         response = ''
         while retry > 0:
@@ -111,7 +111,7 @@ class NaiveExtractor:
             except Exception as e:
                 self.logger.info(f'Error: {e}')
                 self.logger.info(f'{self.url} is down. Retrying...')
-                self.logger.info(f'Time elapsed: {time.time() - t} seconds')
+                self.logger.info(f'Time elapsed: {time.perf_counter() - t} seconds')
                 time.sleep(6)
                 retry -= 1
         if retry == 0:

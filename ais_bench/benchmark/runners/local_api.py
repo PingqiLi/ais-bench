@@ -179,7 +179,7 @@ def launch(task: BaseTask, tokens: SyncManager.Semaphore):
         redirect_std_to_file(out_path)
 
         # start infer with monkey_run
-        start_time = time.time()
+        start_time = time.perf_counter()
         if task.name_prefix == 'OpenICLPerf':
             inferencer = OpenICLPerfTask(task.cfg)
             origin_run = inferencer.run
@@ -194,7 +194,7 @@ def launch(task: BaseTask, tokens: SyncManager.Semaphore):
             inferencer.run = monkey_run
         inferencer.run(inferencer, tokens)
         inferencer.run = origin_run
-        end_time = time.time()
+        end_time = time.perf_counter()
         logger.info(f'time elapsed: {end_time - start_time:.2f}s')
     except Exception:
         # print trace back in target file

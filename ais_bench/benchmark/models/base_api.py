@@ -452,7 +452,7 @@ class TokenBucket:
             threading.Thread(target=self._add_tokens, daemon=True).start()
         self._tokens.acquire()
         if self.verbose:
-            cur_time = time.time()
+            cur_time = time.perf_counter()
             while not self._request_queue.empty():
                 if cur_time - self._request_queue.queue[0] > 60:
                     self._request_queue.get()
@@ -462,10 +462,15 @@ class TokenBucket:
             self.logger.info(f'Current RPM {self._request_queue.qsize()}.')
 
 
+def is_synthetic_string(input):
+    pattern = r'^A+[0-9]+$'
+    return bool(re.match(pattern, input))
+
+
 def handle_synthetic_input(func):
     def wrapper(self, input: str, max_out_len: int) -> str:
         # 检查是否是synthetic输入
-        if hasattr(self, "is_synthetic") and self.is_synthetic:
+        if hasattr(self, "is_synthetic") and self.is_synthetic and is_synthetic_string(input):
             max_out_len = int(input.split('A')[-1])  # 提取 max_out_len
             input = input[:-len(input.split('A')[-1])]  # 去掉 max_out_len 部分
         return func(self, input, max_out_len)

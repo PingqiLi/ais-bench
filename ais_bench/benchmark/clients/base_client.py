@@ -50,7 +50,7 @@ class BaseClient(ABC):
         if not self.do_performance:
             return
         input.start_time = start_time
-        input.end_time = time.time()
+        input.end_time = time.perf_counter()
         input.req_latency = (input.end_time - input.start_time) * 1000
 
     def set_performance(self):
@@ -84,7 +84,7 @@ class BaseClient(ABC):
                 inputs.input_data,
                 parameters=parameters,
             )
-            start_time = time.time()
+            start_time = time.perf_counter()
             response_raw = self.do_request(request_body, "POST")
             if not self._is_stream:
                 response_obj = json.loads(response_raw.data.decode())
@@ -134,7 +134,7 @@ class BaseStreamClient(BaseClient, ABC):
             cur_line = self.preprocess_cur_line(byte_line.decode())
             try:
                 for json_content in _stream_data_split(cur_line):
-                    cur_time_point = time.time()
+                    cur_time_point = time.perf_counter()
                     response_dict = self.process_stream_line(json_content)
                     if time_name not in response_dict.keys():
                         response_dict[time_name] = (
@@ -142,7 +142,7 @@ class BaseStreamClient(BaseClient, ABC):
                         ) * 1000
                     yield response_dict
                     time_name = "decode_time"
-                    last_time_point = time.time()
+                    last_time_point = time.perf_counter()
             except Exception as error:
                 self.logger.error(
                     f"Request failed and the reason is {error}, response from server is: {cur_line}"

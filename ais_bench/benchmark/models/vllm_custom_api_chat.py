@@ -236,9 +236,9 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
             return 0.0, []
 
         messages = [self.tokenizer.tokenizer.tokenizer_model.apply_chat_template(m, add_generation_prompt=True, tokenize=False) for m in prompt]
-        time_start = time.time()
+        time_start = time.perf_counter()
         tokens = self.tokenizer.batch_encode_plus(messages)
-        time_cost = (time.time() - time_start) * 1000  # Convert to milliseconds
+        time_cost = (time.perf_counter() - time_start) * 1000  # Convert to milliseconds
         sum_token_ids = []
         for token_ids in tokens.get('input_ids'):
             sum_token_ids.extend(token_ids)
@@ -262,7 +262,6 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
 
         if self.do_performance and self.tokenizer:
             time_cost, token_id = self.encode(input_dict)
-            cache_data.tokenized_time = time_cost
             cache_data.input_token_id = token_id
             cache_data.num_input_tokens = len(token_id)
             cache_data.num_input_chars = len(self._input_decode(token_id))

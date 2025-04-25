@@ -4,6 +4,7 @@ import time
 import uuid
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
+from tqdm import tqdm
 
 from ais_bench.benchmark.utils.results import MiddleData
 from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
@@ -63,7 +64,6 @@ class PerformanceAPIModel(BaseAPIModel):
 
         if self.do_performance and self.tokenizer:
             time_cost, token_id = self.encode(input_text)
-            cache_data.tokenized_time = time_cost
             cache_data.input_token_id = token_id
             cache_data.num_input_tokens = len(token_id)
             cache_data.num_input_chars = len(input_text)
@@ -82,13 +82,6 @@ class PerformanceAPIModel(BaseAPIModel):
         if not self.do_performance or not self.tokenizer:
             return
 
-        _, data.output_token_id = self.encode(data.output)
-
-        if stream:
-            data.detokenized_time, _ = self.decode_stream(data.output_token_id)
-        else:
-            data.detokenized_time, _ = self.decode(data.output_token_id)
-
         data.is_success = True
 
     def encode(self, prompt: str) -> Tuple[float, List[int]]:
@@ -97,9 +90,9 @@ class PerformanceAPIModel(BaseAPIModel):
             self.logger.error("Tokenizer is not initialized.")
             return 0.0, []
 
-        time_start = time.time()
+        time_start = time.perf_counter()
         tokens = self.tokenizer.encode(prompt)
-        time_cost = (time.time() - time_start) * 1000  # Convert to milliseconds
+        time_cost = (time.perf_counter() - time_start) * 1000  # Convert to milliseconds
         return time_cost, tokens
 
     def decode(self, tokens: List[int]) -> Tuple[List[float], str]:
@@ -108,9 +101,9 @@ class PerformanceAPIModel(BaseAPIModel):
             self.logger.error("Tokenizer is not initialized.")
             return [], ""
 
-        time_start = time.time()
+        time_start = time.perf_counter()
         prompt = self.tokenizer.decode(tokens)
-        time_cost = [(time.time() - time_start) * 1000]  # Convert to milliseconds
+        time_cost = [(time.perf_counter() - time_start) * 1000]  # Convert to milliseconds
         return time_cost, prompt
 
     def decode_stream(self, tokens: List[int]) -> Tuple[List[float], List[str]]:
@@ -121,17 +114,21 @@ class PerformanceAPIModel(BaseAPIModel):
 
         prompt = []
         time_cost = []
-        time_start = time.time()
+        time_start = time.perf_counter()
         for token in tokens:
             prompt.append(self.tokenizer.decode(token))
             time_cost.append(
-                (time.time() - time_start) * 1000
+                (time.perf_counter() - time_start) * 1000
             )  # Convert to milliseconds
-            time_start = time.time()
+            time_start = time.perf_counter()
         return time_cost, prompt
 
     def get_performance_data(self) -> List[Dict[str, Any]]:
         """Retrieve performance data from cached results."""
+        for key, _ in tqdm(self.result_cache.items(), desc="Encoding output text...", total=len(self.result_cache)):
+            time_cost, tokens = self.encode(self.result_cache[key].output)
+            self.result_cache[key].num_generated_tokens = len(tokens)
+
         performance_data = [
             cache_data.convert_to_performance_data()
             for cache_data in self.result_cache.values()

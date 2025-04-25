@@ -168,7 +168,7 @@ class GenInferencer(BaseInferencer):
             else:
                 logger.warning('The concurrency is set, continous infer will be turned on, '
                            'intermediate results will not be saved')
-            start_time_stamp = time.time()
+            start_time_stamp = time.perf_counter()
             entry, golds = self.extract_data(ds_reader, prompt_list)
             with torch.no_grad():
                 parsed_entries = self.model.parse_template(entry, mode='gen')
@@ -208,7 +208,7 @@ class GenInferencer(BaseInferencer):
             # 5. Inference for prompts in each batch
             logger.info('Starting inference process...')
 
-            start_time_stamp = time.time()
+            start_time_stamp = time.perf_counter()
             num_sample = 0
             for datum in tqdm(dataloader, disable=not self.is_main_process):
                 entry, golds = self.extract_data(ds_reader, datum)
@@ -244,7 +244,7 @@ class GenInferencer(BaseInferencer):
                                                 'tmp_' + output_json_filename)
                 num_sample += len(datum)
 
-        end_time_stamp = time.time()
+        end_time_stamp = time.perf_counter()
 
         # 6. Output
         if self.is_main_process:

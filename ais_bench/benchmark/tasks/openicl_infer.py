@@ -167,8 +167,8 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     cfg = Config.fromfile(args.config)
-    start_time = time.time()
+    start_time = time.perf_counter()
     inferencer = OpenICLInferTask(cfg)
     inferencer.run()
-    end_time = time.time()
+    end_time = time.perf_counter()
     get_logger().info(f'time elapsed: {end_time - start_time:.2f}s')
