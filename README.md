@@ -243,7 +243,7 @@ tail -f outputs/default/20250424_202220/logs/infer/vllm-api-general-stream/synth
 其中`{work_dir}/{time_label}/`(例如outputs/default/20250424_202220/)会在工具的打屏中显示
 
 #### 性能结果查看
-性能结果打屏示例如下，具体性能参数的含义请参考：
+性能结果打屏示例如下，具体性能参数的含义请参考[性能测评结果说明](#性能测评结果说明)：
 
 ```bash
 04/24 20:22:24 - AISBench - INFO - Performance Results of task: vllm-api-general-stream/syntheticdataset:
@@ -336,7 +336,8 @@ ais_bench ais_bench/configs/api_examples/infer_api_vllm_general.py --debug
 
 
 ## 运行模式说明
-### all 模式
+### 精度评测场景
+#### all 模式
 
 all模式下评测工具会完整执行一次评测流程：
 ```mermaid
@@ -368,7 +369,7 @@ outputs/default/
 ├── ...
 ```
 
-### infer模式【精度评测】
+#### infer模式
 
 infer模式下评测工具仅会跑出数据集的推理结果：
 ```mermaid
@@ -393,7 +394,7 @@ outputs/default/
 ├── ...
 ```
 
-### eval模式【精度评测】
+#### eval模式
 eval模式下评测工具会基于已有的推理结果跑一遍评测流程和结果呈现的流程，需要结合--reuse命令使用：
 ```mermaid
 graph LR;
@@ -422,7 +423,7 @@ outputs/default/
 ├── ...
 ```
 
-### viz模式【精度评测】
+#### viz模式
 viz模式下评测工具会基于已有的精度数据跑一遍结果呈现的流程，需要结合--reuse命令使用：
 ```mermaid
 graph LR;
@@ -449,10 +450,10 @@ outputs/default/
 │   └── summary       # 单个实验的汇总评估结果 (viz新增)
 ├── ...
 ```
+### 性能评测场景
+### perf模式
 
-### perf模式【性能测评】
-
-perf模式下评测工具会完整执行一次性能评测流程：
+perf模式下评测工具会完整执行一次性能评测流程并呈现性能结果：
 ```mermaid
 graph LR;
 A[基于给定数据集执行推理] --> B((打点数据));
@@ -464,8 +465,9 @@ E --> F((呈现结果))
 
 命令示例：
 ```shell
-ais_bench --models mindie_stream_api_general --datasets synthetic --mode perf
+ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf
 ```
+**注意** 性能评测场景下--models当前只支持流式的服务化推理API任务，参考[服务化推理API后端](#服务化推理API后端)
 
 生成结构目录结构：
 ```bash
@@ -476,11 +478,27 @@ outputs/default/
 │   ├── logs            # 推理阶段的日志文件
 │   │   └── performance
 │   └── performance       # 性能测评结果
-│       └── mindie_stream_api  #后端模型，以mindie_stream_api为例
+│       └── vllm-api-general-stream  #后端模型，以mindie_stream_api为例
 │           ├── syntheticdataset.csv     #单个推理请求性能输出结果
 │           └── syntheticdataset.json    #端到端性能输出结果
 ├── ...
 ```
+性能打屏基于syntheticdataset.csv和syntheticdataset.json
+
+
+### perf_viz 模式
+perf模式下评测工具会完整执行一次性能评测流程：
+```mermaid
+graph LR;
+D((性能数据)) --> E[基于性能数据汇总呈现]
+E --> F((呈现结果))
+```
+
+命令示例：
+```shell
+ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf_viz --reuse
+```
+性能打屏基于最近一个时间戳中的syntheticdataset.csv和syntheticdataset.json文件
 
 ## 性能测评结果说明
 性能测评结果包括单个推理请求性能输出结果和端到端性能输出结果，参数说明如下：
@@ -538,13 +556,20 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 ### --models支持的模型推理后端
 --models支持两种后端：服务化推理API后端和本地模型后端，两种后端不能在--models中同时指定
 #### 服务化推理API后端
-|任务名称|简介|使用前提|支持的prompt格式(字符串格式或对话格式)|对应源码配置文件路径|
-| --- | --- | --- | --- | --- |
-|vllm_api_general|通过vllm的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_general.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)|
-|vllm_api_general_chat|通过vllm的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|字符串格式、对话格式|[vllm_api_general_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py)|
-|vllm_api_stream_chat|通过vllm的流式api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|字符串格式、对话格式|[vllm_api_stream_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py)|
-|vllm_api_old|通过vllm的api访问vllm(0.2.6版本)的推理服务化，访问服务链接的 generate子服务|基于支持generate子服务的vllm版本，启动vllm推理服务|字符串格式|[vllm_api_old.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_old.py)|
-|mindie_stream_api_general|通过mindie的流式api访问mindie的推理服务化，访问服务链接的 infer子服务|基于支持infer子服务的mindie版本，启动mindie推理服务|字符串格式|[mindie_stream_api_general.py](ais_bench/benchmark/configs/models/mindie_api/mindie_stream_api_general.py)|
+|任务名称|简介|使用前提|接口类型|支持的prompt格式(字符串格式或对话格式)|对应源码配置文件路径|
+| --- | --- | --- | --- | ---- | --- |
+|vllm_api_general|通过vllm兼容openai的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|文本接口|字符串格式|[vllm_api_general.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)|
+|vllm_api_general_stream|通过vllm兼容openai的流式api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|文本接口|字符串格式|[vllm_api_general_stream.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_stream.py)|
+|vllm_api_general_chat|通过vllm兼容openai的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|文本接口|字符串格式、对话格式|[vllm_api_general_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py)|
+|vllm_api_stream_chat|通过vllm兼容openai的流式api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|流式接口|字符串格式、对话格式|[vllm_api_stream_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py)|
+|vllm_api_old|通过vllm的api访问vllm(0.2.6版本)的推理服务化，访问服务链接的 generate子服务|基于支持generate子服务的vllm版本，启动vllm推理服务|文本接口|字符串格式|[vllm_api_old.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_old.py)|
+|mindie_stream_api_general|通过mindie的流式api访问mindie的推理服务化，访问服务链接的 infer子服务|基于支持infer子服务的mindie版本，启动mindie推理服务|流式接口|字符串格式|[mindie_stream_api_general.py](ais_bench/benchmark/configs/models/mindie_api/mindie_stream_api_general.py)|
+|triton_api_general|通过triton规定格式的api访问推理服务化，访问服务链接的v2/models/{model name}/generate子服务|启动支持triton api的推理服务|文本接口|字符串格式|[triton_api_general.py](ais_bench/benchmark/configs/models/triton_api/triton_api_general.py)|
+|triton_stream_api_general|通过triton规定格式的流式api访问推理服务化，访问服务链接的v2/models/{model name}/generate_stream子服务|启动支持triton api的推理服务|文本接口|字符串格式|[triton_stream_api_general.py](ais_bench/benchmark/configs/models/triton_api/triton_stream_api_general.py)|
+|tgi_api_general|通过TGI规定格式的api访问推理服务化，访问服务的generate子服务|启动支持TGI api的推理服务|文本接口|字符串格式|[tgi_api_general](ais_bench/benchmark/configs/models/tgi_api/tgi_api_general.py)|
+|tgi_stream_api_general|通过TGI规定格式的流式api访问推理服务化，访问服务的generate_stream子服务|启动支持TGI api的推理服务|文本接口|字符串格式|[tgi_stream_api_general](ais_bench/benchmark/configs/models/tgi_api/tgi_stream_api_general.py)|
+
+
 **注意:** 服务化推理测评api默认使用的url为localhost，端口号为8080，实际使用时需要在具体使用的源码配置文件中修改为服务化后端配置的url和端口号。
 
 #### 本地模型后端
