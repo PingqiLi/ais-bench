@@ -8,7 +8,7 @@ C-Eval 是一个针对基础模型的综合性中文评估套件。它包含 139
 ## 数据集内容格式(处理后)
 ### 文件结构
 ```
-ceval/format_ceval
+ceval/formal_ceval
 ├── dev
 │   ├── accountant_dev.csv
 │   ├── advanced_mathematics_dev.csv
