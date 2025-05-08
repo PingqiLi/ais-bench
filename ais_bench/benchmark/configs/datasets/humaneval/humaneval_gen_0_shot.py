@@ -10,7 +10,7 @@ HUMANEVAL_TEMPLATE = 'You are an intelligent programming assistant to produce Py
 humaneval_infer_cfg = dict(
     prompt_template=dict(type=PromptTemplate, template=HUMANEVAL_TEMPLATE),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=1),
+    inferencer=dict(type=GenInferencer),
 )
 
 humaneval_eval_cfg = dict(

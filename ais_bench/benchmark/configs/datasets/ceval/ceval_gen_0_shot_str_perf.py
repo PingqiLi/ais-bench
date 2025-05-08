@@ -72,7 +72,7 @@ for _split in ['val']:
                 template=f'{{question}}\n',
             ),
             retriever=dict(type=ZeroRetriever),
-            inferencer=dict(type=GenInferencer, batch_size=1),
+            inferencer=dict(type=GenInferencer),
         )
 
         ceval_eval_cfg = dict(

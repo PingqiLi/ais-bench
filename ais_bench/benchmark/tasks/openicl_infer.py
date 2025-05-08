@@ -37,6 +37,8 @@ class OpenICLInferTask(BaseTask):
         self.node_rank = run_cfg.get('node_rank', 0)
         self.master_addr = run_cfg.get('master_addr', "localhost")
         self.logger = get_logger()
+        self.inferencer = None
+        self.model_cfg =None
 
     def get_command(self, cfg_path, template):
         """Get the command template for the task.
@@ -99,6 +101,17 @@ class OpenICLInferTask(BaseTask):
                     continue
                 self._inference()
 
+    def build_inference(self):
+        inferencer_cfg = self.infer_cfg['inferencer']
+        inferencer_cfg['model'] = self.model
+        self._set_default_value(inferencer_cfg, 'max_out_len',
+                                self.max_out_len)
+        self._set_default_value(inferencer_cfg, 'min_out_len',
+                                self.min_out_len)
+        self._set_default_value(inferencer_cfg, 'batch_size', self.batch_size)
+        inferencer_cfg['max_seq_len'] = self.model_cfg.get('max_seq_len')
+        self.inferencer = ICL_INFERENCERS.build(inferencer_cfg)
+        
     def _inference(self):
         self.logger.info(
             f'Start inferencing {task_abbr_from_cfg(self.sub_cfg)}')
@@ -118,15 +131,9 @@ class OpenICLInferTask(BaseTask):
         retriever = ICL_RETRIEVERS.build(retriever_cfg)
 
         # set inferencer's default value according to model's config'
-        inferencer_cfg = self.infer_cfg['inferencer']
-        inferencer_cfg['model'] = self.model
-        self._set_default_value(inferencer_cfg, 'max_out_len',
-                                self.max_out_len)
-        self._set_default_value(inferencer_cfg, 'min_out_len',
-                                self.min_out_len)
-        self._set_default_value(inferencer_cfg, 'batch_size', self.batch_size)
-        inferencer_cfg['max_seq_len'] = self.model_cfg.get('max_seq_len')
-        inferencer = ICL_INFERENCERS.build(inferencer_cfg)
+        self.build_inference()
+        
+        self.inferencer.update_model_cfg(self.model_cfg)
 
         out_path = get_infer_output_path(
             self.model_cfg, self.dataset_cfg,
@@ -136,18 +143,18 @@ class OpenICLInferTask(BaseTask):
 
         if hasattr(self.infer_cfg, 'prompt_template') and \
                 hasattr(self.infer_cfg, 'ice_template'):
-            inferencer.inference(retriever,
+            self.inferencer.inference(retriever,
                                  ice_template=ice_template,
                                  prompt_template=prompt_template,
                                  output_json_filepath=out_dir,
                                  output_json_filename=out_file)
         elif hasattr(self.infer_cfg, 'prompt_template'):
-            inferencer.inference(retriever,
+            self.inferencer.inference(retriever,
                                  prompt_template=prompt_template,
                                  output_json_filepath=out_dir,
                                  output_json_filename=out_file)
         else:
-            inferencer.inference(retriever,
+            self.inferencer.inference(retriever,
                                  ice_template=ice_template,
                                  output_json_filepath=out_dir,
                                  output_json_filename=out_file)

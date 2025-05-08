@@ -22,7 +22,8 @@ models = [
             repetition_penalty = 1.03,
         ),
         run_cfg = dict(num_gpus=1, num_procs=1),  # 多卡/多机多卡 参数，使用torchrun拉起任务
-        max_out_len=100,
+        max_out_len=100, # 最大输出token长度
+        batch_size=1, # 每次推理的batch size
         max_seq_len=2048,
         batch_padding=True,
     )

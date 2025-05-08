@@ -102,7 +102,7 @@ for _name in cmmlu_all_sets:
             ),
         ),
         retriever=dict(type=ZeroRetriever),
-        inferencer=dict(type=GenInferencer, batch_size=32),
+        inferencer=dict(type=GenInferencer),
     )
     cmmlu_eval_cfg = dict(
         evaluator=dict(type=AccEvaluator),

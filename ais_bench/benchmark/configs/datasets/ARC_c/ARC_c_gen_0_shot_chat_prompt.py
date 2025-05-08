@@ -28,7 +28,7 @@ ARC_c_infer_cfg = dict(
             ], ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=1),
+    inferencer=dict(type=GenInferencer),
 )
 
 ARC_c_eval_cfg = dict(

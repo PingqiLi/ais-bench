@@ -28,7 +28,7 @@ for category in categories:
             ice_token='</E>'
             ),
             retriever=dict(type=FixKRetriever, fix_id_list=[0, 1, 2, 3, 4]),
-            inferencer=dict(type=GenInferencer, batch_size=64)
+            inferencer=dict(type=GenInferencer)
     )
 
     mmlu_pro_eval_cfg = dict(

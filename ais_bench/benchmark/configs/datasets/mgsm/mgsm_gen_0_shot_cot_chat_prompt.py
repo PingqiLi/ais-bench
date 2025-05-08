@@ -35,7 +35,7 @@ for lang in ALL_LANGUAGES:
             ),
         ),
         retriever=dict(type=ZeroRetriever),
-        inferencer=dict(type=GenInferencer, batch_size=1),
+        inferencer=dict(type=GenInferencer),
     )
 
     mgsm_eval_cfg = dict(

@@ -13,7 +13,7 @@ gsm8k_infer_cfg = dict(
             ],
         )),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=1, stopping_criteria=['Question']))
+    inferencer=dict(type=GenInferencer, stopping_criteria=['Question']))
 
 gsm8k_eval_cfg = dict(evaluator=dict(type=Gsm8kEvaluator),
                       pred_postprocessor=dict(type=gsm8k_postprocess),

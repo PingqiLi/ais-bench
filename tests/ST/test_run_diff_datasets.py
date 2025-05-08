@@ -23,6 +23,12 @@ DATASETS_CONFIGS_LIST = [
     "humanevalx",
 ]
 
+
+class Response:
+    def __init__(self, response:str = "Answer is :C"):
+        data = {'choices': [{"text": response}]}
+        self.data = f"{json.dumps(data)}".encode()
+
 class TestClass:
     @classmethod
     def setup_class(cls):
@@ -61,7 +67,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -100,7 +106,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -139,7 +145,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -177,7 +183,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -212,7 +218,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -247,7 +253,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -284,7 +290,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--summarizer", "example","--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -324,7 +330,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -359,7 +365,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -394,7 +400,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -429,7 +435,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -463,7 +469,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -499,7 +505,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -538,7 +544,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -643,7 +649,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 
@@ -1351,7 +1357,7 @@ class TestClass:
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
         monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._get_service_model_path", lambda *arg: "qwen2")
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response(fake_prediction))
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 

@@ -6,7 +6,7 @@ from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
 from ais_bench.benchmark.utils.prompt import PromptList, safe_format
 from ais_bench.benchmark.utils.types import _check_type_list
 
-PromptType = Union[PromptList, str]
+PromptType = Union[PromptList, str, dict]
 
 
 @ICL_PROMPT_TEMPLATES.register_module()

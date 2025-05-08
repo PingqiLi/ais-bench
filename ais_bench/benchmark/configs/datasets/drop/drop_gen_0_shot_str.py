@@ -18,7 +18,7 @@ drop_infer_cfg = dict(
         template='{prompt}'
         ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, stopping_criteria=['---', 'Passage', 'Question', 'You will be asked'], batch_size=1),
+    inferencer=dict(type=GenInferencer, stopping_criteria=['---', 'Passage', 'Question', 'You will be asked']),
     )
 
 drop_eval_cfg = dict(evaluator=dict(type=DropOpenAIEvaluator))

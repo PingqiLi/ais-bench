@@ -3,3 +3,8 @@ from .openai_chat_stream_client import OpenAIChatStreamClient
 from .tgi_stream_client import TGIStreamClient
 from .triton_stream_client import TritonStreamClient
 from .openai_stream_client import OpenAIStreamClient
+from .tgi_text_client import TGITextClient
+from .triton_text_client import TritonTextClient
+from .openai_text_client import OpenAITextClient
+from .openai_chat_text_client import OpenAIChatTextClient
+from .vllm_text_client import VLLMTextClient

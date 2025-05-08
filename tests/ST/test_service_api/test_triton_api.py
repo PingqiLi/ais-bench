@@ -7,6 +7,12 @@ import pytest
 from ais_bench.benchmark.cli.main import main
 
 
+class Response:
+    def __init__(self):
+        data = {"text_output": "11"}
+        self.data = f"{json.dumps(data)}".encode()
+
+
 class TestClass:
     @classmethod
     def setup_class(cls):
@@ -30,14 +36,14 @@ class TestClass:
     # mode all
     def test_triton_api_general_all_default(self, monkeypatch):
         fake_prediction = "11"
-        fake_time_str = "aime2024_gen_0_shot_str"
+        fake_time_str = "triton_aime2024_gen_0_shot_str"
         datasets_abbr_name = "aime2024"
         datasets_script_name = "aime2024_gen_0_shot_str"
 
         monkeypatch.setattr('sys.argv',
             ["ais_bench", "--models", "triton_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
-        monkeypatch.setattr("ais_bench.benchmark.models.triton_api.TritonCustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response())
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 

@@ -27,7 +27,7 @@ gpqa_infer_cfg = dict(
                 dict(role='HUMAN', prompt=align_prompt),
             ], )),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=64))
+    inferencer=dict(type=GenInferencer))
 
 gpqa_eval_cfg = dict(evaluator=dict(type=GPQAEvaluator),
                      pred_postprocessor=dict(type=GPQA_Simple_Eval_postprocess))

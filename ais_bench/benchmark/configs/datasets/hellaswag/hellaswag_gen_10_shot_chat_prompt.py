@@ -37,7 +37,7 @@ hellaswag_infer_cfg = dict(
         ice_token='</E>',
     ),
     retriever=dict(type=FixKRetriever, fix_id_list=list(range(10))),
-    inferencer=dict(type=GenInferencer, batch_size=1),
+    inferencer=dict(type=GenInferencer),
 )
 
 hellaswag_eval_cfg = dict(

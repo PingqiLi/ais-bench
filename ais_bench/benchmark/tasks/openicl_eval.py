@@ -113,7 +113,7 @@ class OpenICLEvalTask(BaseTask):
         else:
             if osp.exists(osp.realpath(filename)):
                 preds = mmengine.load(filename)
-                preds = [preds[str(i)] for i in range(len(preds))]
+                preds = list(preds.values())
             else:
                 filename = partial_filename
                 preds = []

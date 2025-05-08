@@ -23,7 +23,7 @@ gsm8k_infer_cfg = dict(
             ],
         )),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=1))
+    inferencer=dict(type=GenInferencer))
 
 gsm8k_eval_cfg = dict(evaluator=dict(type=Gsm8kEvaluator),
                       pred_postprocessor=dict(type=gsm8k_postprocess),

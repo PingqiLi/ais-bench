@@ -210,8 +210,9 @@ def fill_perf_cfg(cfg, args):
             partitioner=dict(type=get_config_type(PerformancePartitioner)),
             runner=dict(
                 max_num_workers=args.max_num_workers,
-                concurrent_users=2,
+                num_prompts=args.num_prompts,
                 debug=args.debug,
+                disable_cb=args.disable_cb,
                 task=dict(type=get_config_type(OpenICLPerfTask)),
                 type=get_config_type(LocalAPIRunner)
             )), )
@@ -224,6 +225,7 @@ def fill_perf_cfg(cfg, args):
                 max_num_workers=args.max_num_workers,
                 max_workers_per_gpu=args.max_workers_per_gpu,
                 debug=args.debug,
+                disable_cb=args.disable_cb,
                 task=dict(type=get_config_type(OpenICLPerfTask)),
                 type=get_config_type(LocalRunner)
             )), )
@@ -240,14 +242,14 @@ def fill_merged_infer_cfg(cfg, args):
             partitioner=dict(type=get_config_type(PerformancePartitioner)),
             runner=dict(
                 max_num_workers=args.max_num_workers,
-                concurrent_users=2,
                 debug=args.debug,
+                disable_cb=args.disable_cb,
                 task=dict(type=get_config_type(OpenICLInferMergedTask)),
                 type=get_config_type(LocalAPIRunner),
             )), )
-        if not args.disable_cb:
+        if args.disable_cb:
             for data_config in cfg['datasets']:
-                data_config['infer_cfg']['inferencer']['concurrency'] = 1
+                data_config['infer_cfg']['inferencer']['disable_cb'] = True
     else:
         new_cfg = dict(infer=dict(
             partitioner=dict(type=get_config_type(PerformancePartitioner)),
@@ -255,6 +257,7 @@ def fill_merged_infer_cfg(cfg, args):
                 max_num_workers=args.max_num_workers,
                 max_workers_per_gpu=args.max_workers_per_gpu,
                 debug=args.debug,
+                disable_cb=args.disable_cb,
                 task=dict(type=get_config_type(OpenICLInferMergedTask)),
                 type=get_config_type(LocalRunner)
             )), )
@@ -272,20 +275,21 @@ def fill_infer_cfg(cfg, args):
             partitioner=dict(type=get_config_type(NaivePartitioner)),
             runner=dict(
                 max_num_workers=args.max_num_workers,
-                concurrent_users=2,
                 debug=args.debug,
+                disable_cb=args.disable_cb,
                 task=dict(type=get_config_type(OpenICLInferTask)),
                 type=get_config_type(LocalAPIRunner),
             )), )
-        if not args.disable_cb:
+        if args.disable_cb:
             for data_config in cfg['datasets']:
-                data_config['infer_cfg']['inferencer']['concurrency'] = 1
+                data_config['infer_cfg']['inferencer']['disable_cb'] = True
     else:
         new_cfg = dict(infer=dict(
             partitioner=dict(type=get_config_type(NaivePartitioner)),
             runner=dict(
                 max_num_workers=args.max_num_workers,
                 max_workers_per_gpu=args.max_workers_per_gpu,
+                disable_cb=args.disable_cb,
                 debug=args.debug,
                 task=dict(type=get_config_type(OpenICLInferTask)),
                 type=get_config_type(LocalRunner),

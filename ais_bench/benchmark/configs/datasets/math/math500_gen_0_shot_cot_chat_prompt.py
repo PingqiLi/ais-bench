@@ -19,7 +19,7 @@ math_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=16),
+    inferencer=dict(type=GenInferencer),
 )
 
 math_eval_cfg = dict(evaluator=dict(type=MATHEvaluator))

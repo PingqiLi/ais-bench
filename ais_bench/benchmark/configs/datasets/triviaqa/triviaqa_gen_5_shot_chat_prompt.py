@@ -20,7 +20,7 @@ for k in [5]:
                 )
             ),
             retriever=dict(type=ZeroRetriever),
-            inferencer=dict(type=GenInferencer, batch_size=1)
+            inferencer=dict(type=GenInferencer)
         )
     else:
         triviaqa_infer_cfg = dict(
@@ -45,7 +45,7 @@ for k in [5]:
                 ice_token='</E>',
             ),
             retriever=dict(type=FixKRetriever, fix_id_list=list(range(k))),
-            inferencer=dict(type=GenInferencer, batch_size=1),
+            inferencer=dict(type=GenInferencer),
         )
 
     triviaqa_eval_cfg = dict(evaluator=dict(type=TriviaQAEvaluator), pred_role='BOT')

@@ -32,7 +32,8 @@ models = [
             seed = None,
             repetition_penalty = 1.03,
         ),
-        max_out_len=100,
+        max_out_len=100, # 最大输出token长度
+        batch_size=1, # 每次推理batch size
         max_seq_len=2048,
         batch_padding=True,
     )
@@ -43,7 +44,6 @@ infer = dict(partitioner=dict(type=NaivePartitioner),
              runner=dict(
                  type=LocalAPIRunner,
                  max_num_workers=2,
-                 concurrent_users=2,
                  task=dict(type=OpenICLInferTask)), )
 
 work_dir = 'outputs/hf-chat-model/'

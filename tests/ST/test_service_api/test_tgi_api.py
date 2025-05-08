@@ -5,6 +5,13 @@ import sys
 import logging
 import pytest
 from ais_bench.benchmark.cli.main import main
+import pandas as pd
+
+
+class Response:
+    def __init__(self):
+        data = {"generated_text": "11"}
+        self.data = f"{json.dumps(data)}".encode()
 
 
 class TestClass:
@@ -30,14 +37,14 @@ class TestClass:
     # mode all
     def test_tgi_api_general_all_default(self, monkeypatch):
         fake_prediction = "11"
-        fake_time_str = "aime2024_gen_0_shot_str"
+        fake_time_str = "tgi_aime2024_gen_0_shot_str"
         datasets_abbr_name = "aime2024"
         datasets_script_name = "aime2024_gen_0_shot_str"
 
         monkeypatch.setattr('sys.argv',
             ["ais_bench", "--models", "tgi_api_general", "--datasets", datasets_script_name,
             "--mode", "all", "-w", self.test_data_path])
-        monkeypatch.setattr("ais_bench.benchmark.models.tgi_api.TGICustomAPI._generate", lambda *arg: fake_prediction)
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response())
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg: fake_time_str)
         main()
 

@@ -11,7 +11,7 @@ humanevalx_infer_cfg = dict(
         type=PromptTemplate,
         template='{prompt}'),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=16))
+    inferencer=dict(type=GenInferencer))
 
 humanevalx_eval_cfg_dict = {
     lang: dict(

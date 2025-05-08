@@ -31,7 +31,7 @@ ARC_c_infer_cfg = dict(
         ice_token='</E>',
     ),
     retriever=dict(type=FixKRetriever, fix_id_list=[i for i in range(25)]),
-    inferencer=dict(type=GenInferencer, batch_size=1),
+    inferencer=dict(type=GenInferencer),
 )
 
 ARC_c_eval_cfg = dict(

@@ -16,7 +16,7 @@ aime2024_infer_cfg = dict(
         template='{question}\nPlease reason step by step, and put your final answer within \\boxed{}.'
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=1)
+    inferencer=dict(type=GenInferencer)
 )
 
 aime2024_eval_cfg = dict(

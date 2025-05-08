@@ -24,7 +24,7 @@ hellaswag_infer_cfg = dict(
         ]),
     ),
     retriever=dict(type=ZeroRetriever, ),
-    inferencer=dict(type=GenInferencer, batch_size=1),
+    inferencer=dict(type=GenInferencer),
 )
 
 hellaswag_eval_cfg = dict(

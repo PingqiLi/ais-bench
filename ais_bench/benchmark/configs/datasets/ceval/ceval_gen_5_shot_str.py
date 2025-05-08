@@ -73,7 +73,7 @@ for _split in ['val']:
                 ice_token='</E>',
             ),
             retriever=dict(type=FixKRetriever, fix_id_list=[0, 1, 2, 3, 4]),
-            inferencer=dict(type=GenInferencer, batch_size=1),
+            inferencer=dict(type=GenInferencer),
         )
 
         ceval_eval_cfg = dict(

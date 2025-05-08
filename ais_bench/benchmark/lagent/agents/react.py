@@ -106,7 +106,7 @@ class ReAct(_ReAct):
                 inner_step=self._inner_history,
                 action_executor=self._action_executor,
                 force_stop=(turn == self.max_turn - 1))
-            response = self._llm.generate_from_template(prompt, 512)
+            response = self._llm.generate_from_template(prompt, max_out_len=512)
             self._inner_history.append(dict(role='assistant',
                                             content=response))
             thought, action, action_input = self._protocol.parse(
@@ -171,7 +171,7 @@ class CIReAct(ReAct):
                 inner_step=self._inner_history,
                 action_executor=self._action_executor,
                 force_stop=force_stop)
-            response = self._llm.generate_from_template(prompt, 512)
+            response = self._llm.generate_from_template(prompt, max_out_len=512)
             self._inner_history.append(dict(role='assistant',
                                             content=response))
             thought, action, action_input = self._protocol.parse(
@@ -224,7 +224,7 @@ class CIReActMergeRole(CIReAct):
                 action_executor=self._action_executor,
                 force_stop=force_stop)
             prompt = self.merge_role(prompt)
-            response = self._llm.generate_from_template(prompt, 512)
+            response = self._llm.generate_from_template(prompt, max_out_len=512)
             self._inner_history.append(dict(role='assistant',
                                             content=response))
             thought, action, action_input = self._protocol.parse(

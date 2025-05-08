@@ -78,6 +78,11 @@ def parse_args():
                         'in the config.',
                         type=int,
                         default=1)
+    parser.add_argument('--num-prompts',
+                        help='Num Prompts, Specify the number of prompts to evaluate. '
+                        'If not provided, all prompts will be evaluated. ',
+                        type=int,
+                        default=None)
 
     # evaluatation add
     parser.add_argument(
@@ -167,6 +172,10 @@ def main():
     output_config_path = osp.join(cfg.work_dir, 'configs',
                                   f'{cfg_time_str}_{os.getpid()}.py')
     cfg.dump(output_config_path)
+    # eval nums set
+    if args.num_prompts and args.num_prompts <= 0:
+        raise ValueError("Num Prompts must be a positive integer greater than 0.")
+    cfg['num_prompts'] = args.num_prompts
     # Config is intentally reloaded here to avoid initialized
     # types cannot be serialized
     cfg = Config.fromfile(output_config_path, format_python_code=False)

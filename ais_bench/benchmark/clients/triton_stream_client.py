@@ -8,7 +8,7 @@ from ais_bench.benchmark.utils import MiddleData
 class TritonStreamClient(BaseStreamClient, ABC):
     def construct_request_body(
         self,
-        inputs: MiddleData,
+        inputs: str,
         parameters: dict = None,
     ) -> dict:
         return dict(id=str(uuid.uuid4()), text_input=inputs, parameters=parameters)

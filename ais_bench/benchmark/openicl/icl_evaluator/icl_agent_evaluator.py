@@ -8,7 +8,7 @@ from typing import List
 import numpy as np
 import requests
 
-from ais_bench.benchmark.models import OpenAI
+from openai import OpenAI
 
 from .icl_base_evaluator import BaseEvaluator
 

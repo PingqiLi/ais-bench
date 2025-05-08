@@ -23,7 +23,7 @@ aime2024_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=1)
+    inferencer=dict(type=GenInferencer)
 )
 
 aime2024_eval_cfg = dict(

@@ -4,28 +4,56 @@ import re
 from abc import abstractmethod, ABC
 
 import urllib3
+import threading
 
 from ais_bench.benchmark.utils import get_logger
 from ais_bench.benchmark.utils.results import MiddleData
+import urllib3.util
 
+RETRY_ERROR_LIST = [104]
 
 def _stream_data_split(stream_data_line):
     stream_data_line = stream_data_line.lstrip("data:").rstrip("\n\0")
     stream_data_line = stream_data_line.replace("}\x00{", "}{")
-    stream_data_line = re.sub(r"\}\s*data:{", "} ,{", stream_data_line)
+    stream_data_line = re.sub(r"\}\s*data:\s*{", "} ,{", stream_data_line)
     stream_data_line = "[" + stream_data_line + "]"
     json_obj_arr = json.loads(stream_data_line)
     return json_obj_arr
 
 
+class AisBenchClientException(Exception):
+    def __init__(self, message):
+        super().__init__()
+        if len(message) == 0 or len(message) > 512000:
+            raise ValueError("The length of message should be in range[1, 512000], \
+                but got {}".format(len(message)))
+        self._error_message = message
+
+    def get_message(self):
+        return self._error_message
+
+def raise_error(message, lock, request_counter):
+    with lock:
+        request_counter['failed_num'] += 1
+    logger = get_logger()
+    logger.error(message)
+    raise AisBenchClientException(message=message) from None
+
 class BaseClient(ABC):
-    def __init__(self, url):
+    def __init__(self, url, retry):
         self.logger = get_logger()
         self.valid_url = url
         self._timeout = None
         self._is_stream = False
         self.do_performance = False
-        self._http_pool_manager = urllib3.PoolManager()
+        self.request_counter = dict(get_req_num=0, failed_num=0)
+        self.lock = threading.Lock()
+        retries = urllib3.util.Retry(
+            total=retry,
+            status_forcelist=RETRY_ERROR_LIST, # Retry if  Connection aborted
+            allowed_methods=["POST"]
+        )
+        self._http_pool_manager = urllib3.PoolManager(retries=retries)
 
     def __del__(self):
         self.close()
@@ -38,9 +66,8 @@ class BaseClient(ABC):
     ) -> dict:
         pass
 
-    @abstractmethod
     def process_response(self, response, last_time_point):
-        pass
+        return json.loads(response.data.decode())
 
     @abstractmethod
     def update_middle_data(self, res, inputs):
@@ -52,12 +79,19 @@ class BaseClient(ABC):
         input.start_time = start_time
         input.end_time = time.perf_counter()
         input.req_latency = (input.end_time - input.start_time) * 1000
-
+        
+    def set_request_counter(self,  request_counter):
+        self.request_counter = request_counter
+            
     def set_performance(self):
         self.do_performance = True
 
     def close(self):
         self._http_pool_manager.clear()
+    
+    def rev_count(self):
+        with self.lock:
+            self.request_counter['get_req_num'] += 1
 
     def do_request(
         self,
@@ -90,36 +124,34 @@ class BaseClient(ABC):
                 response_obj = json.loads(response_raw.data.decode())
                 err_msg = response_obj.get("error", None)
                 if err_msg:
-                    self.logger.error(
-                        "Request failed, response from server is {}.".format(err_msg)
-                    )
+                    raise_error(
+                        "Request failed, response from server is {}.".format(err_msg),
+                    self.lock,
+                    self.request_counter)
                 res_ = self.process_response(response_raw, start_time)
                 response = [self.update_middle_data(res_, inputs)]
             else:
                 response = []
                 for res_ in self.process_response(response_raw, start_time):
                     response.append(self.update_middle_data(res_, inputs))
+            self.rev_count()
             self.update_request_time(inputs, start_time)
-
+            return "".join(response)
         except urllib3.exceptions.TimeoutError:
-            self.logger.error("The http request timeout.")
-        except urllib3.exceptions.RequestError as err:
-            self.logger.error("Request failed and the reason is {}.".format(err))
-        except json.JSONDecodeError as err:
-            self.logger.error("Request failed and the reason is {}.".format(err))
-        return "".join(response)
+            raise_error("The http request timeout.", self.lock, self.request_counter)
+        except Exception as err:
+            raise_error("Request Failed :{}.".format(err), self.lock, self.request_counter)
+        
 
 
 class BaseStreamClient(BaseClient, ABC):
-    def __init__(self, url):
-        super().__init__(url)
+    def __init__(self, url, retry):
+        super().__init__(url, retry)
         self._is_stream = True
 
     def preprocess_cur_line(self, cur_line: str) -> str:
         if cur_line == "engine callback timeout.":
-            self.logger(
-                "[MIE02E000407] Engine time out. The tokens generation might be incomplete."
-            )
+            raise_error("Engine time out. The tokens generation might be incomplete.", self.lock, self.request_counter)
         return cur_line
 
     @abstractmethod
@@ -144,6 +176,4 @@ class BaseStreamClient(BaseClient, ABC):
                     time_name = "decode_time"
                     last_time_point = time.perf_counter()
             except Exception as error:
-                self.logger.error(
-                    f"Request failed and the reason is {error}, response from server is: {cur_line}"
-                )
+                raise ValueError("[Error] %r! Response from server is: %r" % (error, cur_line))

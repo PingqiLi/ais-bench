@@ -1,20 +1,28 @@
+import os
 import re
 import sys
 import threading
 import time
+import json
+import tempfile
 import warnings
+from tqdm import tqdm
 from abc import abstractmethod
 from copy import deepcopy
 from queue import Queue
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from time import sleep
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Any
 
 from ais_bench.benchmark.utils import get_logger
 from ais_bench.benchmark.utils.prompt import PromptList
 
 from .base import BaseModel
 
-PromptType = Union[PromptList, str]
+
+PromptType = Union[PromptList, str, dict]
+
+LOG_PER_REQUEST = 10
 
 
 class BaseAPIModel(BaseModel):
@@ -22,7 +30,7 @@ class BaseAPIModel(BaseModel):
 
     Args:
         path (str): The path to the model.
-        query_per_second (int): The maximum queries allowed per second
+        request_rate (int): The maximum queries allowed per second
             between two consecutive calls of the API. Defaults to 1.
         retry (int): Number of retires if the API call fails. Defaults to 2.
         max_seq_len (int): The maximum sequence length of the model. Defaults
@@ -38,23 +46,33 @@ class BaseAPIModel(BaseModel):
 
     def __init__(self,
                  path: str,
-                 query_per_second: int = 1,
+                 request_rate: int = 1,
                  rpm_verbose: bool = False,
                  retry: int = 2,
                  max_seq_len: int = 2048,
                  meta_template: Optional[Dict] = None,
                  generation_kwargs: Dict = dict(),
                  verbose: bool = False):
+        self.logger = get_logger()
         self.path = path
+        self.tqdm_pos = -1
         self.max_seq_len = max_seq_len
         self.meta_template = meta_template
         self.retry = retry
-        self.query_per_second = query_per_second
-        self.token_bucket = TokenBucket(query_per_second, rpm_verbose)
+        self.rpm_verbose = rpm_verbose
+        self.request_rate = request_rate
+        self.token_bucket = None
         self.template_parser = APITemplateParser(meta_template)
-        self.logger = get_logger()
         self.generation_kwargs = generation_kwargs
         self.verbose = verbose
+        self.request_counter = dict(post_req_num=0, get_req_num=0, failed_num=0)
+        self.lock = threading.Lock()
+        self.result_cache = []
+        self.post_time = 0
+        self.rec_time = 0
+        self.start_time = 0
+        self.tmp_result_queue = Queue(-1)
+        self.task_finish = False
 
     @abstractmethod
     def generate(self, inputs: List[PromptType],
@@ -73,6 +91,167 @@ class BaseAPIModel(BaseModel):
         raise NotImplementedError(f'{self.__class__.__name__} does not support'
                                   ' gen-based evaluation yet, try ppl-based '
                                   'instead.')
+    
+    def delay_generate(self):
+        if hasattr(self, 'tokens') and self.tokens:
+            self.tokens.acquire()
+            
+    def set_description(self, p_log):
+        num_width = max(
+            len(str(self.get_req_num)),
+            len(str(self.failed_num)),
+            5
+        ) + 2 
+        
+        rec_time = max(0, self.rec_time - self.start_time)
+        post_time = max(0, self.post_time - self.start_time)
+        time_width = len(str(rec_time).split('.'))
+        left_num = num_width + 2
+        left_time = time_width + 2
+
+        desc = (
+            f"{'Pid:':<{left_num}}{os.getpid():>{num_width}d} | "
+            f"{'Post:':<{left_num}}{self.post_req_num:>{num_width}d} | "
+            f"{'Received:':<{left_num}}{self.get_req_num:>{num_width}d} | "
+            f"{'Failed:':<{left_num}}{self.failed_num:>{num_width}d} | "
+            f"{'Post Time:':<{left_time}}{post_time:>{time_width}.2f}s | "
+            f"{'Receive Time:':<{left_time}}{rec_time:>{time_width}.2f}s"
+        )
+        p_log.set_description(desc)
+
+    def draw_plog(self, ori_nums, length, pos):
+        p_log = tqdm(total=0, desc="", position=3 * pos + 1, bar_format="{desc}", leave=True)
+        with tqdm(total=ori_nums, initial=ori_nums - length, desc=f"Process-{pos} pid:{str(os.getpid())}", delay=0.01, position=3 * pos , ascii=False) as pbar:
+            prev = 0
+            pre_post = 0
+            pre_get = 0
+            pre_failed = 0
+            while True:
+                self.post_req_num = len(self.result_cache)
+                self.get_req_num =  self.request_counter.get('get_req_num')
+                self.failed_num = self.request_counter.get('failed_num')
+                if self.post_req_num != pre_post:
+                    pre_post = self.post_req_num
+                    if pre_post % LOG_PER_REQUEST == 0 or pre_post >= length:
+                        self.post_time = time.perf_counter()
+                        self.set_description(p_log)
+                if self.get_req_num != pre_get or pre_failed != self.failed_num:
+                    pre_get = self.get_req_num
+                    pre_failed = self.failed_num
+                cur = self.failed_num + self.get_req_num
+                if cur != prev:
+                    pbar.update(cur - prev)
+                    prev = cur
+                    if cur % LOG_PER_REQUEST == 0 :
+                        self.rec_time = time.perf_counter()
+                        self.set_description(p_log)
+                if cur >= length or self.task_finish:
+                    self.rec_time = time.perf_counter()
+                    self.set_description(p_log)
+                    break
+                time.sleep(0.1)
+        p_log.close()
+        
+    def save_tmp_result(self, tmp_result_json_path):
+        """Read tmp cache queue to save inference results in real time."""
+        res_cache = dict()
+        cur_res_num = 0
+        def update(tmp_res):
+            data_id = str(tmp_res.get("data_id", "-1"))
+            res_cache[data_id] = dict(
+                origin_prompt=tmp_res.get("origin_prompt"),
+                prediction=tmp_res.get("prediction"),
+            )
+            if tmp_res.get('gold'):
+                res_cache[data_id]['gold'] = tmp_res.get('gold')
+            
+        while True:
+            tmp_res = self.tmp_result_queue.get()
+            if not tmp_res or self.task_finish:
+                while tmp_res:
+                    update(tmp_res)
+                    tmp_res = self.tmp_result_queue.get()
+                self._atomic_dump(res_cache, tmp_result_json_path)
+                break
+            update(tmp_res)
+            cur_res_num += 1
+            if cur_res_num % LOG_PER_REQUEST == 0:
+                self._atomic_dump(res_cache, tmp_result_json_path)
+
+    def _atomic_dump(self, data: dict, target_path: str):
+        """Atomically write JSON data to target_path."""
+        dir_name = os.path.dirname(target_path) or '.'
+        # Write to temporary file in same directory
+        with tempfile.NamedTemporaryFile('w', dir=dir_name, delete=False, encoding='utf-8') as tf:
+            json.dump(data, tf, indent=4, ensure_ascii=False)
+            tf.flush()
+            os.fsync(tf.fileno())
+            temp_path = tf.name
+        # Replace target file atomically
+        os.replace(temp_path, target_path)
+    
+    def generate_from_queue(
+        self,
+        data_queue: Any,
+        **extra_gen_kwargs: Any
+    ) -> None:
+        """Consume items from a queue and generate outputs concurrently, with optional rate limiting and progress logging.
+
+        Args:
+            data_queue (Queue): A thread-safe queue supplying input data items.
+            pos (int, optional): Position index for the progress bar display.
+            max_out_len (int, optional): Maximum length of each generated output (default: 1).
+            concurrency (int): Number of worker threads in the pool.
+            data_nums (int): Total expected number of items to process (for logging).
+            qps (float): Rate limit in queries per second; if <= 0, no rate limiting is applied.
+            rpm_verbose (bool, optional): Verbosity flag for rate limiter logging (in TokenBucket).
+
+        Returns:
+            None: This method runs until the queue is exhausted and then exits.
+        """
+        self.tqdm_pos = extra_gen_kwargs.get("process_id")
+        tmp_result_dir = extra_gen_kwargs.get('tmp_result_dir')
+        max_out_len = extra_gen_kwargs.get("max_out_len", 1)
+        concurrency = extra_gen_kwargs.get("concurrency")
+        ori_nums = extra_gen_kwargs.get("ori_nums")
+        data_nums = extra_gen_kwargs.get("data_nums")
+        qps = extra_gen_kwargs.get("qps")
+        if qps > 0:
+            self.token_bucket = TokenBucket(qps, self.rpm_verbose)
+        else:
+            self.token_bucket = None
+        if hasattr(self, 'client'):
+            self.client.set_request_counter(self.request_counter)
+        
+        if (not hasattr(self, "do_performance")) or (not self.do_performance):
+            os.makedirs(tmp_result_dir, exist_ok=True)
+            tmp_result_json_path = os.path.join(tmp_result_dir, f"tmp_{self.tqdm_pos}_{os.getpid()}_{str(time.time()).split('.')[0]}.json")
+            tmp_save_thread = threading.Thread(target=self.save_tmp_result, args=(tmp_result_json_path,), daemon=True)
+            tmp_save_thread.start()
+        else:
+            tmp_save_thread = None
+        draw_thread = threading.Thread(target=self.draw_plog, args=(ori_nums, data_nums, self.tqdm_pos,), daemon=True)
+        draw_thread.start()
+        pool_size = concurrency
+        self.start_time = time.perf_counter()
+        try:
+            with ThreadPoolExecutor(max_workers=pool_size) as executor:
+                input_data = data_queue.get()
+                while input_data is not None:
+                    executor.submit(self._generate, input_data, max_out_len)
+                    input_data = data_queue.get()
+                data_queue.put(None)
+        except KeyboardInterrupt:
+            self.logger.warning("Interrupted by user (Ctrl+C).")
+        except Exception as e:
+            self.logger.error(f"Infer task end because erro: {e}")
+        finally:
+            self.task_finish = True
+            self.tmp_result_queue.put(None)
+            draw_thread.join()
+            if tmp_save_thread:
+                tmp_save_thread.join()
+            
 
     def flush(self):
         """Ensure simultaneous emptying of stdout and stderr when concurrent
@@ -89,7 +268,7 @@ class BaseAPIModel(BaseModel):
     def acquire(self):
         """Acquire concurrent resources if exists.
 
-        This behavior will fall back to wait with query_per_second if there are
+        This behavior will fall back to wait with request_rate if there are
         no concurrent resources.
         """
         if hasattr(self, 'tokens'):
@@ -155,6 +334,8 @@ class BaseAPIModel(BaseModel):
 
         Applicable in both single-thread and multi-thread environments.
         """
+        if not self.token_bucket:
+            return
         return self.token_bucket.get_token()
 
     def to(self, device):
@@ -427,7 +608,7 @@ class TokenBucket:
     """A token bucket for rate limiting.
 
     Args:
-        query_per_second (float): The rate of the token bucket.
+        request_rate (float): The rate of the token bucket.
     """
 
     def __init__(self, rate, verbose=False):
@@ -463,15 +644,41 @@ class TokenBucket:
 
 
 def is_synthetic_string(input):
-    pattern = r'^A+[0-9]+$'
-    return bool(re.match(pattern, input))
+    pattern = r'^(A\s)+A[0-9]+$'
+    if isinstance(input, dict):
+        return bool(re.match(pattern, input.get('prompt')))
+    else:
+        return bool(re.match(pattern, input))
 
 
 def handle_synthetic_input(func):
-    def wrapper(self, input: str, max_out_len: int) -> str:
+    def wrapper(self, input: str | dict, max_out_len: int) -> str:
         # 检查是否是synthetic输入
-        if hasattr(self, "is_synthetic") and self.is_synthetic and is_synthetic_string(input):
-            max_out_len = int(input.split('A')[-1])  # 提取 max_out_len
-            input = input[:-len(input.split('A')[-1])]  # 去掉 max_out_len 部分
-        return func(self, input, max_out_len)
+        if isinstance(input, dict):
+            input_str = input.get('prompt')
+            if not input_str:
+                raise ValueError(f"Input dict:{input} has no prompt key")
+        elif isinstance(input, str):
+            input_str = input
+        else:
+            raise TypeError(f"Excepted str or dict ,but got {type(input)}")
+        if hasattr(self, "is_synthetic") and self.is_synthetic and is_synthetic_string(input_str):
+            max_out_len = int(input_str.split('A')[-1])  # 提取 max_out_len
+            input_str = input_str[:-len(input_str.split('A')[-1])]  # 去掉 max_out_len 部分
+            if isinstance(input, dict):
+                input['prompt'] = input_str
+            else:
+                input = input_str
+        self.acquire()
+        res = func(self, input, max_out_len)
+        if isinstance(input, dict) and  ((not hasattr(self, "do_performance")) or  (not self.do_performance)):
+            tmp_res = {
+                'data_id': input.get('data_id'),
+                'origin_prompt': input.get('prompt'),
+                'prediction': res,
+            }
+            if input.get('gold'):
+                tmp_res['gold'] = input.get('gold')
+            self.tmp_result_queue.put(tmp_res)
+        return res
     return wrapper

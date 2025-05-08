@@ -25,7 +25,7 @@ sanitized_mbpp_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=1),
+    inferencer=dict(type=GenInferencer),
 )
 
 sanitized_mbpp_eval_cfg = dict(evaluator=dict(type=MBPPPassKEvaluator), pred_role='BOT')

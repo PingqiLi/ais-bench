@@ -103,12 +103,7 @@ class GenModelPerfInferencer(GenInferencer):
         logger.info("Starting performance inference process...")
 
         # Prepare inference parameters
-        extra_gen_kwargs = {}
-        sig = inspect.signature(self.model.generate)
-        if "stopping_criteria" in sig.parameters:
-            extra_gen_kwargs["stopping_criteria"] = self.stopping_criteria
-        if "min_out_len" in sig.parameters:
-            extra_gen_kwargs["min_out_len"] = self.min_out_len
+        extra_gen_kwargs = self._build_extra_gen_kwargs()
 
         # Run inference
         with torch.no_grad():
@@ -116,7 +111,7 @@ class GenModelPerfInferencer(GenInferencer):
             for i in tqdm(range(0, len(entry), self.concurrency), desc="Processing", unit="batch", dynamic_ncols=True):
                 data = entry[i:i + self.concurrency]
                 results = self.model.generate_from_template(
-                        data, max_out_len=self.max_out_len, **extra_gen_kwargs)
+                        data, **extra_gen_kwargs)
         perf_results = self.model.handle_perf_result(output_filepath, output_filename)
 
         #Save performance results

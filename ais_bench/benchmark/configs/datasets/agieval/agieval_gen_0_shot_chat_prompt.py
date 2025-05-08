@@ -116,7 +116,7 @@ for _name in agieval_multiple_choices_sets:
                     role='HUMAN', prompt=f'{{question}}\n{{options}}\n{_hint}')
             ])),
         retriever=dict(type=ZeroRetriever),
-        inferencer=dict(type=GenInferencer, batch_size=16))
+        inferencer=dict(type=GenInferencer))
 
     agieval_eval_cfg = dict(
         evaluator=dict(type=AccEvaluator),

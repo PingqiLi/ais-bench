@@ -1,10 +1,6 @@
 import os
 import json
 import shutil
-import sys
-import logging
-import pytest
-import requests
 from unittest.mock import patch
 from ais_bench.benchmark.cli.main import main
 import pandas as pd
@@ -16,11 +12,7 @@ class Response:
         self.response = []
         for s in ["A","is","ben", "ch", "20"]:
             data = {
-                'id': 'chatcmpl-edb1d22693f04ff08f25db773b48f44d',
-                'object': 'chat.completion.chunk',
-                'created': 1743234544,
-                'model': '/data/weight/DeepSeek-R1-Distill-Qwen-7B/',
-                'choices': [{'index': 0, 'text': s, 'logprobs': None, 'finish_reason': None}]
+                "token":{"id": 29889,"text": s}, "generated_text": s,
             }
             self.response.append(f"data: {json.dumps(data)}\n")
     def stream(self,*args):
@@ -48,29 +40,28 @@ class TestClass:
         os.makedirs(self.test_data_path)
         self.perf_json_keys = ['Benchmark Duration', 'Total Requests', 'Failed Requests', 'Success Requests',
                                'Concurrency', 'Max Concurrency', 'Request Throughput', 'Total Input Tokens',
-                               'Prefill Token Throughput', 'Total Output Tokens', 'Input Token Throughput',
+                               'Prefill Token Throughput', 'Total generated tokens', 'Input Token Throughput',
                                'Output Token Throughput', 'Total Token Throughput']
         self.perf_csv_headers = ['Performance Parameters', 'Average', 'Min', 'Max',
                                   'Median', 'P75', 'P90', 'P99', 'N']
-        self.perf_csv_params = ['Latency', 'TTFT', 'TPOT', 'InputTokens', 'OutputTokens',
-                                'PrefillTokenThroughput', 'OutputTokenThroughput']
+        self.perf_csv_params = ['E2EL', 'TTFT', 'TPOT', 'InputTokens', 'OutputTokens',
+                                 'OutputTokenThroughput']
 
-    # mode infer
-    def test_vllm_stream_api_infer(self, monkeypatch):
+    #mode infer
+    def test_mindie_stream_api_infer(self, monkeypatch):
         fake_prediction = "Aisbench20"
-        fake_time_str = "vllm_stream_aime2024_gen_0_shot_str"
+        fake_time_str = "mindie_stream_aime2024_gen_0_shot_str"
         datasets_abbr_name = "aime2024"
         datasets_script_name = "aime2024_gen_0_shot_str"
         monkeypatch.setattr('sys.argv',
-            ["ais_bench", "--models", "vllm_api_general_stream", "--datasets", datasets_script_name,
+            ["ais_bench", "--models", "mindie_stream_api_general", "--datasets", datasets_script_name,
             "--mode", "infer", "-w", self.test_data_path])
         monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response())
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPIStream._get_service_model_path", lambda *arg: "qwen2")
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg, **kwargs: fake_time_str)
         main()
 
         # check infer out
-        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general-stream/{datasets_abbr_name}.json")
+        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/mindie-stream-api/{datasets_abbr_name}.json")
         assert os.path.exists(infer_outputs_json_path)
         with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
             data = json.load(file)
@@ -79,33 +70,32 @@ class TestClass:
         assert data.get(f"{AIME_DATA_COUNT - 1}").get("prediction") == fake_prediction
 
     # mode perf
-    def test_vllm_stream_api_perf(self, monkeypatch):
-        fake_perf_data = [{'id': '0', 'input_data': 'A A', 'input_token_id': [32, 362, 362],
+    def test_mindie_stream_api_perf(self, monkeypatch):
+        fake_perf_data = [{'id': 0, 'input_data': 'A A', 'input_token_id': [32, 362, 362],
                             'output': ' A A A', 'output_token_id': [362, 362, 362],
-                            'prefill_latency': 56.9, 'prefill_throughput': 333.6,
+                            'prefill_latency': 56.9,
                             'decode_token_latencies': [26.4, 28.4], 'last_decode_latency': 28.4,
                             'decode_max_token_latency': 28.4, 'seq_latency': 2700.04,
                             'input_tokens_len': 2, 'generate_tokens_len': 3,
                             'generate_tokens_speed': 37.03, 'input_characters_len': 3,
                             'generate_characters_len': 6, 'characters_per_token': 2.0,
                             'prefill_batch_size': 0, 'decode_batch_size': [], 'queue_wait_time': [],
-                            'request_id': '591c69416c694a6ab3194a06d6e1ed17',
+                            'request_id': '591c69416c694a6ab319·4a06d6e1ed17',
                             'start_time': 1742952029.5993671, 'end_time': 1742952032.299417,
                             'is_success': True, 'is_empty': False}]
-        fake_time_str = "vllm_stream_aime2024_gen_0_shot_str_perf"
+        fake_time_str = "mindie_stream_aime2024_gen_0_shot_str_perf"
         datasets_abbr_name = "aime2024dataset"
         datasets_script_name = "aime2024_gen_0_shot_str"
         monkeypatch.setattr('sys.argv',
-            ["ais_bench", "--models", "vllm_api_general_stream", "--datasets", datasets_script_name,
+            ["ais_bench", "--models", "mindie_stream_api_general", "--datasets", datasets_script_name,
             "--mode", "perf", "-w", self.test_data_path])
         monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response())
-        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPIStream._get_service_model_path", lambda *arg: "qwen2")
         monkeypatch.setattr("ais_bench.benchmark.models.performance_api.PerformanceAPIModel.get_performance_data", lambda *arg: fake_perf_data)
         monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg, **kwargs: fake_time_str)
         main()
 
         # check perf json
-        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/performances/vllm-api-general-stream/{datasets_abbr_name}.json")
+        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/performances/mindie-stream-api/{datasets_abbr_name}.json")
         assert os.path.exists(infer_outputs_json_path)
         with open(infer_outputs_json_path, 'r') as file:
             data = json.load(file)
@@ -115,7 +105,7 @@ class TestClass:
         assert data['Total Requests'] == len(fake_perf_data)
 
         #check perf csv
-        infer_outputs_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/performances/vllm-api-general-stream/{datasets_abbr_name}.csv")
+        infer_outputs_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/performances/mindie-stream-api/{datasets_abbr_name}.csv")
         assert os.path.exists(infer_outputs_csv_path)
 
         data = pd.read_csv(infer_outputs_csv_path)

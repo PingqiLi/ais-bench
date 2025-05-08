@@ -50,7 +50,8 @@ class OpenICLInferMergedTask(BaseTask):
         self.logger = get_logger()
         self.entry = []
         self.golds = []
-        self.inference = None
+        self.inferencer = None
+        self.model_cfg = None
         self.out_path = ""
         self.ice_template = None
         self.prompt_template = None
@@ -173,6 +174,7 @@ class OpenICLInferMergedTask(BaseTask):
         out_path = get_infer_merged_output_path(
             self.model_cfg, self.dataset_cfg,
             osp.join(self.work_dir, 'predictions'))
+        self.inferencer.update_model_cfg(self.model_cfg)
         out_dir, out_name = osp.split(out_path)
         mkdir_or_exist(out_dir)
         self.inferencer.inference(self.entry, self.golds, out_dir, out_name)

@@ -19,7 +19,7 @@ piqa_infer_cfg = dict(
         template=f'{_hint}{{goal}}\nA. {{sol1}}\nB. {{sol2}}',
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=1),
+    inferencer=dict(type=GenInferencer),
 )
 
 piqa_eval_cfg = dict(

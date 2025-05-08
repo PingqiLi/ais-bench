@@ -7,7 +7,7 @@ from mmengine import dist
 
 from ais_bench.benchmark.utils.prompt import PromptList
 
-PromptType = Union[PromptList, str]
+PromptType = Union[PromptList, str, dict]
 
 
 class BaseModel:
@@ -49,21 +49,6 @@ class BaseModel:
         self.generation_kwargs = generation_kwargs
         self.sync_rank = sync_rank
         self.is_synthetic = False
-
-    @abstractmethod
-    def generate(self, inputs: List[str], max_out_len: int) -> List[str]:
-        """Generate results given a list of inputs.
-
-        Args:
-            inputs (List[str]): A list of strings.
-            max_out_len (int): The maximum length of the output.
-
-        Returns:
-            List[str]: A list of generated strings.
-        """
-        raise NotImplementedError(f'{self.__class__.__name__} does not support'
-                                  ' gen-based evaluation yet, try ppl-based '
-                                  'instead.')
         
     @abstractmethod
     def _generate(self, input, max_out_len: int) -> List[str]:
@@ -207,8 +192,7 @@ class BaseModel:
         inputs = self.parse_template(templates, mode='ppl')
         return self.get_ppl_tokenwise(inputs, label, mask_length)
 
-    def generate_from_template(self, templates: List[PromptType],
-                               max_out_len: int, **kwargs):
+    def generate_from_template(self, templates: List[PromptType], **kwargs):
         """Generate completion from a list of templates.
 
         Args:
@@ -218,23 +202,7 @@ class BaseModel:
         inputs = self.parse_template(templates, mode='gen')
         if hasattr(self, 'sync_rank') and self.sync_rank:
             inputs = self.sync_inputs(inputs)
-        return self.generate(inputs, max_out_len=max_out_len, **kwargs)
-    
-    def generate_single_from_template(self, templates: List[PromptType],
-                               max_out_len: int, **kwargs):
-        """Generate completion from a list of templates.
-
-        Args:
-            templates (List[PromptType]): A list of templates.
-            max_out_len (int): The maximum length of the output.
-        """
-        inputs = self.parse_template(templates, mode='gen')
-        if hasattr(self, 'sync_rank') and self.sync_rank:
-            inputs = self.sync_inputs(inputs)
-        if not inputs:
-             raise ValueError("No inputs were generated from the templates."
-                              "Please check your templates.")
-        return self._generate(inputs, max_out_len=max_out_len, **kwargs)
+        return self.generate(inputs, **kwargs)
 
     def get_token_len_from_template(
             self,

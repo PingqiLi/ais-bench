@@ -72,7 +72,7 @@ for _split in ['val']:
                 template=f'以下是中国关于{_ch_name}考试的单项选择题，请选出其中的正确答案。\n{{question}}\nA. {{A}}\nB. {{B}}\nC. {{C}}\nD. {{D}}\n答案: {{answer}}',
             ),
             retriever=dict(type=ZeroRetriever),
-            inferencer=dict(type=GenInferencer, batch_size=1),
+            inferencer=dict(type=GenInferencer),
         )
 
         ceval_eval_cfg = dict(

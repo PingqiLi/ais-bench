@@ -16,7 +16,7 @@ BoolQ_infer_cfg = dict(
         template='{passage}\nQuestion: {question}\nA. Yes\nB. No\nAnswer:'
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, batch_size=1),
+    inferencer=dict(type=GenInferencer),
 )
 
 BoolQ_eval_cfg = dict(

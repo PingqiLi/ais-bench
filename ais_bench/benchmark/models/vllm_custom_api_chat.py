@@ -20,21 +20,21 @@ from ais_bench.benchmark.utils.prompt import PromptList
 
 from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_input
 from ais_bench.benchmark.models.performance_api import PerformanceAPIModel
-from ais_bench.benchmark.clients import OpenAIChatStreamClient
+from ais_bench.benchmark.clients import OpenAIChatStreamClient, OpenAIChatTextClient
 from ais_bench.benchmark.utils.results import MiddleData
 
-PromptType = Union[PromptList, str]
+PromptType = Union[PromptList, str, dict]
 
 
 @MODELS.register_module()
-class VLLMCustomAPIChat(BaseAPIModel):
+class VLLMCustomAPIChat(PerformanceAPIModel):
     """Model wrapper around OpenAI's models. vllm 0.6 +
 
     Args:
         max_seq_len (int): The maximum allowed sequence length of a model.
             Note that the length of prompt + generated tokens shall not exceed
             this value. Defaults to 2048.
-        query_per_second (int): The maximum queries allowed per second
+        request_rate (int): The maximum queries allowed per second
             between two consecutive calls of the API. Defaults to 1.
         retry (int): Number of retires if the API call fails. Defaults to 2.
         meta_template (Dict, optional): The model's meta prompt
@@ -48,9 +48,10 @@ class VLLMCustomAPIChat(BaseAPIModel):
     is_api: bool = True
 
     def __init__(self,
+                 path: str = "",
                  model: str = "",
                  max_seq_len: int = 4096,
-                 query_per_second: int = 1,
+                 request_rate: int = 1,
                  rpm_verbose: bool = False,
                  retry: int = 2,
                  meta_template: Optional[Dict] = None,
@@ -59,21 +60,54 @@ class VLLMCustomAPIChat(BaseAPIModel):
                  host_port: int = 8080,
                  enable_ssl: bool = False,
                  generation_kwargs: Optional[Dict] = None):
-        self.host_ip = host_ip
-        self.host_port = host_port
-        self.enable_ssl = enable_ssl
-        self.base_url = self._get_base_url()
-        self.model= model if model else self._get_service_model_path()
-        super().__init__(path="",
+        super().__init__(path=path,
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
-                         query_per_second=query_per_second,
+                         request_rate=request_rate,
                          rpm_verbose=rpm_verbose,
                          retry=retry,
                          verbose=verbose,
                          generation_kwargs=generation_kwargs)
+        self.host_ip = host_ip
+        self.host_port = host_port
+        self.enable_ssl = enable_ssl
+        self.base_url = self._get_base_url()
+        self.endpoint_url = os.path.join(self.base_url, "chat/completions")
+        self.model= model if model else self._get_service_model_path()
+        self.client = OpenAIChatTextClient(self.endpoint_url, retry)
 
-        self.logger.info("Running model path name is: " + self.model)
+    def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
+        """Encode a string into tokens, measuring processing time."""
+        if not self.tokenizer:
+            self.logger.error("Tokenizer is not initialized.")
+            return 0.0, []
+
+        messages = self.tokenizer.tokenizer.tokenizer_model.apply_chat_template(prompt, add_generation_prompt=True, tokenize=False)
+        time_start = time.perf_counter()
+        tokens = self.tokenizer.encode(messages)
+        time_cost = (time.perf_counter() - time_start) * 1000  # Convert to milliseconds
+        return time_cost, tokens
+
+    def _input_decode(self, tokens: List):
+        if not self.tokenizer:
+            self.logger.error("Tokenizer is not initialized.")
+            return []
+        return self.tokenizer.decode(tokens)
+
+    def prepare_input_data(self, inputs: list, data_id: int = -1) -> MiddleData:
+        """Prepare input data, tokenize if performance mode is enabled."""
+        rrid = uuid.uuid4().hex
+        cache_data = self.result_cache[rrid]
+        cache_data.data_id = data_id
+        cache_data.request_id = rrid
+        cache_data.input_data = inputs
+
+        if self.do_performance and self.tokenizer:
+            time_cost, token_id = self.encode_input(inputs)
+            cache_data.input_token_id = token_id
+            cache_data.num_input_tokens = len(token_id)
+            cache_data.num_input_chars = len(self._input_decode(token_id))
+        return cache_data
 
     def generate(self,
                  inputs: List[PromptType],
@@ -112,8 +146,11 @@ class VLLMCustomAPIChat(BaseAPIModel):
         Returns:
             str: The generated string.
         """
-        assert isinstance(input, str)
-
+        if isinstance(input, dict):
+            data_id = input.get('data_id')
+            input = input.get('prompt')
+        else:
+            data_id = -1
         if max_out_len <= 0:
             return ''
 
@@ -131,41 +168,14 @@ class VLLMCustomAPIChat(BaseAPIModel):
                     msg['role'] = 'system'
                 messages.append(msg)
 
-        max_num_retries = 0
-        while max_num_retries < self.retry:
-            max_num_retries += 1
-            header = {
-                'Content-Type': 'application/json',
-            }
+        self.generation_kwargs.update({"max_tokens": max_out_len})
+        self.generation_kwargs.update({"model": self.model})
+        cache_data = self.prepare_input_data(messages, data_id)
+        
+        response = self.client.request(cache_data, self.generation_kwargs)
+        self.set_result(cache_data)
 
-            try:
-                data = dict(
-                    model=self.model,
-                    messages=messages,
-                    max_tokens=max_out_len,
-                )
-                data = data | self.generation_kwargs
-                url = os.path.join(self.base_url, "chat/completions")
-                raw_response = requests.post(url, headers=header, data=json.dumps(data))
-
-            except requests.ConnectionError:
-                self.logger.error('Got connection error, retrying...')
-                self.wait()
-                continue
-            try:
-                response = raw_response.json()
-            except requests.JSONDecodeError:
-                self.logger.error('JsonDecode error, got',
-                                  str(raw_response.content))
-                continue
-            self.logger.debug(str(response))
-            if response.get('choices') is None:
-                raise ValueError(f"Unexpect response: {response}")
-            return  response['choices'][0]['message']['content'].strip()
-
-        raise RuntimeError('Calling OpenAI failed after retrying for '
-                           f'{max_num_retries} times. Check the logs for '
-                           'details.')
+        return ''.join(response)
 
     def _get_base_url(self):
         if self.enable_ssl:
@@ -185,7 +195,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
         max_seq_len (int): The maximum allowed sequence length of a model.
             Note that the length of prompt + generated tokens shall not exceed
             this value. Defaults to 2048.
-        query_per_second (int): The maximum queries allowed per second
+        request_rate (int): The maximum queries allowed per second
             between two consecutive calls of the API. Defaults to 1.
         retry (int): Number of retires if the API call fails. Defaults to 2.
         meta_template (Dict, optional): The model's meta prompt
@@ -202,7 +212,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                  path,
                  model: str = "",
                  max_seq_len: int = 4096,
-                 query_per_second: int = 1,
+                 request_rate: int = 1,
                  rpm_verbose: bool = False,
                  retry: int = 2,
                  meta_template: Optional[Dict] = None,
@@ -211,38 +221,33 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                  host_port: int = 8080,
                  enable_ssl: bool = False,
                  generation_kwargs: Optional[Dict] = None):
-        self.host_ip = host_ip
-        self.host_port = host_port
-        self.enable_ssl = enable_ssl
-        self.max_chunk_size = 32*2048
-        self.base_url = self._get_base_url()
-        self.endpoint_url = os.path.join(self.base_url, "chat/completions")
-        self.model = model if model else self._get_service_model_path()
-        self.client = OpenAIChatStreamClient(self.endpoint_url)
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
-                         query_per_second=query_per_second,
+                         request_rate=request_rate,
                          rpm_verbose=rpm_verbose,
                          retry=retry,
                          generation_kwargs=generation_kwargs,
                          verbose=verbose)
-        self.logger.info("Running model path name is: " + self.model)
+        self.host_ip = host_ip
+        self.host_port = host_port
+        self.enable_ssl = enable_ssl
+        self.base_url = self._get_base_url()
+        self.endpoint_url = os.path.join(self.base_url, "chat/completions")
+        self.model = model if model else self._get_service_model_path()
+        self.client = OpenAIChatStreamClient(self.endpoint_url, retry)
 
-    def encode(self, prompt: list) -> Tuple[float, List[int]]:
+    def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
         if not self.tokenizer:
             self.logger.error("Tokenizer is not initialized.")
             return 0.0, []
 
-        messages = [self.tokenizer.tokenizer.tokenizer_model.apply_chat_template(m, add_generation_prompt=True, tokenize=False) for m in prompt]
+        messages = self.tokenizer.tokenizer.tokenizer_model.apply_chat_template(prompt, add_generation_prompt=True, tokenize=False)
         time_start = time.perf_counter()
-        tokens = self.tokenizer.batch_encode_plus(messages)
+        tokens = self.tokenizer.encode(messages)
         time_cost = (time.perf_counter() - time_start) * 1000  # Convert to milliseconds
-        sum_token_ids = []
-        for token_ids in tokens.get('input_ids'):
-            sum_token_ids.extend(token_ids)
-        return time_cost, sum_token_ids
+        return time_cost, tokens
 
     def _input_decode(self, tokens: List):
         if not self.tokenizer:
@@ -250,18 +255,16 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
             return []
         return self.tokenizer.decode(tokens)
 
-    def prepare_input_data(self, input_dict: Dict) -> MiddleData:
+    def prepare_input_data(self, inputs: list, data_id: int = -1) -> MiddleData:
         """Prepare input data, tokenize if performance mode is enabled."""
         rrid = uuid.uuid4().hex
         cache_data = self.result_cache[rrid]
-        with self.lock:
-            cache_data.data_id = str(self.data_id)
-            self.data_id += 1
+        cache_data.data_id = data_id
         cache_data.request_id = rrid
-        cache_data.input_data = input_dict
+        cache_data.input_data = inputs
 
         if self.do_performance and self.tokenizer:
-            time_cost, token_id = self.encode(input_dict)
+            time_cost, token_id = self.encode_input(inputs)
             cache_data.input_token_id = token_id
             cache_data.num_input_tokens = len(token_id)
             cache_data.num_input_chars = len(self._input_decode(token_id))
@@ -304,11 +307,13 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
         Returns:
             str: The generated string.
         """
-        assert isinstance(input, str)
-
+        if isinstance(input, dict):
+            data_id = input.get('data_id')
+            input = input.get('prompt')
+        else:
+            data_id = -1
         if max_out_len <= 0:
             return ''
-
         if isinstance(input, str):
             messages = [{'role': 'user', 'content': input}]
         else:
@@ -322,36 +327,15 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                 elif item['role'] == 'SYSTEM':
                     msg['role'] = 'system'
                 messages.append(msg)
-
         self.generation_kwargs.update({"max_tokens": max_out_len})
-        data = dict(
-            model=self.model,
-            stream=True,
-            messages=messages,
-            max_tokens=max_out_len,
-        )
-        data = data | self.generation_kwargs
-        cache_data = self.prepare_input_data(data)
+        self.generation_kwargs.update({"model": self.model})
+        cache_data = self.prepare_input_data(messages, data_id)
 
-        max_num_retries = 0
-        while max_num_retries < self.retry:
-            max_num_retries += 1
-            try:
-                response = self.client.request(cache_data)
-                self.update_decode(cache_data)
-            except requests.ConnectionError:
-                self.logger.error('Got connection error, retrying...')
-                self.wait()
-                continue
-            except Exception as e:
-                raise RuntimeError(f"Process response failed and the reason is {e}")
+        response = self.client.request(cache_data, self.generation_kwargs)
+        self.set_result(cache_data)
 
-            self.logger.debug(str(response))
-            return ''.join(response)
+        return ''.join(response)
 
-        raise RuntimeError('Calling OpenAI failed after retrying for '
-                           f'{max_num_retries} times. Check the logs for '
-                           'details.')
 
     def _get_base_url(self):
         if self.enable_ssl:

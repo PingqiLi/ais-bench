@@ -28,7 +28,7 @@ winogrande_infer_cfg = dict(
         ice_token='</E>',
     ),
     retriever=dict(type=FixKRetriever, fix_id_list=[0, 2, 4, 6, 8]),
-    inferencer=dict(type=GenInferencer, batch_size=1),
+    inferencer=dict(type=GenInferencer),
 )
 
 winogrande_eval_cfg = dict(

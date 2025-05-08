@@ -1,5 +1,7 @@
 import csv
 import collections
+import math
+from typing import Optional, Dict, Any
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -9,8 +11,8 @@ from ais_bench.benchmark.utils import get_logger
 
 @dataclass
 class MiddleData:
-    data_id: str = ""
-    input_data: str = ""
+    data_id: int = -1
+    input_data: Optional[str] = None
     input_token_id: list[int] = field(default_factory=list)
     num_input_tokens: int = 0
     num_input_chars: int = 0
@@ -55,7 +57,7 @@ class MiddleData:
             "prefill_latency": self.prefill_latency,
             "prefill_throughput": len(self.input_token_id)
             / self.prefill_latency
-            * 1000,
+            * 1000 if self.prefill_latency > 0 else 0,
             "decode_token_latencies": self.decode_cost[:],
             "last_decode_latency": self.decode_cost[-1] if self.decode_cost else 0.0,
             "decode_max_token_latency": (
@@ -66,7 +68,7 @@ class MiddleData:
             "generate_tokens_len": self.num_generated_tokens,
             "generate_tokens_speed": self.num_generated_tokens
             / self.req_latency
-            * 1000,
+            * 1000 if self.req_latency > 0 else 0,
             "input_characters_len": len(self.input_data),
             "generate_characters_len": self.num_generated_chars,
             "characters_per_token": (
@@ -123,7 +125,7 @@ class MetricsCalculator:
 
     def get_common_res(self, concurrency):
         self.common_metrics.update({"Max Concurrency": concurrency})
-        return self.common_metrics
+        return {k: v for k, v in self.common_metrics.items() if v is not None}
 
     def save_performance(self, out_path: str):
         """
@@ -168,17 +170,17 @@ class MetricsCalculator:
             "request_id",
             "output",
             "output_token_id",
+            "prefill_throughput",
         ]
         for key in remove_keys:
             result.pop(key, None)
         mapping = {
-            "seq_latency": "Latency",
+            "seq_latency": "E2EL",
             "prefill_latency": "TTFT",
             "average_decode_latencies": "TPOT",
             "decode_token_latencies": "ITL",
             "input_tokens_len": "InputTokens",
             "generate_tokens_len": "OutputTokens",
-            "prefill_throughput": "PrefillTokenThroughput",
             "generate_tokens_speed": "OutputTokenThroughput",
             "prefill_batch_size": "PrefillBatchsize",
             "decode_batch_size": "DecoderBatchsize",
@@ -201,6 +203,11 @@ class MetricsCalculator:
             res = ans.get(key)
             if not res or not res[-1]:
                 ans.pop(key)
+
+        for key in ["TTFT", "TPOT", "ITL"]:
+            if math.isclose(sum(ans[key]), 0):
+                ans.pop(key)
+
         return ans
 
     def calculate(self):
@@ -286,12 +293,12 @@ class MetricsCalculator:
         return statistics
 
     def __calc_common_metrics(self):
-        self.common_metrics["Benchmark Duration"] = round(self.infer_time, 4)
+        self.common_metrics["Benchmark Duration"] = round(self.infer_time * 1000, 4)
         self.common_metrics["Total Requests"] = self.data_count
         self.common_metrics["Failed Requests"] = self.data_count - self.success_count
         self.common_metrics["Success Requests"] = self.success_count
         self.common_metrics["Concurrency"] = round(
-            sum(self.result["Latency"]) / self.infer_time / 1000, 4
+            sum(self.result["E2EL"]) / self.infer_time / 1000, 4
         )
         self.common_metrics["Max Concurrency"] = self.common_metrics["Concurrency"]
 
@@ -303,7 +310,7 @@ class MetricsCalculator:
             self.common_metrics["Request Throughput"] = 0
 
         self.common_metrics["Total Input Tokens"] = sum(self.result["InputTokens"])
-        if self.common_metrics["Total Input Tokens"] != 0:
+        if self.common_metrics["Total Input Tokens"] != 0 and self.result.get("TTFT") is not None:
             self.common_metrics["Prefill Token Throughput"] = round(
                 1000
                 * self.common_metrics["Total Input Tokens"]
@@ -311,9 +318,9 @@ class MetricsCalculator:
                 4,
             )
         else:
-            self.common_metrics["Prefill Token Throughput"] = 0
+            self.common_metrics.pop("Prefill Token Throughput", None)
 
-        self.common_metrics["Total Output Tokens"] = sum(self.result["OutputTokens"])
+        self.common_metrics["Total generated tokens"] = sum(self.result["OutputTokens"])
         if self.infer_time > 0:
             self.common_metrics["Input Token Throughput"] = round(
                 self.common_metrics["Total Input Tokens"] / self.infer_time, 4
@@ -334,7 +341,7 @@ class MetricsCalculator:
         ms = " ms"
         unit_token = " token/s"
         metrics_units_map = {
-            "Latency": ms,
+            "E2EL": ms,
             "TTFT": ms,
             "TPOT": ms,
             "ITL": ms,
@@ -366,7 +373,7 @@ class MetricsCalculator:
             "Request Throughput": " req/s",
             "Total Input Tokens": None,
             "Prefill Token Throughput": unit_token,
-            "Input Token Throughput": " s",
+            "Input Token Throughput": unit_token,
             "Total Output Tokens": None,
             "Output Token Throughput": unit_token,
             "Total Token Throughput": unit_token,

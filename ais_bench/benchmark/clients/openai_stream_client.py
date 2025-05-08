@@ -12,17 +12,19 @@ class OpenAIStreamClient(BaseStreamClient, ABC):
 
     def construct_request_body(
         self,
-        inputs: MiddleData,
+        inputs: str,
         parameters: dict = None,
     ) -> dict:
-        return inputs
+        data = dict(
+            prompt = inputs,
+            stream = True,
+        )
+        data = data | parameters
+        return data
 
     def process_stream_line(self, json_content: dict) -> dict:
         response = {}
-        try:
-            generated_text = json_content['choices'][0]['text']
-        except Exception:
-            generated_text = ""
+        generated_text = json_content['choices'][0]['text']
         if generated_text:
             response.update({"generated_text": generated_text})
         if self.do_performance:

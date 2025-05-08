@@ -24,7 +24,7 @@ from .base import BaseRunner
 
 pbar_counter = 0
 
-def monkey_run_perf(self, tokens: SyncManager.Semaphore):
+def monkey_run_perf(self):
     self.logger.info(f"Task {task_abbr_from_cfg(self.cfg)}")
     for model_cfg, dataset_cfgs in zip(self.model_cfgs, self.dataset_cfgs):
         self.max_out_len = model_cfg.get("max_out_len", None)
@@ -56,7 +56,7 @@ def monkey_run_perf(self, tokens: SyncManager.Semaphore):
             self.golds.extend(golds)
         self.do_performance()
 
-def monkey_run_merged(self, tokens: SyncManager.Semaphore):
+def monkey_run_merged(self):
     self.logger.info(f"Task {task_abbr_from_cfg(self.cfg)}")
     for model_cfg, dataset_cfgs in zip(self.model_cfgs, self.dataset_cfgs):
         self.max_out_len = model_cfg.get("max_out_len", None)
@@ -87,7 +87,7 @@ def monkey_run_merged(self, tokens: SyncManager.Semaphore):
             self.golds.extend(golds)
         self.do_inference()
 
-def monkey_run(self, tokens: SyncManager.Semaphore):
+def monkey_run(self):
     """Hack for infer task run, add tokens for multiprocess."""
     self.logger.info(f'Task {task_abbr_from_cfg(self.cfg)}')
     for model_cfg, dataset_cfgs in zip(self.model_cfgs, self.dataset_cfgs):
@@ -97,7 +97,6 @@ def monkey_run(self, tokens: SyncManager.Semaphore):
         self.model = build_model_from_cfg(model_cfg)
         # add global tokens for concurrents
         # assert self.model.is_api, 'Only API model is supported.'
-        self.model.tokens = tokens
 
         for dataset_cfg in dataset_cfgs:
             self.model_cfg = model_cfg
@@ -156,7 +155,7 @@ def reset_std():
             h.stream = sys.stdout
 
 
-def launch(task: BaseTask, tokens: SyncManager.Semaphore):
+def launch(task: BaseTask):
     """Launch a single task.
 
     Args:
@@ -192,7 +191,7 @@ def launch(task: BaseTask, tokens: SyncManager.Semaphore):
             inferencer = OpenICLInferTask(task.cfg)
             origin_run = inferencer.run
             inferencer.run = monkey_run
-        inferencer.run(inferencer, tokens)
+        inferencer.run(inferencer)
         inferencer.run = origin_run
         end_time = time.perf_counter()
         logger.info(f'time elapsed: {end_time - start_time:.2f}s')
@@ -209,12 +208,12 @@ def launch(task: BaseTask, tokens: SyncManager.Semaphore):
     return task_name, returncode
 
 
-def submit(task, type, tokens):
+def submit(task, type):
     """Helper for launch the task."""
     task = TASKS.build(dict(cfg=task, type=type))
     tqdm.write(f'Launch {task.name} on CPU ')
 
-    res = launch(task, tokens)
+    res = launch(task)
     return res
 
 
@@ -228,8 +227,6 @@ class LocalAPIRunner(BaseRunner):
 
     Args:
         task (ConfigDict): Task type config.
-        concurrent_users (int): Max number of concurrent workers to request
-            the resources.
         max_num_workers (int): Max number of workers to run in parallel.
             Defaults to 16.
         debug (bool): Whether to run in debug mode.
@@ -238,13 +235,15 @@ class LocalAPIRunner(BaseRunner):
 
     def __init__(self,
                  task: ConfigDict,
-                 concurrent_users: int,
                  max_num_workers: int = 16,
+                 num_prompts: int = None,
                  debug: bool = False,
+                 disable_cb: bool = False,
                  lark_bot_url: str = None):
         super().__init__(task=task, debug=debug, lark_bot_url=lark_bot_url)
         self.max_num_workers = max_num_workers
-        self.concurrent_users = concurrent_users
+        self.num_prompts = num_prompts
+        self.disable_cb = disable_cb
         get_logger().debug(f"task type is {task['type']}")
         assert task['type'] in [
             'OpenICLInferTask',
@@ -272,6 +271,7 @@ class LocalAPIRunner(BaseRunner):
         if self.debug:
             # fall back to LocalRunner debug mode
             for task in tasks:
+                task['num_prompts'] = self.num_prompts
                 task = TASKS.build(dict(cfg=task, type=self.task_cfg['type']))
                 task_name = task.name
                 # get cmd
@@ -289,14 +289,21 @@ class LocalAPIRunner(BaseRunner):
                 finally:
                     os.remove(param_file)
                 status.append((task_name, 0))
+        elif not self.disable_cb:
+            get_logger().info('Continuous batch enable! All the logs and processes for each task'
+                                ' should be checked in each infer/.out file.')
+            with tqdm(total=len(tasks), desc="Processing tasks") as pbar:
+                for task in tasks:
+                    task['num_prompts'] = self.num_prompts
+                    res = submit(task, self.task_cfg['type'])
+                    status.append(res)
+                    pbar.update(1)
         else:
-
             pbar = tqdm(total=len(tasks))
 
             get_logger().info('All the logs and processes for each task'
                               ' should be checked in each infer/.out file.')
             with Manager() as manager:
-                tokens = manager.Semaphore(self.concurrent_users)
                 # pbar update has visualization issue when direct
                 # update pbar in callback, need an extra counter
                 pbar_counter = manager.Value('i', 0)
@@ -309,8 +316,9 @@ class LocalAPIRunner(BaseRunner):
 
                 with Pool(processes=self.max_num_workers) as pool:
                     for task in tasks:
+                        task['num_prompts'] = self.num_prompts
                         pool.apply_async(submit,
-                                         (task, self.task_cfg['type'], tokens),
+                                         (task, self.task_cfg['type']),
                                          callback=update)
                     pool.close()
 

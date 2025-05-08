@@ -92,7 +92,7 @@ for _name in bbh_free_form_sets:
                 )
             ])),
         retriever=dict(type=ZeroRetriever),
-        inferencer=dict(type=GenInferencer, max_out_len=512))
+        inferencer=dict(type=GenInferencer))
     bbh_eval_cfg = dict(evaluator=dict(type=BBHEvaluator), pred_role='BOT')
 
     bbh_datasets.append(

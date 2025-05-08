@@ -11,7 +11,7 @@ from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.prompt import PromptList
 
-PromptType = Union[PromptList, str]
+PromptType = Union[PromptList, str, dict]
 
 
 class MultiTokenEOSCriteria(transformers.StoppingCriteria):

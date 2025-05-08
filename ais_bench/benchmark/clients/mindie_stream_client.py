@@ -7,7 +7,7 @@ from ais_bench.benchmark.utils import MiddleData
 class MindieStreamClient(BaseStreamClient, ABC):
     def construct_request_body(
         self,
-        inputs: MiddleData,
+        inputs: str,
         parameters: dict = None,
     ) -> dict:
         return dict(inputs=inputs, stream=True, parameters=parameters)

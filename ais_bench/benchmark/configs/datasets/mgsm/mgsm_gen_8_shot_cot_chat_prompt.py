@@ -55,7 +55,7 @@ for lang in ALL_LANGUAGES:
             ice_token='</E>',
         ),
         retriever=dict(type=FixKRetriever, fix_id_list=[0, 1, 2, 3, 4, 5, 6, 7]),
-        inferencer=dict(type=GenInferencer, batch_size=1),
+        inferencer=dict(type=GenInferencer),
     )
 
     mgsm_eval_cfg = dict(
