@@ -63,7 +63,7 @@ class BaseTask:
         self.model_cfgs = cfg['models']
         self.dataset_cfgs = cfg['datasets']
         self.work_dir = cfg['work_dir']
-        self.num_prompts = cfg['num_prompts']
+        self.num_prompts = cfg['num_prompts'] if 'num_prompts' in cfg.keys() else None
 
     @abstractmethod
     def run(self):
