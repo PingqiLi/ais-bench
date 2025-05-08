@@ -47,7 +47,7 @@ models = [
         attr='service',
         abbr='vllm-api-general',
         max_seq_len = 4096,
-        query_per_second = 1,
+        request_rate = 0, # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
         rpm_verbose = False,
         retry = 2,
         host_ip = "localhost", # 推理服务的IP
@@ -97,7 +97,7 @@ models = [
         abbr='vllm-api-general',
         path="",
         max_seq_len = 4096,
-        query_per_second = 1,
+        request_rate = 0, # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
         rpm_verbose = False,
         retry = 2,
         host_ip = "localhost", # 推理服务的IP
@@ -213,7 +213,7 @@ models = [
         abbr='vllm-api-general-stream',
         path="/path/to/tokenizer" # tokenizer文件所在文件夹路径
         max_seq_len = 4096,
-        query_per_second = 1,
+        request_rate = 0, # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
         rpm_verbose = False,
         retry = 2,
         host_ip = "localhost", # 推理服务的IP
@@ -269,7 +269,7 @@ tail -f outputs/default/20250424_202220/logs/infer/vllm-api-general-stream/synth
 ╒══════════════════════════╤══════════════════╕
 │ Common Metric            │ Value            │
 ╞══════════════════════════╪══════════════════╡
-│ Benchmark Duration       │ 2.4813 ms        │
+│ Benchmark Duration       │ 2481.3 ms        │
 ├──────────────────────────┼──────────────────┤
 │ Total Requests           │ 10               │
 ├──────────────────────────┼──────────────────┤
@@ -289,7 +289,7 @@ tail -f outputs/default/20250424_202220/logs/infer/vllm-api-general-stream/synth
 ├──────────────────────────┼──────────────────┤
 │ Total Output Tokens      │ 159              │
 ├──────────────────────────┼──────────────────┤
-│ Input Token Throughput   │ 43.1224 s        │
+│ Input Token Throughput   │ 43.1224 token/s  │
 ├──────────────────────────┼──────────────────┤
 │ Output Token Throughput  │ 64.079 token/s   │
 ├──────────────────────────┼──────────────────┤
@@ -322,8 +322,8 @@ ais_bench ais_bench/configs/api_examples/infer_api_vllm_general.py --debug
 |--summarizer|指定结果总结任务名称（对应ais_bench/benchmark/configs/summarizers路径下一个已经实现的默认模型配置文件），支持的任务范围请参考[任务支持范围](#任务支持范围)章节|--summarizer medium|
 |--debug|debug模式开关，配置该参数表示开启，未配置表示关闭，默认未配置|--debug|
 |--dry-run|dry run模式（只打屏不实际跑任务）开关，配置该参数表示开启，未配置表示关闭，默认未配置|--dry-run|
-|--mode 或 -m|可选["all", "infer", "eval", "viz"]，默认"all"，每个模式如何运行参考[运行模式说明](#运行模式说明)|--mode infer <br>-m all|
-|--reuse 或 -r|指定重复使用的工作路径下的文件夹时间戳，如果此可选命令不加参数，默认寻找--work_dir指定的工作路径下最新的时间戳|--reuse <br>-r 20250126_144254|
+|--mode 或 -m|可选["all", "infer", "eval", "viz", "perf", "perf_viz"]，默认"all"，每个模式如何运行参考[运行模式说明](#运行模式说明)|--mode infer <br>-m all|
+|--reuse 或 -r|指定重复使用的工作路径下的文件夹时间戳，如果此可选命令不加参数，默认寻找--work_dir指定的工作路径下最新的时间戳。benchmark会加载该时间戳目录下的数据继续执行任务，结合--mode参数值，可用于推理中断续推，或基于已有推理结果执行精度计算、可视化结果打印|--reuse <br>-r 20250126_144254|
 |--work-dir 或 -w|评测任务的工作路径，用于落盘评测过程中的结果文件，默认outputs/default| --work-dir /path/to/work <br>-w /path/to/work|
 |--config-dir|models，datasets和summarizers配置文件所在的文件夹路径， 默认ais_bench/benchmark/configs|--config-dir /xxx/xxx|
 |--max-num-workers|并行运行的worker的最大个数，默认1|--max-num-workers 1|
@@ -331,7 +331,7 @@ ais_bench ais_bench/configs/api_examples/infer_api_vllm_general.py --debug
 |--dump-eval-details|是否dump出评测过程细节的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--dump-eval-details|
 |--dump-extract-rate|是否dump出评测速度的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--dump-extract-rate|
 |--merge-ds|是否合并同类数据集为同一个任务来推理的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--merge-ds|
-|--disable-cb|是否关闭continous batch的推理方式，配置该参数表示关闭，未配置表示开启，默认未配置。此参数仅对--models指定为服务化API类型的推理后端时才有效。continous batch开启情况下，--reuse无法继承推理结果进行续推。|--disable-cb|
+|--disable-cb|是否关闭continous batch的推理方式，配置该参数表示关闭，未配置表示开启，默认未配置。此参数仅对--models指定为服务化API类型的推理后端时才有效。continous batch开启情况下，会拉起多个进程执行服务化推理任务，单个进程最大请求并发数默认为500，可充分利用硬件资源支持大并发(batch_size)场景下的测评。此时--max-num-workers不会生效。|--disable-cb|
 
 
 
@@ -505,9 +505,9 @@ ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf_
 
 ### 单个推理请求性能输出结果
 部分统计指标解释如下所示：
-+ P75：以DecodeTime为例，所有请求的DecodeTime的75分位。
-+ P90：以DecodeTime为例，所有请求的DecodeTime的90分位。
-+ P99：以DecodeTime为例，所有请求的DecodeTime的99分位。
++ P75：以TPOT为例，所有请求的TPOT的75分位。
++ P90：以TPOT为例，所有请求的TPOT的90分位。
++ P99：以TPOT为例，所有请求的TPOT的99分位。
 + E2EL：单个请求的时延
 + TTFT（Time To First Token）:首token时延
 + TPOT（Time Per Output Token）：每个输出token的平均时延，请求粒度，不含首token
