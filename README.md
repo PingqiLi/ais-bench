@@ -262,8 +262,6 @@ tail -f outputs/default/20250424_202220/logs/infer/vllm-api-general-stream/synth
 ├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
 │ OutputTokens             │ 15.9             │ 15.0             │ 16.0            │ 16.0            │ 16.0             │ 16.0             │ 16.0             │ 10  │
 ├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
-│ PrefillTokenThroughput   │ 338.2927 token/s │ 217.9176 token/s │ 455.58 token/s  │ 372.856 token/s │ 392.4314 token/s │ 401.8784 token/s │ 450.2098 token/s │ 10  │
-├──────────────────────────┼──────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────────┼──────────────────┼──────────────────┼─────┤
 │ OutputTokenThroughput    │ 64.943 token/s   │ 47.9384 token/s  │ 67.8586 token/s │ 67.0042 token/s │ 67.7489 token/s  │ 67.8179 token/s  │ 67.8545 token/s  │ 10  │
 ╘══════════════════════════╧══════════════════╧══════════════════╧═════════════════╧═════════════════╧══════════════════╧══════════════════╧══════════════════╧═════╛
 ╒══════════════════════════╤══════════════════╕
@@ -514,7 +512,6 @@ ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf_
 + ITL（Inter-token Latency）：token间时延，不含首token
 + InputTokens：输入token长度
 + OutputTokens：输出token长度
-+ PrefillTokenThroughput：prefill吞吐率
 + OutputTokenThroughput：output吞吐率
 + Tokenizer：tokenizer时间
 + Detokenizer：detokenizer时间
@@ -527,7 +524,6 @@ ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf_
 |ITL|token间平均时延|token间最大时延|token间最小时延|token间中位数时延|token间75分位时延|token间90分位时延|token间99分位时延|测试数据量，来源于输入参数|
 |InputTokens|输入token平均长度|最大输入token长度|最小输入token长度|输入token中位数长度|75分位输入token长度|90分位输入token长度|99分位输入token长度|测试数据量，来源于输入参数|
 |OutputTokens|输出token平均长度|最大输出token长度|最小输出token长度|输出token中位数长度|75分位输出token长度|90分位输出token长度|99分位输出token长度|测试数据量，来源于输入参数|
-|PrefillTokenThroughput|平均prefill吞吐|最大prefill吞吐|最小prefill吞吐|中位数prefill吞吐|prefill吞吐75分位|prefill吞吐90分位|prefill吞吐99分位|测试数据量，来源于输入参数|
 |OutputTokenThroughput|平均输出吞吐|最大输出吞吐|最小输出吞吐|中位数输出吞吐|输出吞吐75分位|输出吞吐90分位|输出吞吐99分位|测试数据量，来源于输入参数|
 
 ### 端到端性能输出结果
