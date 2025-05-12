@@ -330,6 +330,7 @@ ais_bench ais_bench/configs/api_examples/infer_api_vllm_general.py --debug
 |--dump-extract-rate|是否dump出评测速度的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--dump-extract-rate|
 |--merge-ds|是否合并同类数据集为同一个任务来推理的开关，配置该参数表示开启，未配置表示关闭，默认未配置|--merge-ds|
 |--disable-cb|是否关闭continous batch的推理方式，配置该参数表示关闭，未配置表示开启，默认未配置。此参数仅对--models指定为服务化API类型的推理后端时才有效。continous batch开启情况下，会拉起多个进程执行服务化推理任务，单个进程最大请求并发数默认为500，可充分利用硬件资源支持大并发(batch_size)场景下的测评。此时--max-num-workers不会生效。|--disable-cb|
+|--num-prompts|指定数据集测评条数，需传入正整数，默认情况下对全量数据集进行测评，仅支持服务化性能测评场景|--num-prompts|
 
 
 
