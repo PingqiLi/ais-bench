@@ -96,6 +96,8 @@ class TestClass:
 
         # check perf json
         infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/performances/mindie-stream-api/{datasets_abbr_name}.json")
+        perf_details_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/performances/mindie-stream-api/{datasets_abbr_name}_details.json")
+        assert os.path.exists(perf_details_json_path)
         assert os.path.exists(infer_outputs_json_path)
         with open(infer_outputs_json_path, 'r') as file:
             data = json.load(file)

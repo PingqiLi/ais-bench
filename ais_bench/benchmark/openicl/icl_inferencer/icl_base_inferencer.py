@@ -66,7 +66,7 @@ class BaseInferencer:
 
     def update_model_cfg(self, model_cfg):
         self.model_cfg = model_cfg
-        
+
     def is_main_process(self):
         if "ASCEND_RT_VISIBLE_DEVICES" in os.environ:
             return int(os.getenv("RANK", "0")) == 0
@@ -125,7 +125,7 @@ class GenInferencerOutputHandler:
 
     def __init__(self) -> None:
         self.results_dict = {}
-    
+
     def load_tmp_result(self, tmp_path: str, file_format: str = "json"):
         if not osp.exists(tmp_path):
             logger.info(f"No tmp data found, reuse infer not enabled")

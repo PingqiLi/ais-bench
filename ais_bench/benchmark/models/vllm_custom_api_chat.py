@@ -59,6 +59,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
+                 custom_client = OpenAIChatTextClient,
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -74,7 +75,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.endpoint_url = os.path.join(self.base_url, "chat/completions")
         self.model= model if model else self._get_service_model_path()
-        self.client = OpenAIChatTextClient(self.endpoint_url, retry)
+        self.client = custom_client(self.endpoint_url, retry)
 
     def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
@@ -171,7 +172,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
         self.generation_kwargs.update({"max_tokens": max_out_len})
         self.generation_kwargs.update({"model": self.model})
         cache_data = self.prepare_input_data(messages, data_id)
-        
+
         response = self.client.request(cache_data, self.generation_kwargs)
         self.set_result(cache_data)
 
@@ -220,6 +221,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
+                 custom_client = OpenAIChatStreamClient,
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -235,7 +237,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.endpoint_url = os.path.join(self.base_url, "chat/completions")
         self.model = model if model else self._get_service_model_path()
-        self.client = OpenAIChatStreamClient(self.endpoint_url, retry)
+        self.client = custom_client(self.endpoint_url, retry)
 
     def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""

@@ -46,6 +46,7 @@ class MindieStreamApi(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
+                 custom_client = MindieStreamClient, # BaseClient
                  generation_kwargs: Optional[Dict] = None,
                  ):
         super().__init__(path=path,
@@ -61,7 +62,7 @@ class MindieStreamApi(PerformanceAPIModel):
         self.host_port = host_port
         self.enable_ssl = enable_ssl
         self.url = self._get_base_url()
-        self.client = MindieStreamClient(self.url, retry)
+        self.client = custom_client(self.url, retry)
 
     def generate(self,
                  inputs: List[PromptType],

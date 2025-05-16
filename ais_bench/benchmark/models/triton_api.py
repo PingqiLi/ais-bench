@@ -57,6 +57,7 @@ class TritonCustomAPI(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
+                 custom_client = TritonTextClient,
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -72,7 +73,7 @@ class TritonCustomAPI(PerformanceAPIModel):
         self.model_name = model_name
         self.base_url = self._get_base_url()
         self.endpoint_url = os.path.join(self.base_url, F"v2/models/{self.model_name}/generate")
-        self.client = TritonTextClient(self.endpoint_url, retry)
+        self.client = custom_client(self.endpoint_url, retry)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -120,7 +121,7 @@ class TritonCustomAPI(PerformanceAPIModel):
             return ''
         cache_data = self.prepare_input_data(input, data_id)
         self.generation_kwargs.update({"max_new_tokens": max_out_len})
-        
+
         response = self.client.request(cache_data, self.generation_kwargs)
         self.set_result(cache_data)
 
@@ -164,6 +165,7 @@ class TritonCustomAPIStream(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
+                 custom_client = TritonStreamClient,
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                         max_seq_len=max_seq_len,
@@ -180,7 +182,7 @@ class TritonCustomAPIStream(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.generation_kwargs = generation_kwargs
         self.endpoint_url = os.path.join(self.base_url, f"v2/models/{self.model_name}/generate_stream")
-        self.client = TritonStreamClient(self.endpoint_url, retry)
+        self.client = custom_client(self.endpoint_url, retry)
 
     def generate(self,
                  inputs: List[PromptType],
