@@ -206,13 +206,15 @@ def get_models_attr(cfg):
 def fill_perf_cfg(cfg, args):
     models_attr = get_models_attr(cfg)
     if models_attr == "service":
+        if args.disable_cb:
+            logger.warning("disable_cb is not supported in perf mode, it will be ignored.")
         new_cfg = dict(infer=dict(
             partitioner=dict(type=get_config_type(PerformancePartitioner)),
             runner=dict(
                 max_num_workers=args.max_num_workers,
                 num_prompts=args.num_prompts,
                 debug=args.debug,
-                disable_cb=args.disable_cb,
+                disable_cb=False,
                 task=dict(type=get_config_type(OpenICLPerfTask)),
                 type=get_config_type(LocalAPIRunner)
             )), )
