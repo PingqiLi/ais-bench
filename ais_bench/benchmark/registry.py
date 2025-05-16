@@ -45,6 +45,8 @@ METRICS = Registry('metric',
                    locations=['ais_bench.benchmark.metrics'])
 TOT_WRAPPER = Registry('tot_wrapper', locations=['ais_bench.benchmark.datasets'])
 
+PERF_METRIC_CALCULATORS = Registry('perf_metric_calculator', locations=['ais_bench.benchmark.calculators'])
+
 
 def build_from_cfg(cfg):
     """A helper function that builds object with MMEngine's new config."""
