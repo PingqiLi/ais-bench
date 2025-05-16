@@ -13,6 +13,7 @@ ARC/
     ├── ARC-Challenge-Dev.jsonl
     ├── ARC-Challenge-Test.jsonl
     └── ARC_c_test_contamination_annotations.json
+```
 
 ### 数据集内容样例格式
 |id|question|answerKey|
@@ -62,5 +63,6 @@ with read_base():
 datasets = [
     *ARC_c_datasets,
 ]
+```
 
-**注:** 数据集任务的详细配置的含义请参见配置文件的注释
+**注:** 数据集任务的详细配置的含义请参见Python源码配置文件的注释
