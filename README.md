@@ -466,7 +466,7 @@ E --> F((呈现结果))
 ```shell
 ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf
 ```
-**注意** 性能评测场景下--models当前只支持流式的服务化推理API任务，参考[服务化推理API后端](#服务化推理API后端)
+**注意** 性能评测场景下--models当前只支持流式的服务化推理API任务，参考[服务化推理API后端](#服务化推理api后端)
 
 生成结构目录结构：
 ```bash
