@@ -2,6 +2,12 @@
 ## 数据集简介
 MATH 是一个包含 12500 道具有挑战性的竞赛数学题的新数据集。MATH 数据集中的每一道题都配有完整的分步解答，可用于训练模型生成答案推导过程和解释内容。
 
+**注意**：数据集运行前请先安装依赖[extra.txt](../../../../../requirements/extra.txt)
+```shell
+# 需要处在最外层benchmark文件夹下，运行下列指令：
+pip3 install -r requirements/extra.txt
+```
+
 ## 数据集原始获取链接
 [https://github.com/hendrycks/math/](https://github.com/hendrycks/math/)
 
@@ -83,4 +89,4 @@ datasets = [
     *math_datasets,
 ]
 ```
-**注:** 数据集任务的详细配置的含义请参见配置文件的注释
+**注:** 数据集任务的详细配置的含义请参见Python源码配置文件的注释

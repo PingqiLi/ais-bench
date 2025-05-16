@@ -577,7 +577,7 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 
 
 ### --datasets支持的数据集
---datasets 支持的数据集如下，每个数据集包含多种数据集任务，数据集的获取方式和支持的数据集任务请参考对应数据集的README。
+--datasets 支持的数据集如下，每个数据集包含多种数据集任务，数据集的获取方式和支持的数据集任务请参考对应数据集的README。[服务化推理API后端](#服务化推理api后端)中带有`chat`的接口，可以适配所有数据集配置文件，不带`chat`的接口，仅适用于文件名中带有`str`的数据集配置文件，即字符串格式配置文件。
 |数据集|数据集任务README|
 | ---- | ---- |
 |GSM8K|[ais_bench/benchmark/configs/datasets/gsm8k/README.md](ais_bench/benchmark/configs/datasets/gsm8k/README.md)|
@@ -602,6 +602,9 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |WinoGrande|[ais_bench/benchmark/configs/datasets/winogrande/README.md](ais_bench/benchmark/configs/datasets/winogrande/README.md)|
 |CMMLU|[ais_bench/benchmark/configs/datasets/cmmlu/README.md](ais_bench/benchmark/configs/datasets/cmmlu/README.md)|
 |BBH|[ais_bench/benchmark/configs/datasets/bbh/README.md](ais_bench/benchmark/configs/datasets/bbh/README.md)|
+|RACE|[ais_bench/benchmark/configs/datasets/race/README.md](ais_bench/benchmark/configs/datasets/race/README.md)|
+|IFEval|[ais_bench/benchmark/configs/datasets/ifeval/README.md](ais_bench/benchmark/configs/datasets/ifeval/README.md)|
+|HumanEval-X|[ais_bench/benchmark/configs/datasets/humanevalx/README.md](ais_bench/benchmark/configs/datasets/humanevalx/README.md)|
 
 ### --summarizer支持的结果总结任务
 |任务名称|简介|对应源码配置文件路径|

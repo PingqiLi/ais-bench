@@ -2,6 +2,12 @@
 ## 数据集简介
 OpenAI 发布的 HumanEval 数据集包含 164 个编程问题，每个问题都提供了函数签名、文档字符串、函数主体以及多个单元测试。这些问题均为手工编写，以确保它们不会出现在代码生成模型的训练集中。
 
+**注意**：数据集运行前请先安装依赖[extra.txt](../../../../../requirements/extra.txt)
+```shell
+# 需要处在最外层benchmark文件夹下，运行下列指令：
+pip3 install -r requirements/extra.txt
+```
+
 ## 数据集原始获取链接
 [https://huggingface.co/datasets/openai/openai_humaneval](https://huggingface.co/datasets/openai/openai_humaneval)
 
@@ -40,4 +46,4 @@ datasets = [
 ]
 ```
 
-**注:** 数据集任务的详细配置的含义请参见配置文件的注释
+**注:** 数据集任务的详细配置的含义请参见Python源码配置文件的注释
