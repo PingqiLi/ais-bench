@@ -59,7 +59,6 @@ class VLLMCustomAPI(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = OpenAITextClient,
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                         max_seq_len=max_seq_len,
@@ -75,7 +74,7 @@ class VLLMCustomAPI(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.model= model if model else self._get_service_model_path()
         self.endpoint_url = os.path.join(self.base_url, "completions")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.client = OpenAITextClient(self.endpoint_url, retry)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -131,7 +130,7 @@ class VLLMCustomAPI(PerformanceAPIModel):
         self.set_result(cache_data)
 
         return ''.join(response)
-
+    
     def _get_base_url(self):
         if self.enable_ssl:
             return f"https://{self.host_ip}:{self.host_port}/v1"
@@ -175,7 +174,6 @@ class VLLMCustomAPIStream(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = OpenAIStreamClient,
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -191,7 +189,7 @@ class VLLMCustomAPIStream(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.model= model if model else self._get_service_model_path()
         self.endpoint_url = os.path.join(self.base_url, "completions")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.client = OpenAIStreamClient(self.endpoint_url, retry)
 
 
     def generate(self,
@@ -243,7 +241,7 @@ class VLLMCustomAPIStream(PerformanceAPIModel):
         self.generation_kwargs.update({"max_tokens": max_out_len})
         self.generation_kwargs.update({"model": self.model})
         cache_data = self.prepare_input_data(input, data_id)
-
+        
         response = self.client.request(cache_data, self.generation_kwargs)
         self.set_result(cache_data)
 
@@ -291,7 +289,6 @@ class VLLMCustomAPIOld(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = VLLMTextClient,
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -306,7 +303,7 @@ class VLLMCustomAPIOld(PerformanceAPIModel):
         self.enable_ssl = enable_ssl
         self.base_url = self._get_base_url()
         self.endpoint_url = os.path.join(self.base_url, "generate")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.client = VLLMTextClient(self.endpoint_url, retry)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -354,10 +351,10 @@ class VLLMCustomAPIOld(PerformanceAPIModel):
             return ''
         cache_data = self.prepare_input_data(input, data_id)
         self.generation_kwargs.update({"max_tokens": max_out_len})
-
+        
         response = self.client.request(cache_data, self.generation_kwargs)
         self.set_result(cache_data)
-
+        
         return ''.join(response)
 
     def _get_base_url(self):

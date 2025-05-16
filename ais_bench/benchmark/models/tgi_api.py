@@ -55,7 +55,6 @@ class TGICustomAPI(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = TGITextClient,
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -70,7 +69,7 @@ class TGICustomAPI(PerformanceAPIModel):
         self.enable_ssl = enable_ssl
         self.base_url = self._get_base_url()
         self.endpoint_url = os.path.join(self.base_url, "generate")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.client = TGITextClient(self.endpoint_url, retry)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -159,7 +158,6 @@ class TGICustomAPIStream(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = TGIStreamClient,
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                         max_seq_len=max_seq_len,
@@ -175,7 +173,7 @@ class TGICustomAPIStream(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.generation_kwargs = generation_kwargs
         self.endpoint_url = os.path.join(self.base_url, "generate_stream")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.client = TGIStreamClient(self.endpoint_url, retry)
 
     def generate(self,
                  inputs: List[PromptType],
