@@ -14,7 +14,6 @@ from concurrent.futures import ThreadPoolExecutor
 from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched
-from ais_bench.benchmark.utils.results import MetricsCalculator
 
 from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
@@ -105,7 +104,7 @@ class GenMergedInferencer(GenInferencer):
         output_handler = GenInferencerOutputHandler()
         tmp_json_filepath = os.path.join(output_json_filepath,
                                          'tmp_' + output_json_filename)
-        
+
         extra_gen_kwargs = self._build_extra_gen_kwargs()
         num_return_sequences = getattr(self.model, 'generation_kwargs', {}).get('num_return_sequences', 1)
         all_success = True

@@ -79,16 +79,16 @@ class BaseClient(ABC):
         input.start_time = start_time
         input.end_time = time.perf_counter()
         input.req_latency = (input.end_time - input.start_time) * 1000
-        
+
     def set_request_counter(self,  request_counter):
         self.request_counter = request_counter
-            
+
     def set_performance(self):
         self.do_performance = True
 
     def close(self):
         self._http_pool_manager.clear()
-    
+
     def rev_count(self):
         with self.lock:
             self.request_counter['get_req_num'] += 1
@@ -119,6 +119,7 @@ class BaseClient(ABC):
                 parameters=parameters,
             )
             start_time = time.perf_counter()
+            inputs.chunk_time_point_list.append(start_time)
             response_raw = self.do_request(request_body, "POST")
             if not self._is_stream:
                 response_obj = json.loads(response_raw.data.decode())
@@ -141,7 +142,7 @@ class BaseClient(ABC):
             raise_error("The http request timeout.", self.lock, self.request_counter)
         except Exception as err:
             raise_error("Request Failed :{}.".format(err), self.lock, self.request_counter)
-        
+
 
 
 class BaseStreamClient(BaseClient, ABC):
@@ -172,6 +173,7 @@ class BaseStreamClient(BaseClient, ABC):
                         response_dict[time_name] = (
                             cur_time_point - last_time_point
                         ) * 1000
+                        response_dict["chunk_time_point"] = cur_time_point * 1000
                     yield response_dict
                     time_name = "decode_time"
                     last_time_point = time.perf_counter()

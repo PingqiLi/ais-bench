@@ -17,6 +17,7 @@ from tqdm import tqdm
 from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched, build_model_from_cfg
+from ais_bench.benchmark.global_consts import WORKERS_NUM
 
 
 from ..icl_prompt_template import PromptTemplate
@@ -26,7 +27,7 @@ from .icl_base_inferencer import BaseInferencer, GenInferencerOutputHandler
 
 logger = get_logger(__name__)
 
-MAX_CONCURRENCY_PER_PROCESS = 500
+DEFAULT_MAX_CONCURRENCY_PER_PROCESS = 500
 
 def submit_single_model(model_cfg, mp_queue, **extra_gen_kwargs):
     model = build_model_from_cfg(model_cfg)
@@ -113,10 +114,17 @@ class GenInferencer(BaseInferencer):
             logger.warning(f"Inputs data number is {len(inputs)}, result will be empty")
             return results
         max_concurrency = extra_gen_kwargs.get("batch_size", 1)
+        
         # Maximum MAX_CONCURRENCY_PER_PROCESS concurrency per process, number of processes less than number of cores
         workers_num = min(
-            multiprocessing.cpu_count(), (max_concurrency - 1) // MAX_CONCURRENCY_PER_PROCESS + 1
+            multiprocessing.cpu_count(), (max_concurrency - 1) // DEFAULT_MAX_CONCURRENCY_PER_PROCESS + 1
         )
+        if isinstance(WORKERS_NUM, int):
+            if WORKERS_NUM > 0:
+                logger.info(f"Get WORKERS_NUM :{WORKERS_NUM}")
+                workers_num = min(WORKERS_NUM, multiprocessing.cpu_count())
+        else:
+            logger.warning(f"Expected WORKERS_NUM type int, but got {type(WORKERS_NUM)}. Has been reset to {workers_num}")
         logger.info(f"Concurrency is set to {max_concurrency}, infer with total {workers_num} process")
         q, r = divmod(max_concurrency, workers_num)
         concurrencys = [q + 1] * r + [q] * (workers_num - r)

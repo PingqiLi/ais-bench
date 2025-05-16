@@ -1,3 +1,4 @@
+from .base_client import BaseClient
 from .mindie_stream_client import MindieStreamClient
 from .openai_chat_stream_client import OpenAIChatStreamClient
 from .tgi_stream_client import TGIStreamClient
