@@ -1,1 +1,0 @@
-from ais_bench.benchmark.calculators.default_perf_metric_calculator import DefaultPerfMetricCalculator
