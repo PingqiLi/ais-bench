@@ -8,17 +8,19 @@ from ais_bench.benchmark.calculators.base_perf_metric_calculator import BasePerf
 from ais_bench.benchmark.registry import PERF_METRIC_CALCULATORS
 from ais_bench.benchmark.calculators.base_perf_metric_calculator import is_legal_percentage_str, DEFAULT_STATS, MAX_STATS_LEN
 
+WAVE_OFFSET = 0.02
 
 @PERF_METRIC_CALCULATORS.register_module()
-class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
-    def __init__(self, perf_details: dict, stats_list: list = DEFAULT_STATS):
+class StablePerfMetricCalculator(BasePerfMetricCalculator):
+    def __init__(self, perf_details: dict, stage_info: dict = {}, stats_list: list = DEFAULT_STATS):
         self.logger = get_logger()
+        self.max_concurrency = perf_details["task"]["max_concurrency"]
+        self.stage_section = [0, 0]
         self.stage_dict = {
-            "total": self._get_requests_id(perf_details)
+            "stable": self._get_requests_id(perf_details, stage_info)
         }
         self._get_legal_stats_list(stats_list)
         self.result = {}
-        self.max_concurrency = perf_details["task"]["max_concurrency"]
         self.data_count = {}
         self.decode_latencies = {}
         self.success_count = {}
@@ -30,8 +32,40 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         for stage_name, _ in self.stage_dict.items():
             self._process_result(perf_details.get("requests"), stage_name)
 
-    def _get_requests_id(self, perf_details):
-        return perf_details["requests"]["id"]
+    def _get_requests_id(self, perf_details, stage_info):
+        request_time_sections = []
+        for id in perf_details["requests"]["id"]:
+            request_time_sections.append({
+                "id": id,
+                "start_time": perf_details["requests"]["start_time"][id],
+                "end_time": perf_details["requests"]["end_time"][id],
+            })
+
+        sorted_time_sections = sorted(request_time_sections, key=lambda x: x["start_time"])
+        id_lists = []
+        working_reqs = {}
+        last_stable_reqs = {}
+        for i, section in enumerate(sorted_time_sections):
+            for k in list(working_reqs.keys()):
+                if working_reqs[k][1] < section["start_time"]:
+                    working_reqs.pop(k, None)
+            working_reqs[section["id"]] = [section["start_time"], section["end_time"]]
+            if len(working_reqs) == self.max_concurrency:
+                id_lists.append(section["id"])
+                if len(id_lists) == 1:
+                   self.stage_section[0] = min([perf_details["requests"]["end_time"][id] for id in list(working_reqs.keys())])  # total start time
+                last_stable_reqs = copy.deepcopy(working_reqs)
+            elif len(working_reqs) >= int(self.max_concurrency * (1 - WAVE_OFFSET)) and len(id_lists) > 0:
+                id_lists.append(section["id"])
+                last_stable_reqs = copy.deepcopy(working_reqs)
+        if len(id_lists) == 0:
+            self.logger.warning("Can not find a stable stage, all request will be calculated!")
+            self.stage_section[0] = min(perf_details["requests"]["start_time"]) # total start time
+            self.stage_section[1] = max(perf_details["requests"]["end_time"]) # total end time
+            return perf_details["requests"]["id"]
+
+        self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in list(last_stable_reqs.keys())]) # total end time
+        return id_lists
 
     def _get_legal_stats_list(self, stats_list):
         if len(stats_list) > MAX_STATS_LEN:
@@ -53,7 +87,7 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         self.decode_latencies[stage_name] = result["decode_token_latencies"]
         self.success_count[stage_name] = sum(result["is_success"])
         self.empty_count[stage_name] = sum(result["is_empty"])
-        self.infer_time[stage_name] = max(result["end_time"]) - min(result["start_time"])
+        self.infer_time[stage_name] = self.stage_section[1] - self.stage_section[0]
         per_request_avg_decode_time = []
         # Compute the average decode latency per request
         for values in self.decode_latencies[stage_name]:

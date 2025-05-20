@@ -26,7 +26,7 @@ def build_model_from_cfg(model_cfg: ConfigDict):
     return MODELS.build(model_cfg)
 
 
-def build_perf_metric_calculator_from_cfg(metric_cfg: ConfigDict, result: dict):
+def build_perf_metric_calculator_from_cfg(metric_cfg: ConfigDict, perf_details: dict):
     metric_cfg = copy.deepcopy(metric_cfg)
-    metric_cfg['result'] = result
+    metric_cfg['perf_details'] = perf_details
     return PERF_METRIC_CALCULATORS.build(metric_cfg)

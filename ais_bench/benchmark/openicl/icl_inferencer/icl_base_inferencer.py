@@ -14,6 +14,7 @@ from torch.utils.data import DataLoader
 from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
 from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.results import dump_results_dict
 
 MAX_BATCH_SIZE = 100000
 logger = get_logger(__name__)
@@ -110,11 +111,6 @@ class BaseInferencer:
                                 batch_size=batch_size,
                                 collate_fn=lambda x: x)
         return dataloader
-
-
-def dump_results_dict(results_dict, filename):
-    with open(filename, 'w', encoding='utf-8') as json_file:
-        json.dump(results_dict, json_file, indent=4, ensure_ascii=False)
 
 
 class GenInferencerOutputHandler:

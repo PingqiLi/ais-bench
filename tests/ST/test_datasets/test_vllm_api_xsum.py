@@ -6,7 +6,6 @@ import logging
 import pytest
 from ais_bench.benchmark.cli.main import main
 
-GSK8K_DATA_COUNT = 1319
 class Response:
     def __init__(self):
         data = {'choices': [{"text": "11"}]}
@@ -33,12 +32,12 @@ class TestClass:
             shutil.rmtree(self.test_data_path)
         os.makedirs(self.test_data_path)
 
-    # mode all
-    def test_vllm_api_general_all_default(self, monkeypatch):
+
+    def test_vllm_api_general_all_Xsum_0_shot_str(self, monkeypatch):
         fake_prediction = "11"
-        fake_time_str = "vllm_aime2024_gen_0_shot_str"
-        datasets_abbr_name = "aime2024"
-        datasets_script_name = "aime2024_gen_0_shot_str"
+        fake_time_str = "vllm_xsum_gen_0_shot_str"
+        datasets_abbr_name = "Xsum"
+        datasets_script_name = "Xsum_gen_0_shot_str"
 
         monkeypatch.setattr('sys.argv',
             ["ais_bench", "--models", "vllm_api_general", "--datasets", datasets_script_name,
@@ -59,7 +58,10 @@ class TestClass:
         results_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/results/vllm-api-general/{datasets_abbr_name}.json")
         with open(results_json_path, 'r', encoding='utf-8') as file:
             data = json.load(file)
-        assert data.get("accuracy") is not None
+        assert data.get("rouge1") is not None
+        assert data.get("rouge2") is not None
+        assert data.get("rougeL") is not None
+        assert data.get("rougeLsum") is not None
 
         # check vis
         vis_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.csv")
@@ -68,4 +70,3 @@ class TestClass:
         assert os.path.exists(vis_txt_path)
         vis_md_path = os.path.join(self.test_data_path, f"{fake_time_str}/summary/summary_{fake_time_str}.md")
         assert os.path.exists(vis_md_path)
-
