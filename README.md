@@ -1,10 +1,10 @@
 # AISBench benchmark评测工具
 ## 简介
-AISBench benchmark评测工具是基于opencompass开发的评测工具，兼容opencompass的配置文件、数据集、模型后端等具体实现。目前支持评测推理精度[精度](#精度评测场景)/[性能](#性能评测场景)。
+AISBench benchmark评测工具是基于opencompass开发的评测工具，兼容opencompass的配置文件、数据集、模型后端等具体实现。目前支持评测推理[精度](#精度评测场景)/[性能](#性能评测场景)。
 
 ## 工具安装
-AISBench benchmark是由python开发的工具，要求`python == 3.10`
-本工具的依赖较多，推荐在conda虚拟环境下安装。
+AISBench benchmark 需要Python 3.10 或 3.11 运行环境。不兼容更低版本（如3.9）或更高版本（如3.12）。
+ :tw-1f4cc: 本工具的依赖较多，推荐使用Miniconda管理Python环境以避免冲突。
 ```shell
 conda create --name ais_bench python=3.10 -y
 conda activate ais_bench
@@ -18,7 +18,7 @@ cd benchmark/
 pip3 install -e ./
 ```
 安装过程中会自动安装基础依赖。
-因为当前工具的模型后端都是服务化api后端，因此需要额外安装服务化的依赖：
+由于本工具支持多种模型服务框架（如vLLM、Trition等），需额外安装服务化的依赖：
 ```shell
 pip3 install -r requirements/api.txt
 ```
@@ -30,13 +30,13 @@ pip3 uninstall ais_bench_benchmark
 ```
 
 ## 快速入门
-在本工具的评测中，每个评估任务由待评估的模型后端和数据集组成，可以通过两种方式来指定模型和数据集：命令行指定模型和数据集以及在配置文件中指定模型和数据集，两种方式二选一。当前工具支持的模型后端主要服务化api，以评测gpu上部署的vllm推理服务为例，请先参考[vllm官方文档/启动服务器样例](https://vllm.hyper.ai/docs/tutorials/vLLM-stepbysteb#%E4%B8%89%E5%90%AF%E5%8A%A8-vllm-%E6%9C%8D%E5%8A%A1%E5%99%A8)在gpu服务器上拉起vllm的推理服务。<br>
+在本工具的评测中，每个评估任务由待评估的模型后端和数据集组成，可以通过两种方式来指定模型和数据集：命令行指定模型和数据集以及在配置文件中指定模型和数据集，两种方式二选一。当前工具支持的模型后端主要服务化api，以评测gpu上部署的vllm推理服务为例，请先参考[vllm官方文档/启动服务器样例](https://docs.vllm.com.cn/en/latest/getting_started/quickstart.html)在gpu服务器上拉起vllm的推理服务。<br>
 ### 精度评测场景
 #### gsm8k数据集准备
 参考[gsm8k数据集说明](ais_bench/benchmark/configs/datasets/gsm8k/README.md)准备数据集，将数据集放在ais_bench/datasets路径下。
 
 #### 命令行指定模型和数据集
-命令行方式指定模型和数据集本质上是调用工具内置的.py配置文件指定的，需要先在`ais_bench/benchmark/configs/models/`中预置的模型配置文件中配置好服务化相关参数，以执行vllm_api_general的任务为例，需要在[ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)中修改配置：
+通过命令行方式指定模型和数据集时，需基于预置的.py配置文件来配置服务化参数，以执行vllm_api_general的任务为例，需要在[ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)中修改配置：
 
 ```python
 from ais_bench.benchmark.models import VLLMCustomAPI
@@ -74,7 +74,7 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen
 **注:** --models支持的任务参考[--models支持的模型推理后端](#--models支持的模型推理后端)章节，--datasets 支持的任务参考[--datasets支持的数据集](#--datasets支持的数据集)章节。
 
 #### 配置文件指定模型和数据集
-需要先在源码中提供的样例配置文件`ais_bench/configs/`中预置的模型配置文件中配置好服务化相关参数，例如要执行的配置文件是[ais_bench/configs/api_examples/infer_vllm_api_general.py](ais_bench/configs/api_examples/infer_vllm_api_general.py)，需要在此配置文件中修改配置：
+需要先在样例配置文件中配置好服务化相关参数，例如要执行的配置文件是[ais_bench/configs/api_examples/infer_vllm_api_general.py](ais_bench/configs/api_examples/infer_vllm_api_general.py)，需要在此配置文件中修改配置：
 
 ```python
 from mmengine.config import read_base
@@ -128,7 +128,7 @@ work_dir = 'outputs/api-vllm-general/' # 指定落盘文件（执行过程、推
 ```
 修改好配置文件后，执行如下命令启动精度评测：
 ```
-ais_bench ais_bench/configs/api_examples/infer_vllm_api__general.py
+ais_bench ais_bench/configs/api_examples/infer_vllm_api_general.py
 ```
 
 #### 推理过程查看
@@ -185,7 +185,7 @@ outputs/api_vllm_general/20250126_165049/summary/summary_20250126_165049.md
 ```
 
 ### 性能评测场景
-AISBench执行性能测评需指定--mode为perf，以在AISBench构造的指定长度的随机数据集，固定输出长度的性能评测场景为例（当前AISBench评测服务性能是基于流式API评测的）：
+AISBench执行性能测评需指定--mode为perf。以随机数据集性能测评场景为例：
 #### 配置随机数据集
 打开随机数据集配置文件[ais_bench/datasets/synthetic.py](ais_bench/datasets/synthetic.py)，按需求修改带注释的配置项的取值
 
@@ -261,7 +261,7 @@ synthetic_config = {
 
 
 #### 命令行指定模型和数据集
-命令行方式指定模型和数据集本质上是调用工具内置的.py配置文件指定的，需要先在`ais_bench/benchmark/configs/models/`中预置的模型配置文件中配置好服务化相关参数，以执行vllm_api_general的任务为例，需要在[ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_stream.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_stream.py)中修改配置：
+通过命令行方式指定模型和数据集时，需基于预置的.py配置文件来配置服务化参数，以执行vllm_api_general的任务为例，需要在[ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_stream.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_stream.py)中修改配置：
 
 ```python
 from ais_bench.benchmark.models import VLLMCustomAPIStream
@@ -518,7 +518,7 @@ outputs/default/
 ├── ...
 ```
 ### 性能评测场景
-### perf模式
+#### perf模式
 
 perf模式下评测工具会完整执行一次性能评测流程并呈现性能结果：
 ```mermaid
@@ -553,7 +553,7 @@ outputs/default/
 性能打屏基于syntheticdataset.csv和syntheticdataset.json
 
 
-### perf_viz 模式
+#### perf_viz 模式
 perf模式下评测工具会完整执行一次性能评测流程：
 ```mermaid
 graph LR;
@@ -635,7 +635,7 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |tgi_stream_api_general|通过TGI规定格式的流式api访问推理服务化，访问服务的generate_stream子服务|启动支持TGI api的推理服务|文本接口|字符串格式|[tgi_stream_api_general](ais_bench/benchmark/configs/models/tgi_api/tgi_stream_api_general.py)|
 
 
-**注意:** 服务化推理测评api默认使用的url为localhost，端口号为8080，实际使用时需要在具体使用的源码配置文件中修改为服务化后端配置的url和端口号。
+**注意:** 服务化推理测评api默认使用的服务IP为localhost，端口号为8080，实际使用时，需在对应配置文件中修改为服务化后端配置的IP和端口号。
 
 #### 本地模型后端
 |任务名称|简介|使用前提|支持的prompt格式(字符串格式或对话格式)|对应源码配置文件路径|
@@ -648,31 +648,31 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 --datasets 支持的数据集如下，每个数据集包含多种数据集任务，数据集的获取方式和支持的数据集任务请参考对应数据集的README。[服务化推理API后端](#服务化推理api后端)中带有`chat`的接口，可以适配所有数据集配置文件，不带`chat`的接口，仅适用于文件名中带有`str`的数据集配置文件，即字符串格式配置文件。
 |数据集|数据集任务README|
 | ---- | ---- |
-|GSM8K|[ais_bench/benchmark/configs/datasets/gsm8k/README.md](ais_bench/benchmark/configs/datasets/gsm8k/README.md)|
-|MMLU|[ais_bench/benchmark/configs/datasets/mmlu/README.md](ais_bench/benchmark/configs/datasets/mmlu/README.md)|
-|BoolQ|[ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README.md](ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README.md)|
-|C-Eval|[ais_bench/benchmark/configs/datasets/ceval/README.md](ais_bench/benchmark/configs/datasets/ceval/README.md)|
-|MATH|[ais_bench/benchmark/configs/datasets/math/README.md](ais_bench/benchmark/configs/datasets/math/README.md)|
-|AIME2024|[ais_bench/benchmark/configs/datasets/aime2024/README.md](ais_bench/benchmark/configs/datasets/aime2024/README.md)|
-|GPQA|[ais_bench/benchmark/configs/datasets/gpqa/README.md](ais_bench/benchmark/configs/datasets/gpqa/README.md)|
-|DROP|[ais_bench/benchmark/configs/datasets/drop/README.md](ais_bench/benchmark/configs/datasets/drop/README.md)|
-|HumanEval|[ais_bench/benchmark/configs/datasets/humaneval/README.md](ais_bench/benchmark/configs/datasets/humaneval/README.md)|
-|MMLU-PRO|[ais_bench/benchmark/configs/datasets/mmlu_pro/README.md](ais_bench/benchmark/configs/datasets/mmlu_pro/README.md)|
 |AGIEval|[ais_bench/benchmark/configs/datasets/agieval/README.md](ais_bench/benchmark/configs/datasets/agieval/README.md)|
+|AIME2024|[ais_bench/benchmark/configs/datasets/aime2024/README.md](ais_bench/benchmark/configs/datasets/aime2024/README.md)|
 |ARC Challenge Set|[ais_bench/benchmark/configs/datasets/ARC_c/README.md](ais_bench/benchmark/configs/datasets/ARC_c/README.md)|
 |ARC Easy Set|[ais_bench/benchmark/configs/datasets/ARC_e/README.md](ais_bench/benchmark/configs/datasets/ARC_e/README.md)|
-|LiveCodeBench|[ais_bench/benchmark/configs/datasets/livecodebench/README.md](ais_bench/benchmark/configs/datasets/livecodebench/README.md)|
+|BBH|[ais_bench/benchmark/configs/datasets/bbh/README.md](ais_bench/benchmark/configs/datasets/bbh/README.md)|
+|BoolQ|[ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README.md](ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README.md)|
+|CMMLU|[ais_bench/benchmark/configs/datasets/cmmlu/README.md](ais_bench/benchmark/configs/datasets/cmmlu/README.md)|
+|C-Eval|[ais_bench/benchmark/configs/datasets/ceval/README.md](ais_bench/benchmark/configs/datasets/ceval/README.md)|
+|DROP|[ais_bench/benchmark/configs/datasets/drop/README.md](ais_bench/benchmark/configs/datasets/drop/README.md)|
+|GPQA|[ais_bench/benchmark/configs/datasets/gpqa/README.md](ais_bench/benchmark/configs/datasets/gpqa/README.md)|
+|GSM8K|[ais_bench/benchmark/configs/datasets/gsm8k/README.md](ais_bench/benchmark/configs/datasets/gsm8k/README.md)|
 |HellaSwag|[ais_bench/benchmark/configs/datasets/hellaswag/README.md](ais_bench/benchmark/configs/datasets/hellaswag/README.md)|
-|mgsm|[ais_bench/benchmark/configs/datasets/mgsm/README.md](ais_bench/benchmark/configs/datasets/mgsm/README.md)|
+|HumanEval|[ais_bench/benchmark/configs/datasets/humaneval/README.md](ais_bench/benchmark/configs/datasets/humaneval/README.md)|
+|HumanEval-X|[ais_bench/benchmark/configs/datasets/humanevalx/README.md](ais_bench/benchmark/configs/datasets/humanevalx/README.md)|
+|IFEval|[ais_bench/benchmark/configs/datasets/ifeval/README.md](ais_bench/benchmark/configs/datasets/ifeval/README.md)|
+|LiveCodeBench|[ais_bench/benchmark/configs/datasets/livecodebench/README.md](ais_bench/benchmark/configs/datasets/livecodebench/README.md)|
+|MATH|[ais_bench/benchmark/configs/datasets/math/README.md](ais_bench/benchmark/configs/datasets/math/README.md)|
+|MMLU|[ais_bench/benchmark/configs/datasets/mmlu/README.md](ais_bench/benchmark/configs/datasets/mmlu/README.md)|
+|MMLU-PRO|[ais_bench/benchmark/configs/datasets/mmlu_pro/README.md](ais_bench/benchmark/configs/datasets/mmlu_pro/README.md)|
 |mbpp|[ais_bench/benchmark/configs/datasets/mbpp/README.md](ais_bench/benchmark/configs/datasets/mbpp/README.md)|
+|mgsm|[ais_bench/benchmark/configs/datasets/mgsm/README.md](ais_bench/benchmark/configs/datasets/mgsm/README.md)|
 |piqa|[ais_bench/benchmark/configs/datasets/piqa/README.md](ais_bench/benchmark/configs/datasets/piqa/README.md)|
+|RACE|[ais_bench/benchmark/configs/datasets/race/README.md](ais_bench/benchmark/configs/datasets/race/README.md)|
 |TriviaQA|[ais_bench/benchmark/configs/datasets/triviaqa/README.md](ais_bench/benchmark/configs/datasets/triviaqa/README.md)|
 |WinoGrande|[ais_bench/benchmark/configs/datasets/winogrande/README.md](ais_bench/benchmark/configs/datasets/winogrande/README.md)|
-|CMMLU|[ais_bench/benchmark/configs/datasets/cmmlu/README.md](ais_bench/benchmark/configs/datasets/cmmlu/README.md)|
-|BBH|[ais_bench/benchmark/configs/datasets/bbh/README.md](ais_bench/benchmark/configs/datasets/bbh/README.md)|
-|RACE|[ais_bench/benchmark/configs/datasets/race/README.md](ais_bench/benchmark/configs/datasets/race/README.md)|
-|IFEval|[ais_bench/benchmark/configs/datasets/ifeval/README.md](ais_bench/benchmark/configs/datasets/ifeval/README.md)|
-|HumanEval-X|[ais_bench/benchmark/configs/datasets/humanevalx/README.md](ais_bench/benchmark/configs/datasets/humanevalx/README.md)|
 
 ### --summarizer支持的结果总结任务
 |任务名称|简介|对应源码配置文件路径|
