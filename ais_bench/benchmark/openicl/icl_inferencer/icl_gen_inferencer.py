@@ -125,6 +125,9 @@ class GenInferencer(BaseInferencer):
                 workers_num = min(WORKERS_NUM, multiprocessing.cpu_count())
         else:
             logger.warning(f"Expected WORKERS_NUM type int, but got {type(WORKERS_NUM)}. Has been reset to {workers_num}")
+        if workers_num > len(inputs):
+            logger.warning(f"Number of processes {workers_num} is greater than the number of inputs {len(inputs)}, has been reset to {len(inputs)}")
+            workers_num = len(inputs)
         logger.info(f"Concurrency is set to {max_concurrency}, infer with total {workers_num} process")
         q, r = divmod(max_concurrency, workers_num)
         concurrencys = [q + 1] * r + [q] * (workers_num - r)

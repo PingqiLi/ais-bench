@@ -1,10 +1,11 @@
+import os
 import os.path as osp
 from typing import Dict, List, Optional
 
 from mmengine.config import Config, ConfigDict
 
 from ais_bench.benchmark.registry import PARTITIONERS
-from ais_bench.benchmark.utils import get_infer_output_path
+from ais_bench.benchmark.utils import get_infer_output_path, model_abbr_from_cfg, dataset_abbr_from_cfg
 
 from .base import BasePartitioner
 
@@ -62,12 +63,28 @@ class NaivePartitioner(BasePartitioner):
 
         tasks = []
         for comb in model_dataset_combinations:
-            for model in comb['models']:
+            for model in comb["models"]:
                 chunks = []
-                for dataset in comb['datasets']:
+                model_abbr = model_abbr_from_cfg(model)
+                for dataset in comb["datasets"]:
                     filename = get_infer_output_path(model, dataset, out_dir)
+                    dataset_abbr = dataset_abbr_from_cfg(dataset)
+                    tmp_data = osp.join(osp.dirname(filename), "tmp_" + dataset_abbr)
+                    task_name = "[" + model_abbr + "/" + dataset_abbr + "]"
                     if osp.exists(filename):
-                        continue
+                        stat_info = os.stat(filename)
+                        if stat_info.st_uid != os.getuid():
+                            self.logger.error(
+                                f"Current user can't modify {filename}, reuse will not enable."
+                            )
+                            continue
+                        if osp.exists(tmp_data):
+                            self.logger.warning(
+                                f"Partial results found of {task_name}, {filename} will be overwritten."
+                            )
+                        else:
+                            self.logger.info(f"{task_name} has been finished, skip.")
+                            continue
                     chunks.append(dataset)
 
                 for i in range(0, len(chunks), self.n):

@@ -219,7 +219,7 @@ class TGICustomAPIStream(PerformanceAPIModel):
             input = input.get('prompt')
         else:
             data_id = -1
-        assert isinstance(input, str)
+        assert isinstance(input, (str, list))
         if max_out_len <= 0:
             return ''
         cache_data = self.prepare_input_data(input, data_id)

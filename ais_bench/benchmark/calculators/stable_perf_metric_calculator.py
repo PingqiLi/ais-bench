@@ -90,9 +90,10 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         self.infer_time[stage_name] = self.stage_section[1] - self.stage_section[0]
         per_request_avg_decode_time = []
         # Compute the average decode latency per request
-        for values in self.decode_latencies[stage_name]:
-            if values:  # Skip empty lists
-                per_request_avg_decode_time.append(round(np.average(values), 4))
+        for i, value in enumerate(result["seq_latency"]):
+            if value:  # Skip empty lists
+                tpot = (value - result["prefill_latency"][i]) / result["generate_tokens_len"][i]
+                per_request_avg_decode_time.append(tpot)
         result["average_decode_latencies"] = per_request_avg_decode_time[:]
         self.result[stage_name] = self.convert_result(copy.deepcopy(result))
 

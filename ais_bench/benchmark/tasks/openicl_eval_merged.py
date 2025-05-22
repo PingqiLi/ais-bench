@@ -56,31 +56,33 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
                     self.merge_datasets_cfgs[merged_ds_abbr] = []
                 self.merge_datasets_cfgs[merged_ds_abbr].append(dataset_cfg)
 
-            for dataset_cfg in dataset_cfgs:
-                self.model_cfg = model_cfg
-                self.dataset_cfg = dataset_cfg
+            if not dataset_cfgs:
+                return
+            dataset_cfgs = dataset_cfgs[0]
+            self.model_cfg = model_cfg
+            self.dataset_cfg = dataset_cfg
 
-                # Load Dataset
-                self.eval_cfg = self.dataset_cfg.get('eval_cfg')
-                self.output_column = dataset_cfg['reader_cfg']['output_column']
+            # Load Dataset
+            self.eval_cfg = self.dataset_cfg.get('eval_cfg')
+            self.output_column = dataset_cfg['reader_cfg']['output_column']
 
-                # overwrite postprocessor if the model has specified one
-                ds_abbr = dataset_abbr_from_cfg(self.dataset_cfg)
-                model_postprocessors = self.model_cfg.get(
-                    'pred_postprocessor', {})
-                for pattern in model_postprocessors.keys():
-                    if fnmatch.fnmatch(ds_abbr, pattern):
-                        self.eval_cfg[
-                            'pred_postprocessor'] = model_postprocessors[
-                                pattern]  # noqa
-                        break
+            # overwrite postprocessor if the model has specified one
+            ds_abbr = dataset_abbr_from_cfg(self.dataset_cfg)
+            model_postprocessors = self.model_cfg.get(
+                'pred_postprocessor', {})
+            for pattern in model_postprocessors.keys():
+                if fnmatch.fnmatch(ds_abbr, pattern):
+                    self.eval_cfg[
+                        'pred_postprocessor'] = model_postprocessors[
+                            pattern]  # noqa
+                    break
 
-                out_path = get_infer_merged_output_path(
-                    self.model_cfg, self.dataset_cfg,
-                    osp.join(self.work_dir, 'results'))
-                if osp.exists(out_path):
-                    continue
-                self._score()
+            out_path = get_infer_merged_output_path(
+                self.model_cfg, self.dataset_cfg,
+                osp.join(self.work_dir, 'results'))
+            if osp.exists(out_path):
+                self.logger.warning(f'Output file {out_path} already exists and will be overwritten.')
+            self._score()
 
     def _score(self):
         merged_ds_abbr = self.dataset_cfg.get('type').split('.')[-1].lower()

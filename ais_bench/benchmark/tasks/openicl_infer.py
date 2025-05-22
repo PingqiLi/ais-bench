@@ -94,11 +94,6 @@ class OpenICLInferTask(BaseTask):
                     'models': [self.model_cfg],
                     'datasets': [[self.dataset_cfg]],
                 }
-                out_path = get_infer_output_path(
-                    self.model_cfg, self.dataset_cfg,
-                    osp.join(self.work_dir, 'predictions'))
-                if osp.exists(out_path):
-                    continue
                 self._inference()
 
     def build_inference(self):

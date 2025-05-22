@@ -1,3 +1,4 @@
+import os
 import os.path as osp
 from typing import Dict, List, Optional
 
@@ -5,7 +6,7 @@ from collections import defaultdict
 from mmengine.config import Config, ConfigDict
 
 from ais_bench.benchmark.registry import PARTITIONERS
-from ais_bench.benchmark.utils import get_infer_output_path
+from ais_bench.benchmark.utils import get_infer_merged_output_path, model_abbr_from_cfg
 
 from .base import BasePartitioner
 
@@ -64,12 +65,31 @@ class PerformancePartitioner(BasePartitioner):
         tasks = []
         for comb in model_dataset_combinations:
             for model in comb['models']:
+                model_abbr = model_abbr_from_cfg(model)
                 chunks = defaultdict(list)
                 for dataset in comb['datasets']:
-                    filename = get_infer_output_path(model, dataset, out_dir)
-                    if osp.exists(filename):
+                    dataset_abbr = dataset.get('type').split('.')[-1].lower()
+                    filename = get_infer_merged_output_path(model, dataset, out_dir)
+                    tmp_data = osp.join(osp.dirname(filename), "tmp_" + dataset_abbr)
+                    task_name = "[" + model_abbr + "/" + dataset_abbr + "]"
+                    if osp.basename(osp.normpath(out_dir)) == 'results': # eval 阶段不进行校验
+                        chunks[dataset_abbr].append(dataset)
                         continue
-                    chunks[dataset.get('type')].append(dataset)
+                    if osp.exists(filename) and dataset_abbr not in chunks:
+                        stat_info = os.stat(filename)
+                        if stat_info.st_uid != os.getuid():
+                            self.logger.error(
+                                f"Current user can't modify {filename}, reuse will not enable."
+                            )
+                            continue
+                        if osp.exists(tmp_data):
+                            self.logger.warning(
+                                f"Partial results found of {task_name}, {filename} will be overwritten."
+                            )
+                        else:
+                            self.logger.info(f"{task_name} has been finished, skip.")
+                            continue
+                    chunks[dataset_abbr].append(dataset)
                 for datsets in chunks.values():
                     task = Config({
                         'models': [model],
