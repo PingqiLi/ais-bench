@@ -192,7 +192,7 @@ AISBench执行性能测评需指定--mode为perf。以随机数据集性能测�
 ```py
 """
 # 涉及到数值类型配置参数的最大值无特殊说明时，均应小于 2^20 （= 1 M）
-# 
+#
 # StringConfig中的随机生成方法参数说明:
 # -------------------------------------------------
 # 包含 输入/出 分布配置 "Method" 和 输入/出 长度配置 "Params"
@@ -268,7 +268,7 @@ from ais_bench.benchmark.models import VLLMCustomAPIStream
 
 models = [
     dict(
-        
+
         attr="service", # local or service
         type=VLLMCustomAPIStream, # API的类名称
         abbr='vllm-api-general-stream', # api的唯一标识，用于区分任务
@@ -585,15 +585,15 @@ ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf_
 + Tokenizer：tokenizer时间
 + Detokenizer：detokenizer时间
 
-|Performance Parameters|Average|Max|Min|Median|P75|P90|P99|N|
-| ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
-|E2EL|平均请求时延|最大请求时延|最小请求时延|请求时延中位数|请求时延75分位值|请求时延90分位值|请求时延99分位值|测试数据量，来源于输入参数|
-|TTFT|首个token平均时延|首个token最大时延|首个token最小时延|首个token中位数时延|首个token75分位时延|首个token90分位时延|首个token99分位时延|测试数据量，来源于输入参数|
-|TPOT|Decode阶段平均时延|最大Decode阶段时延|最小Decode阶段时延|Decode阶段中位数时延|75分位Decode阶段时延|90分位每条请求Decode阶段平均时延|99分位Decode阶段时延|测试数据量，来源于输入参数|
-|ITL|token间平均时延|token间最大时延|token间最小时延|token间中位数时延|token间75分位时延|token间90分位时延|token间99分位时延|测试数据量，来源于输入参数|
-|InputTokens|输入token平均长度|最大输入token长度|最小输入token长度|输入token中位数长度|75分位输入token长度|90分位输入token长度|99分位输入token长度|测试数据量，来源于输入参数|
-|OutputTokens|输出token平均长度|最大输出token长度|最小输出token长度|输出token中位数长度|75分位输出token长度|90分位输出token长度|99分位输出token长度|测试数据量，来源于输入参数|
-|OutputTokenThroughput|平均输出吞吐|最大输出吞吐|最小输出吞吐|中位数输出吞吐|输出吞吐75分位|输出吞吐90分位|输出吞吐99分位|测试数据量，来源于输入参数|
+|Performance Parameters|Stage|Average|Max|Min|Median|P75|P90|P99|N|
+| ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+|E2EL|统计此参数的阶段|平均请求时延|最大请求时延|最小请求时延|请求时延中位数|请求时延75分位值|请求时延90分位值|请求时延99分位值|测试数据量，来源于输入参数|
+|TTFT|统计此参数的阶段|首个token平均时延|首个token最大时延|首个token最小时延|首个token中位数时延|首个token75分位时延|首个token90分位时延|首个token99分位时延|测试数据量，来源于输入参数|
+|TPOT|统计此参数的阶段|Decode阶段平均时延|最大Decode阶段时延|最小Decode阶段时延|Decode阶段中位数时延|75分位Decode阶段时延|90分位每条请求Decode阶段平均时延|99分位Decode阶段时延|测试数据量，来源于输入参数|
+|ITL|统计此参数的阶段|token间平均时延|token间最大时延|token间最小时延|token间中位数时延|token间75分位时延|token间90分位时延|token间99分位时延|测试数据量，来源于输入参数|
+|InputTokens|统计此参数的阶段|输入token平均长度|最大输入token长度|最小输入token长度|输入token中位数长度|75分位输入token长度|90分位输入token长度|99分位输入token长度|测试数据量，来源于输入参数|
+|OutputTokens|统计此参数的阶段|输出token平均长度|最大输出token长度|最小输出token长度|输出token中位数长度|75分位输出token长度|90分位输出token长度|99分位输出token长度|测试数据量，来源于输入参数|
+|OutputTokenThroughput|统计此参数的阶段|平均输出吞吐|最大输出吞吐|最小输出吞吐|中位数输出吞吐|输出吞吐75分位|输出吞吐90分位|输出吞吐99分位|测试数据量，来源于输入参数|
 
 ### 端到端性能输出结果
 |参数|说明|
@@ -679,6 +679,8 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 | --- | --- | --- |
 |medium|通用结果汇总模板，包含多种基本数据集，默认使用的模板|[medium.py](ais_bench/benchmark/configs/summarizers/medium.py)|
 |example|简单的汇总模板，覆盖目前所有支持的数据集|[example.py](ais_bench/benchmark/configs/summarizers/example.py)|
+|default_perf|性能结果的汇总模板，汇总全量请求的性能数据|[default_perf.py](ais_bench/benchmark/configs/summarizers/perf/default_perf.py)|
+|stable_stage|性能结果的汇总模板，汇总稳定状态（实际并发达到最大并发）请求的性能数据|[stable_stage.py](ais_bench/benchmark/configs/summarizers/perf/stable_stage.py)|
 
 ## 自定义配置文件样例列表
 |文件名|简介|
