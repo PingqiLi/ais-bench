@@ -110,9 +110,10 @@ class MindieStreamApi(PerformanceAPIModel):
         if max_out_len <= 0:
             return ''
         cache_data = self.prepare_input_data(input, data_id)
-        self.generation_kwargs.update({"max_new_tokens": max_out_len})
+        generate_params = self.generation_kwargs.copy()
+        generate_params.update({"max_new_tokens": max_out_len})
 
-        response = self.client.request(cache_data, self.generation_kwargs)
+        response = self.client.request(cache_data, generate_params)
         self.set_result(cache_data)
         return ''.join(response)
 

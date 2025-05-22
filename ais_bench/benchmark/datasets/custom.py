@@ -128,6 +128,8 @@ def make_mcq_gen_config(meta):
         input_columns=meta['input_columns'],
         output_column=meta['output_column'],
     )
+    if max_tokens_column:= meta.get('max_tokens_column'):
+        reader_cfg.update({'max_tokens_column':max_tokens_column})
     if 'test_range' in meta:
         reader_cfg['test_range'] = meta['test_range']
     infer_cfg = dict(
@@ -170,6 +172,8 @@ def make_qa_gen_config(meta):
         input_columns=meta['input_columns'],
         output_column=meta['output_column'],
     )
+    if max_tokens_column:= meta.get('max_tokens_column'):
+        reader_cfg.update({'max_tokens_column':max_tokens_column})
     if 'test_range' in meta:
         reader_cfg['test_range'] = meta['test_range']
     infer_cfg = dict(
@@ -177,6 +181,46 @@ def make_qa_gen_config(meta):
             type=PromptTemplate,
             template=template,
         ),
+        retriever=dict(type=ZeroRetriever),
+        inferencer=dict(type=GenInferencer),
+    )
+
+    eval_cfg = dict(
+        evaluator=dict(type=meta.get('evaluator', AccEvaluator),
+                       **meta.get('evaluator_kwargs', {})),
+        pred_role='BOT',
+    )
+
+    dataset = dict(
+        abbr=meta['abbr'],
+        type=CustomDataset,
+        path=meta['path'],
+        reader_cfg=reader_cfg,
+        infer_cfg=infer_cfg,
+        eval_cfg=eval_cfg,
+    )
+    return dataset
+
+
+def make_qa_chat_config(meta):
+    reader_cfg = dict(
+        input_columns=['question'],
+        output_column=meta['output_column'],
+    )
+    if max_tokens_column:= meta.get('max_tokens_column'):
+        reader_cfg.update({'max_tokens_column':max_tokens_column})
+    if 'test_range' in meta:
+        reader_cfg['test_range'] = meta['test_range']
+    infer_cfg = dict(
+        prompt_template=dict(
+            type=PromptTemplate,
+            template=dict(round=[
+            dict(
+                role='HUMAN',
+                conversations='{question}',
+            ),
+        ]),
+    ),
         retriever=dict(type=ZeroRetriever),
         inferencer=dict(type=GenInferencer),
     )
@@ -216,23 +260,24 @@ def parse_example_dataset(config):
         raise ValueError(f'Unsupported ext: {path}, .jsonl or .csv required')
 
     parsed_meta['path'] = path
-    input_columns = [i for i in data_item.keys() if i != 'answer']
+    input_columns = [i for i in data_item.keys() if i == 'question']
     parsed_meta['input_columns'] = input_columns
     output_column = 'answer' if 'answer' in data_item else None
     parsed_meta['output_column'] = output_column
+    max_tokens_column = 'max_tokens' if 'max_tokens' in data_item else None
+    parsed_meta['max_tokens_column'] = max_tokens_column 
+    parsed_meta['output_column'] = output_column
     options = []
-    for i in range(26):
-        i = chr(ord('A') + i)
-        if i in data_item:
-            options.append(i)
-        else:
-            break
+    if config['data_type'] == 'mcq':
+        for i in range(26):
+            i = chr(ord('A') + i)
+            if i in data_item:
+                options.append(i)
+            else:
+                break
     parsed_meta['options'] = options
     abbr = os.path.basename(path).split('.')[0]
     parsed_meta['abbr'] = abbr
-    parsed_meta['data_type'] = 'mcq' if len(options) > 1 else 'qa'
-    parsed_meta['infer_method'] = 'gen'
-
     # get config meta
     config_meta = copy.deepcopy(config)
 
@@ -250,6 +295,7 @@ def make_custom_dataset_config(config):
     make_config_func = {
         ('mcq', 'gen'): make_mcq_gen_config,
         ('qa', 'gen'): make_qa_gen_config,
+        ('qa', 'chat'): make_qa_chat_config,
     }.get((meta['data_type'], meta['infer_method']), None)
     if make_config_func is None:
         raise ValueError(f'Unsupported dataset data_type: {meta["data_type"]}'
