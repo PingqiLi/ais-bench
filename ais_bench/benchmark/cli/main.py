@@ -112,6 +112,12 @@ def parse_args():
     )
 
     parser.add_argument(
+        '--pressure',
+        help='Whether to enable pressure test in perf mode (only attr service)',
+        action='store_true',
+    )
+
+    parser.add_argument(
         '--disable-cb',
         help='Whether to disable infer with continous batch mode',
         action='store_true',

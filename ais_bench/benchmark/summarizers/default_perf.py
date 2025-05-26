@@ -63,9 +63,9 @@ class DefaultPerfSummarizer:
                 continue
             model_abbrs.append(model_abbr)
         self.model_abbrs = model_abbrs
-
-        self._load_details_perf_data(calculator)
-        self._dump_calculated_perf_data()
+        if self.model_cfgs[0].get("attr") == "service":
+            self._load_details_perf_data(calculator)
+            self._dump_calculated_perf_data()
 
     def _load_details_perf_data(self, calculator_conf: ConfigDict):
         self.calculators = {}

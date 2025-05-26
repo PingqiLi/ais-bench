@@ -10,7 +10,8 @@ from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
 from ais_bench.benchmark.partitioners import NaivePartitioner, NumWorkerPartitioner, PerformancePartitioner
 from ais_bench.benchmark.runners import LocalAPIRunner, LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLInferTask, OpenICLPerfTask, OpenICLInferMergedTask, OpenICLEvalMergedTask
-from ais_bench.benchmark.openicl.icl_inferencer import GenPerfInferencer, GenInferencer, GenMergedInferencer, GenModelPerfInferencer
+from ais_bench.benchmark.openicl.icl_inferencer import (GenPerfInferencer, GenInferencer, GenMergedInferencer,
+        GenPressureInferencer, GenModelPerfInferencer)
 from ais_bench.benchmark.utils import get_logger, match_files
 
 logger = get_logger()
@@ -219,7 +220,10 @@ def fill_perf_cfg(cfg, args):
                 type=get_config_type(LocalAPIRunner)
             )), )
         for data_config in cfg['datasets']:
-            data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenPerfInferencer)
+            if args.pressure:
+                data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenPressureInferencer)
+            else:
+                data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenPerfInferencer)
     else:
         new_cfg = dict(infer=dict(
             partitioner=dict(type=get_config_type(PerformancePartitioner)),

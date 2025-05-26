@@ -37,12 +37,13 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         if len(stats_list) > MAX_STATS_LEN:
             self.logger.warning(f"Len of stats list is over {MAX_STATS_LEN}! Only reserve the first {MAX_STATS_LEN} stat!")
             stats_list = stats_list[:MAX_STATS_LEN]
-        self.stats_list = stats_list
+        self.stats_list = []
         for stat in stats_list:
             if stat not in ["Average", "Min", "Max", "Median"] and not is_legal_percentage_str(stat):
                 self.logger.warning(f"Unknown stat: {stat}, won't take effect!")
-                self.stats_list.pop(stat, None)
-        if len(stats_list) == 0:
+                continue
+            self.stats_list.append(stat)
+        if len(self.stats_list) == 0:
             self.logger.warning("Can't find valid stat set, use \"Avarage\" stat.")
             self.stats_list.append("Average")
 

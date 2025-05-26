@@ -119,7 +119,7 @@ class BaseClient(ABC):
                 parameters=parameters,
             )
             start_time = time.perf_counter()
-            inputs.chunk_time_point_list.append(start_time)
+            inputs.chunk_time_point_list.append(start_time * 1000)
             response_raw = self.do_request(request_body, "POST")
             if not self._is_stream:
                 response_obj = json.loads(response_raw.data.decode())

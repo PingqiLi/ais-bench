@@ -15,6 +15,7 @@ from time import sleep
 from typing import Dict, List, Optional, Tuple, Union, Any
 
 from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.global_consts import PRESSURE_TIME, CONNECTION_ADD_RATE
 from ais_bench.benchmark.utils.prompt import PromptList, is_mm_prompt
 
 from .base import BaseModel
@@ -91,18 +92,18 @@ class BaseAPIModel(BaseModel):
         raise NotImplementedError(f'{self.__class__.__name__} does not support'
                                   ' gen-based evaluation yet, try ppl-based '
                                   'instead.')
-    
+
     def delay_generate(self):
         if hasattr(self, 'tokens') and self.tokens:
             self.tokens.acquire()
-            
+
     def set_description(self, p_log):
         num_width = max(
             len(str(self.get_req_num)),
             len(str(self.failed_num)),
             5
-        ) + 2 
-        
+        ) + 2
+
         rec_time = max(0, self.rec_time - self.start_time)
         post_time = max(0, self.post_time - self.start_time)
         time_width = len(str(rec_time).split('.'))
@@ -151,7 +152,37 @@ class BaseAPIModel(BaseModel):
                     break
                 time.sleep(0.1)
         p_log.close()
-        
+
+    def draw_plog_pressure(self, pos):
+        p_log = tqdm(total=0, desc="", position=3 * pos + 1, bar_format="{desc}", leave=True)
+        prev = 0
+        pre_post = 0
+        pre_get = 0
+        pre_failed = 0
+        while True:
+            self.post_req_num = len(self.result_cache)
+            self.get_req_num =  self.request_counter.get('get_req_num')
+            self.failed_num = self.request_counter.get('failed_num')
+            if self.post_req_num != pre_post:
+                pre_post = self.post_req_num
+                if pre_post % LOG_PER_REQUEST == 0:
+                    self.post_time = time.perf_counter()
+                    self.set_description(p_log)
+            if self.get_req_num != pre_get or pre_failed != self.failed_num:
+                pre_get = self.get_req_num
+                pre_failed = self.failed_num
+            cur = self.failed_num + self.get_req_num
+            if cur != prev:
+                prev = cur
+                if cur % LOG_PER_REQUEST == 0 :
+                    self.rec_time = time.perf_counter()
+                    self.set_description(p_log)
+            if self.task_finish:
+                self.rec_time = time.perf_counter()
+                self.set_description(p_log)
+                break
+            time.sleep(0.1)
+
     def save_tmp_result(self, tmp_result_json_path):
         """Read tmp cache queue to save inference results in real time."""
         res_cache = dict()
@@ -164,7 +195,7 @@ class BaseAPIModel(BaseModel):
             )
             if tmp_res.get('gold'):
                 res_cache[data_id]['gold'] = tmp_res.get('gold')
-            
+
         while True:
             tmp_res = self.tmp_result_queue.get()
             if not tmp_res or self.task_finish:
@@ -189,7 +220,7 @@ class BaseAPIModel(BaseModel):
             temp_path = tf.name
         # Replace target file atomically
         os.replace(temp_path, target_path)
-    
+
     def generate_from_queue(
         self,
         data_queue: Any,
@@ -222,7 +253,7 @@ class BaseAPIModel(BaseModel):
             self.token_bucket = None
         if hasattr(self, 'client'):
             self.client.set_request_counter(self.request_counter)
-        
+
         if (not hasattr(self, "do_performance")) or (not self.do_performance):
             os.makedirs(tmp_result_dir, exist_ok=True)
             tmp_result_json_path = os.path.join(tmp_result_dir, f"tmp_{self.tqdm_pos}_{os.getpid()}_{str(time.time()).split('.')[0]}.json")
@@ -251,7 +282,76 @@ class BaseAPIModel(BaseModel):
             draw_thread.join()
             if tmp_save_thread:
                 tmp_save_thread.join()
-            
+
+    def pressure_generate_from_queue(
+        self,
+        shared_inputs: Any,
+        lock,
+        total_thread_count,
+        total_input_idx,
+        **extra_gen_kwargs: Any
+    ) -> None:
+        """Consume items from a shared inputs list and generate outputs concurrently, with optional rate limiting and progress logging.
+
+        Args:
+            shared_inputs (list): A process and thread-safe list supplying input data items.
+            lock: process lock.
+            total_thread_count (int): total thread count.
+            total_input_idx (int): idx of inputs.
+        Returns:
+            None: This method runs until the queue is exhausted and then exits.
+        """
+        self.tqdm_pos = extra_gen_kwargs.get("process_id")
+        max_out_len = extra_gen_kwargs.get("max_out_len", 1)
+        concurrency = extra_gen_kwargs.get("concurrency")
+        total_concurrency = extra_gen_kwargs.get("total_concurrency")
+
+        thread_lock = threading.Lock()
+        def generate_before_timeout(shared_inputs, total_input_idx, max_out_len):
+            while(time.perf_counter() - self.start_time <= PRESSURE_TIME):
+                with lock:
+                    with thread_lock:
+                        cur_idx = total_input_idx.value % len(shared_inputs) #
+                input_data = shared_inputs[cur_idx]
+                total_input_idx.value += 1
+                _ = self._generate(input_data, max_out_len)
+
+        self.token_bucket = None
+        local_thread_count = 0
+        if hasattr(self, 'client'):
+            self.client.set_request_counter(self.request_counter)
+        draw_thread = threading.Thread(target=self.draw_plog_pressure, args=(self.tqdm_pos,), daemon=True)
+        draw_thread.start()
+        generate_threads = []
+        self.start_time = time.perf_counter()
+        try:
+            while True:
+                if total_thread_count.value >= total_concurrency or local_thread_count >= concurrency:
+                    break
+                if time.perf_counter() - self.start_time > PRESSURE_TIME:
+                    break
+                with lock:
+                    total_thread_count.value += 1
+                local_thread_count += 1
+                generate_thread = threading.Thread(target=generate_before_timeout, args=(shared_inputs, total_input_idx, max_out_len,))
+                generate_thread.daemon = True
+                generate_threads.append(generate_thread)
+                generate_thread.start()
+                time.sleep(1 / CONNECTION_ADD_RATE)
+
+        except KeyboardInterrupt:
+            self.logger.warning("Interrupted by user (Ctrl+C).")
+        except Exception as e:
+            self.logger.error(f"Infer task end because erro: {e}")
+        finally:
+            for thread in generate_threads:
+                if thread.is_alive():
+                    thread.join()
+                    if thread.is_alive():
+                        self.logger.warning(f"Thread {thread.ident} did not exit cleanly")
+            self.task_finish = True
+            self.tmp_result_queue.put(None)
+            draw_thread.join()
 
     def flush(self):
         """Ensure simultaneous emptying of stdout and stderr when concurrent
@@ -395,7 +495,7 @@ class APITemplateParser:
         #mm data
         if is_mm_prompt(prompt_template):
             return prompt_template
-        
+
         if not isinstance(prompt_template, (str, PromptList)):
             return [self.parse_template(p, mode=mode) for p in prompt_template]
 
