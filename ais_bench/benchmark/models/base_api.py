@@ -398,6 +398,11 @@ class APITemplateParser:
         assert mode in ['ppl', 'gen']
         if isinstance(prompt_template, str):
             return prompt_template
+        if len(prompt_template) == 1:
+            item = prompt_template[0]
+            isinstance(item, dict)
+            if conversations:= item.get('conversations'):
+                    return conversations
         if self.meta_template:
 
             prompt = PromptList()

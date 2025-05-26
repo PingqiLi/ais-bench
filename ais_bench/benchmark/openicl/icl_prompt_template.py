@@ -226,6 +226,9 @@ class PromptTemplate:
             return prompt_template
 
         prompt = PromptList()
+        if 'conversations' in prompt_template:
+            prompt += prompt_template
+            return prompt
 
         # TODO: Why can't we generate begin & end for ice template?
         # To fix this, first we need to allow specifying prompt_template

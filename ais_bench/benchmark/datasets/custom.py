@@ -214,12 +214,7 @@ def make_qa_chat_config(meta):
     infer_cfg = dict(
         prompt_template=dict(
             type=PromptTemplate,
-            template=dict(round=[
-            dict(
-                role='HUMAN',
-                conversations='{question}',
-            ),
-        ]),
+            template=dict(round=[dict(conversations='{question}')]),
     ),
         retriever=dict(type=ZeroRetriever),
         inferencer=dict(type=GenInferencer),
