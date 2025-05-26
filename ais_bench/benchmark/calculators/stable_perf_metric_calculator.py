@@ -34,7 +34,7 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
 
     def _get_requests_id(self, perf_details, stage_info):
         request_time_sections = []
-        for id in perf_details["requests"]["id"]:
+        for id in range(len(perf_details["requests"]["id"])):
             request_time_sections.append({
                 "id": id,
                 "start_time": perf_details["requests"]["start_time"][id],
@@ -58,11 +58,13 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
             elif len(working_reqs) >= int(self.max_concurrency * (1 - WAVE_OFFSET)) and len(id_lists) > 0:
                 id_lists.append(section["id"])
                 last_stable_reqs = copy.deepcopy(working_reqs)
+        if len(id_lists) > 0:
+            id_lists.pop(0) # ignore first request that reached max concurrency
         if len(id_lists) == 0:
             self.logger.warning("Can not find a stable stage, all request will be calculated!")
             self.stage_section[0] = min(perf_details["requests"]["start_time"]) # total start time
             self.stage_section[1] = max(perf_details["requests"]["end_time"]) # total end time
-            return perf_details["requests"]["id"]
+            return list(range(len(perf_details["requests"]["id"])))
 
         self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in list(last_stable_reqs.keys())]) # total end time
         return id_lists

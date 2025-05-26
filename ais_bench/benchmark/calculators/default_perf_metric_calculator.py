@@ -31,7 +31,7 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             self._process_result(perf_details.get("requests"), stage_name)
 
     def _get_requests_id(self, perf_details):
-        return perf_details["requests"]["id"]
+        return list(range(len(perf_details["requests"]["id"])))
 
     def _get_legal_stats_list(self, stats_list):
         if len(stats_list) > MAX_STATS_LEN:

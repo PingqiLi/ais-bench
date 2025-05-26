@@ -15,7 +15,7 @@ from mmengine import ConfigDict
 
 from ais_bench.benchmark.utils import (LarkReporter, dataset_abbr_from_cfg, get_infer_merged_output_path,
                                get_infer_output_path, get_logger, merged_dataset_abbr_from_class,
-                               model_abbr_from_cfg)
+                               model_abbr_from_cfg, plot_sorted_request_timelines)
 from ais_bench.benchmark.utils.prompt import get_prompt_hash
 from ais_bench.benchmark.utils.build import build_perf_metric_calculator_from_cfg
 from ais_bench.benchmark.utils.results import dump_results_dict
@@ -77,6 +77,9 @@ class DefaultPerfSummarizer:
                     continue
                 with open(perf_details_file, 'r', encoding='utf-8') as file:
                     details_data = json.load(file)
+                    plot_file_path = osp.join(self.work_dir, "performances", model, f"{dataset}_plot.html")
+                    plot_sorted_request_timelines(details_data["requests"]["chunk_time_point_list"], output_file=plot_file_path, unit="s")
+                    self.logger.info(f"Succeed! The {dataset}_plot has been saved in {plot_file_path}")
                 calculators_per_model[dataset] = build_perf_metric_calculator_from_cfg(calculator_conf, details_data)
             self.calculators[model] = calculators_per_model
 

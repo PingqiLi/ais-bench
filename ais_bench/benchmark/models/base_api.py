@@ -314,7 +314,11 @@ class BaseAPIModel(BaseModel):
                         cur_idx = total_input_idx.value % len(shared_inputs) #
                 input_data = shared_inputs[cur_idx]
                 total_input_idx.value += 1
-                _ = self._generate(input_data, max_out_len)
+                try:
+                    _ = self._generate(input_data, max_out_len)
+                except Exception as e:
+                    self.logger.error(f"{e}")
+                    continue
 
         self.token_bucket = None
         local_thread_count = 0
