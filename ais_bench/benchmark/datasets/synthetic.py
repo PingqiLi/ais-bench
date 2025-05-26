@@ -76,9 +76,12 @@ def get_synthetic_dataset_config(path):
     try:
         from ais_bench.datasets.synthetic.synthetic_config import synthetic_config
         return synthetic_config
-    except Exception:
-        raise RuntimeError("Failed to import synthetic_config from",
-                        "ais_bench.datasets.synthetic.synthetic_config")
+    except ImportError as e:
+        raise RuntimeError(
+            f"Synthetic config import failed. Verify that 'ais_bench' is installed. Details: {str(e)}"
+        ) from e
+    except Exception as e:
+        raise RuntimeError(f"Unexpected error: {str(e)}") from e
 
 def normalize_file_path(file_path:str) -> str:
     return os.path.abspath(os.path.expanduser(file_path))

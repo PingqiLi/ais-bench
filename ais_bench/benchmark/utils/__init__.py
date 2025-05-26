@@ -16,3 +16,4 @@ from .postprocessors import *  # noqa
 from .prompt import *  # noqa
 from .text_postprocessors import *  # noqa
 from .results import *
+from .summarize_plot import *

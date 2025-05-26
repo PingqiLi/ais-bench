@@ -16,7 +16,7 @@ from tqdm import tqdm
 from openai import OpenAI
 
 from ais_bench.benchmark.registry import MODELS
-from ais_bench.benchmark.utils.prompt import PromptList
+from ais_bench.benchmark.utils.prompt import PromptList, is_mm_prompt
 
 from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_input
 from ais_bench.benchmark.models.performance_api import PerformanceAPIModel
@@ -243,6 +243,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
         self.endpoint_url = os.path.join(self.base_url, "chat/completions")
         self.model = model if model else self._get_service_model_path()
         self.client = custom_client(self.endpoint_url, retry)
+        self.is_multi_modal = False
 
     def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
@@ -326,7 +327,10 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
             data_id = -1
         if max_out_len <= 0:
             return ''
-        if isinstance(input, (str, list)):
+        if isinstance(input, str) or self.is_multi_modal:
+            messages = [{'role': 'user', 'content': input}]
+        elif is_mm_prompt(input):
+            self.is_multi_modal = True
             messages = [{'role': 'user', 'content': input}]
         else:
             messages = []

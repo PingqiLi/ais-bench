@@ -21,6 +21,7 @@ numpy>=1.23.4,<2.0.0
 openai
 opencv-python-headless
 pandas<2.0.0
+plotly
 prettytable
 protobuf
 pyext==0.5
