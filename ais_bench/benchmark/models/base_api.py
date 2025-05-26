@@ -289,6 +289,7 @@ class BaseAPIModel(BaseModel):
         lock,
         total_thread_count,
         total_input_idx,
+        max_out_lens,
         **extra_gen_kwargs: Any
     ) -> None:
         """Consume items from a shared inputs list and generate outputs concurrently, with optional rate limiting and progress logging.
@@ -314,8 +315,11 @@ class BaseAPIModel(BaseModel):
                         cur_idx = total_input_idx.value % len(shared_inputs) #
                 input_data = shared_inputs[cur_idx]
                 total_input_idx.value += 1
+                request_max_out_len = max_out_len
+                if cur_idx < len(max_out_lens):
+                    request_max_out_len = max_out_lens[cur_idx]
                 try:
-                    _ = self._generate(input_data, max_out_len)
+                    _ = self._generate(input_data, request_max_out_len)
                 except Exception as e:
                     self.logger.error(f"{e}")
                     continue
@@ -774,6 +778,8 @@ def handle_synthetic_input(func):
             if not input_str:
                 raise ValueError(f"Input dict:{input} has no prompt key")
         elif isinstance(input, str):
+            input_str = input
+        elif isinstance(input, list): #chat messages
             input_str = input
         else:
             raise TypeError(f"Excepted str or dict ,but got {type(input)}")
