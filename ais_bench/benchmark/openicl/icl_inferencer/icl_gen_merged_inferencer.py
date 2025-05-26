@@ -18,7 +18,8 @@ from ais_bench.benchmark.utils import batched
 from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
 from ..utils.logging import get_logger
-from .icl_base_inferencer import dump_results_dict, GenInferencerOutputHandler
+from .icl_base_inferencer import GenInferencerOutputHandler
+from ais_bench.benchmark.utils.results import dump_results_dict
 from .icl_gen_inferencer import GenInferencer
 
 logger = get_logger(__name__)

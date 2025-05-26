@@ -42,7 +42,9 @@ class OpenAIChatStreamClient(BaseStreamClient, ABC):
 
     def process_stream_line(self, json_content: dict) -> dict:
         response = {}
-        generated_text = json_content["choices"][0]["delta"]["content"]
+        generated_text = ""
+        for item in json_content["choices"]:
+            generated_text += item["delta"]["content"]
         if generated_text:
             response.update({"generated_text": generated_text})
         if self.do_performance:

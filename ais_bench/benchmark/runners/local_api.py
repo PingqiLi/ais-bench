@@ -75,13 +75,6 @@ def monkey_run_merged(self):
                 "models": [self.model_cfg],
                 "datasets": [[self.dataset_cfg]],
             }
-            out_path = get_infer_output_path(
-                self.model_cfg,
-                self.dataset_cfg,
-                osp.join(self.work_dir, "predictions"),
-            )
-            if osp.exists(out_path):
-                continue
             entry, golds = self.get_data_list()
             self.entry.extend(entry)
             self.golds.extend(golds)
@@ -107,11 +100,6 @@ def monkey_run(self):
                 'models': [self.model_cfg],
                 'datasets': [[self.dataset_cfg]],
             }
-            out_path = get_infer_output_path(
-                self.model_cfg, self.dataset_cfg,
-                osp.join(self.work_dir, 'predictions'))
-            if osp.exists(out_path):
-                continue
             self._inference()
 
 
@@ -270,7 +258,7 @@ class LocalAPIRunner(BaseRunner):
         status = []
         if self.debug:
             # fall back to LocalRunner debug mode
-            for task in tasks:
+            for task in tqdm(tasks, desc="Running tasks"):
                 task['num_prompts'] = self.num_prompts
                 task = TASKS.build(dict(cfg=task, type=self.task_cfg['type']))
                 task_name = task.name
@@ -280,7 +268,7 @@ class LocalAPIRunner(BaseRunner):
                 try:
                     task.cfg.dump(param_file)
                     cmd = task.get_command(cfg_path=param_file,
-                                           template='{task_cmd}')
+                                        template='{task_cmd}')
                     # run in subprocess if starts with torchrun etc.
                     if cmd.startswith('python'):
                         task.run()

@@ -104,7 +104,7 @@ class TestClass:
         assert isinstance(data, dict)
         for key in self.perf_json_keys:
             assert key in data
-        assert data['Total Requests'] == len(fake_perf_data)
+        assert data['Total Requests']['total'] == len(fake_perf_data)
 
         #check perf csv
         infer_outputs_csv_path = os.path.join(self.test_data_path, f"{fake_time_str}/performances/mindie-stream-api/{datasets_abbr_name}.csv")

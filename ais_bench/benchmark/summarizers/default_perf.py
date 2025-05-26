@@ -17,9 +17,9 @@ from ais_bench.benchmark.utils import (LarkReporter, dataset_abbr_from_cfg, get_
                                get_infer_output_path, get_logger, merged_dataset_abbr_from_class,
                                model_abbr_from_cfg)
 from ais_bench.benchmark.utils.prompt import get_prompt_hash
+from ais_bench.benchmark.utils.build import build_perf_metric_calculator_from_cfg
+from ais_bench.benchmark.utils.results import dump_results_dict
 
-METRIC_WHITELIST = ['score', 'auc_score', 'accuracy', 'humaneval_pass@1', 'rouge1', 'avg_toxicity_score', 'bleurt_diff', 'matthews_correlation', 'truth', 'f1', 'exact_match', 'extract_rate']
-METRIC_BLACKLIST = ['bp', 'sys_len', 'ref_len', 'type']
 
 def model_abbr_from_cfg_used_in_summarizer(model):
     if model.get('summarizer_abbr', None):
@@ -40,7 +40,7 @@ class DefaultPerfSummarizer:
         prompt_db: A deprecated field.
     """
 
-    def __init__(self, config: ConfigDict) -> None:
+    def __init__(self, config: ConfigDict, calculator: ConfigDict) -> None:
         self.tasks = []
         self.cfg = config
         self.logger = get_logger()
@@ -63,6 +63,35 @@ class DefaultPerfSummarizer:
                 continue
             model_abbrs.append(model_abbr)
         self.model_abbrs = model_abbrs
+        if self.model_cfgs[0].get("attr") == "service":
+            self._load_details_perf_data(calculator)
+            self._dump_calculated_perf_data()
+
+    def _load_details_perf_data(self, calculator_conf: ConfigDict):
+        self.calculators = {}
+        for model in self.model_abbrs:
+            calculators_per_model = {}
+            for dataset in self.dataset_abbrs:
+                perf_details_file = osp.join(self.work_dir, "performances", model, f"{dataset}_details.json")
+                if not osp.exists(perf_details_file):
+                    continue
+                with open(perf_details_file, 'r', encoding='utf-8') as file:
+                    details_data = json.load(file)
+                calculators_per_model[dataset] = build_perf_metric_calculator_from_cfg(calculator_conf, details_data)
+            self.calculators[model] = calculators_per_model
+
+    def _dump_calculated_perf_data(self):
+        for model, calc_per_ds in self.calculators.items():
+            for dataset, calc in calc_per_ds.items():
+                calc.calculate()
+                output_filepath = osp.join(self.work_dir, "performances", model)
+                dump_results_dict(
+                    calc.get_common_res(),
+                    osp.join(output_filepath, dataset + ".json"),
+                )
+                calc.save_performance(
+                    osp.join(output_filepath, dataset + ".csv")
+                )
 
     def _pick_up_results(self):
 
@@ -92,11 +121,12 @@ class DefaultPerfSummarizer:
         return table
 
     def _load_json_to_table(self, json_path):
-        table = [["Common Metric", "Value"]]
+        table = [["Common Metric", "Stage", "Value"]]
         with open(json_path, 'r', encoding='utf-8') as file:
             data = json.load(file)
-        for key, value in data.items():
-            table.append([key, value])
+        for key, stage_value in data.items():
+            for stage_name, value in stage_value.items():
+                table.append([key, stage_name, value])
         return table
 
     def _output_to_screen(self, tables_dict: Dict):
