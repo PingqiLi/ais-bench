@@ -131,7 +131,7 @@ def parse_custom_dataset_args(custom_dataset_parser):
                                        choices=['mcq', 'qa'])
     custom_dataset_parser.add_argument('--custom-dataset-infer-method',
                                        type=str,
-                                       choices=['gen'])
+                                       choices=['gen', 'chat'])
 
 def main():
     args = parse_args()

@@ -238,7 +238,7 @@ class BaseAPIModel(BaseModel):
             with ThreadPoolExecutor(max_workers=pool_size) as executor:
                 input_data = data_queue.get()
                 while input_data is not None:
-                    executor.submit(self._generate, input_data, max_out_len)
+                    executor.submit(self._generate, input_data, input_data.get("max_tokens", max_out_len))
                     input_data = data_queue.get()
                 data_queue.put(None)
         except KeyboardInterrupt:
@@ -398,6 +398,11 @@ class APITemplateParser:
         assert mode in ['ppl', 'gen']
         if isinstance(prompt_template, str):
             return prompt_template
+        if len(prompt_template) == 1:
+            item = prompt_template[0]
+            isinstance(item, dict)
+            if conversations:= item.get('conversations'):
+                    return conversations
         if self.meta_template:
 
             prompt = PromptList()
@@ -480,6 +485,8 @@ class APITemplateParser:
                         prompt += last_sep + item
                 elif item.get('prompt', ''):
                     prompt += last_sep + item.get('prompt', '')
+                elif conversations:= item.get('conversations'):
+                    return conversations
                 last_sep = '\n'
         return prompt
 

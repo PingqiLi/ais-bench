@@ -80,6 +80,8 @@ class GenMergedInferencer(GenInferencer):
         if ds_reader.output_column:
             gold_ans = ds_reader.dataset["test"][ds_reader.output_column]
             prompt_list = list(zip(prompt_list, gold_ans))
+        if ds_reader.max_tokens_column:
+            self.max_out_lens = ds_reader.dataset['test'][ds_reader.max_tokens_column]
         entry = [p[0] for p in prompt_list] if ds_reader.output_column else prompt_list
         golds = (
             [p[1] for p in prompt_list]

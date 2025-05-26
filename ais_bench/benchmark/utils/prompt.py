@@ -99,6 +99,8 @@ class PromptList(list):
                 new_item = deepcopy(item)
                 if 'prompt' in item:
                     new_item['prompt'] = safe_format(item['prompt'], **kwargs)
+                elif 'conversations' in item:
+                    new_item['conversations'] = kwargs['question']
                 new_list.append(new_item)
             else:
                 new_list.append(safe_format(item, **kwargs))
