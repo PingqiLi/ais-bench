@@ -80,7 +80,7 @@ class PerformanceAPIModel(BaseAPIModel):
             self.logger.error("Tokenizer is not initialized.")
             return 0.0, []
         if not isinstance(prompt, str):
-            self.logger.error(f"Invalid input type: expected a string, got {type(prompt)}.")
+            self.logger.warning(f"Input type: expected a string, got {type(prompt)}, InputTokens will be 0.")
             return 0.0, []
         time_start = time.perf_counter()
         tokens = self.tokenizer.encode(prompt)

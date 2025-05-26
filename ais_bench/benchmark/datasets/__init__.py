@@ -25,3 +25,10 @@ from .humanevalx import humanevalx, humaneval_x_eval, humaneval_x_utils
 from .humanevalx.humanevalx import * # noqa: F401, F403
 from .bbh import * # noqa: F401, F403
 from .race import *
+from .textvqa import *
+from .videobench import *
+from .vocalsound import *
+from .lambada import * # noqa: F401, F403
+from .lcsts import * # noqa: F401, F403
+from .siqa import * # noqa: F401, F403
+from .xsum import * # noqa: F401, F403

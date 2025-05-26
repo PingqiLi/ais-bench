@@ -1,12 +1,21 @@
 """Prompt Template."""
 import copy
+import base64
 from typing import Dict, Hashable, List, Optional, Union
 
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
 from ais_bench.benchmark.utils.prompt import PromptList, safe_format
 from ais_bench.benchmark.utils.types import _check_type_list
+from ais_bench.benchmark.utils.video import VideoAsset, image_to_base64
 
 PromptType = Union[PromptList, str, dict]
+TEXT_MAP = {
+            2: 'two', 
+            3: 'three', 
+            4: 'four', 
+            5: 'five', 
+            6: 'six', 
+        }
 
 
 @ICL_PROMPT_TEMPLATES.register_module()
@@ -170,6 +179,81 @@ class PromptTemplate:
         template = None
         if isinstance(self.template, str):
             template = self.template
+
+        #textvqa data
+        elif isinstance(self.template, dict) and 'type' in self.template.keys() and self.template['type']=='image_text':
+            assert 'data' in self.template.keys() and isinstance(self.template['data'], list)
+            template = []
+            if 'prompt' in self.template.keys():
+                entry['question'] += self.template['prompt']
+            if 'image_url' in self.template['data']:
+                template.append({'type':'image_url', 'image_url':entry['image']})
+            if 'image_url_base64' in self.template['data']:
+                with open(entry['image'], 'rb') as f:
+                    binary_data = f.read()
+                image_url = base64.b64encode(binary_data).decode("utf-8")
+                template.append({'type':'image_url', 'image_url': {"url": f"data:image/jpeg;base64,{image_url}"}})
+            if 'text' in self.template['data']:
+                template.append({'type': 'text', 'text': entry['question']})
+            return template
+        
+        #videobench data
+        elif isinstance(self.template, dict) and 'type' in self.template.keys() and self.template['type']=='video_text':
+            assert 'data' in self.template.keys() and isinstance(self.template['data'], list)
+            #build video
+            template = []
+            if 'video_url_base64' in self.template['data']:
+                assert 'num_frames' in self.template
+                base64_frames = []
+                frames = VideoAsset(video_path=entry['vid_path'], num_frames=int(self.template['num_frames'])).pil_images
+                for frame in frames:
+                    base64_frame = image_to_base64(frame)
+                    base64_frames.append(base64_frame)
+                template.append({'type':'video_url', 'video_url':{"url": f"data:video/jpeg;base64,{','.join(base64_frames)}"}})
+            elif 'video_url' in self.template['data']:
+                template.append({'type':'video_url', 'video_url':entry['vid_path']})
+            else:
+                raise ValueError("Please check dataset config!")
+            #build text
+            text = entry['question']
+            choices = {key: value for key, value in entry['choices'].items() if value is not None}
+            if "prompt1" in self.template.keys():
+                assert "choice_length" in self.template['prompt1'] and "choice_list" in self.template['prompt1']
+                prompt1 = self.template['prompt1'].replace('choice_length', TEXT_MAP.get(len(choices)))
+                prompt1 = prompt1.replace('choice_list', ", ".join(choices.keys()))
+                text += "Choices: " if len(choices) == 6 else " "
+                for key in choices:
+                    text += (key + '.' + choices[key] + ' ')
+                text += prompt1
+                if len(choices) in [2, 3, 5]:
+                    text += " "
+                assert "prompt2" in self.template.keys()
+                text += self.template['prompt2']
+            template.append({'type': 'text', 'text': text})
+            return template
+
+        #vocalsound data
+        elif isinstance(self.template, dict) and 'type' in self.template.keys() and self.template['type']=='audio_text':
+            assert 'data' in self.template.keys() and isinstance(self.template['data'], list)
+            template = []
+            #build audio
+            if 'audio_url' in self.template['data']:
+                template.append({'type':'audio_url', 'audio_url':entry['audio_path']})
+            elif 'audio_url_base64' in self.template['data']:
+                with open(entry['audio_path'], 'rb') as f:
+                    data = f.read()
+                audio_base64 = base64.b64encode(data).decode('utf-8')
+                template.append({'type':'audio_url', 'audio_url':{"url": f"data:audio/wav;base64,{audio_base64}"}})
+            else:
+                raise ValueError("Please check dataset config!")
+            #build text
+            if 'text' in self.template['data']:
+                assert 'prompt' in self.template
+                if 'audio_url_base64' in self.template['data']:
+                    self.template['prompt'] = '<|AUDIO|>' + self.template['prompt']  #vllm bug
+                template.append({'type': 'text', 'text': self.template['prompt']})
+            return template
+        
         elif self.prompt_type == 'origin':
             # This if is only effective when you are using GenInferecner
             # with multi-label prompts.

@@ -115,13 +115,6 @@ class OpenICLInferMergedTask(BaseTask):
                     "models": [self.model_cfg],
                     "datasets": [[self.dataset_cfg]],
                 }
-                out_path = get_infer_merged_output_path(
-                    self.model_cfg,
-                    self.dataset_cfg,
-                    osp.join(self.work_dir, "predictions"),
-                )
-                if osp.exists(out_path):
-                    continue
                 entry, golds = self.get_data_list()
                 self.entry.extend(entry)
                 self.golds.extend(golds)

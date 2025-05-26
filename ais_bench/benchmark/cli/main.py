@@ -11,6 +11,7 @@ from mmengine.config import Config, DictAction
 
 from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
 from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
+from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
 from ais_bench.benchmark.utils import LarkReporter, get_logger
 from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
 from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg,
@@ -107,6 +108,12 @@ def parse_args():
     parser.add_argument(
         '--merge-ds',
         help='Whether to merge dataset with multi files(mmlu, ceval)',
+        action='store_true',
+    )
+
+    parser.add_argument(
+        '--pressure',
+        help='Whether to enable pressure test in perf mode (only attr service)',
         action='store_true',
     )
 
@@ -285,6 +292,8 @@ def main():
         if not summarizer_cfg or summarizer_cfg.get('type', None) is None:
             summarizer_cfg['type'] = DefaultPerfSummarizer
         summarizer_cfg['config'] = cfg
+        if summarizer_cfg.get('calculator') is None:
+            summarizer_cfg['calculator'] = dict(type=DefaultPerfMetricCalculator)
         summarizer_cfg.pop('dataset_abbrs', None)
         summarizer_cfg.pop('summary_groups', None)
         summarizer_cfg.pop('prompt_db', None)

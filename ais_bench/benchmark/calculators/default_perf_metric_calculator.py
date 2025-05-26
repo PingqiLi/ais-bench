@@ -6,46 +6,65 @@ import copy
 from ais_bench.benchmark.utils import get_logger
 from ais_bench.benchmark.calculators.base_perf_metric_calculator import BasePerfMetricCalculator
 from ais_bench.benchmark.registry import PERF_METRIC_CALCULATORS
+from ais_bench.benchmark.calculators.base_perf_metric_calculator import is_legal_percentage_str, DEFAULT_STATS, MAX_STATS_LEN
+
 
 @PERF_METRIC_CALCULATORS.register_module()
 class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
-    def __init__(self, result: dict):
-        self.data_count = len(result["is_success"])
-        self.decode_latencies = result["decode_token_latencies"]
-        self.success_count = sum(result["is_success"])
-        self.empty_count = sum(result["is_empty"])
-        self.infer_time = max(result["end_time"]) - min(result["start_time"])
+    def __init__(self, perf_details: dict, stats_list: list = DEFAULT_STATS):
+        self.logger = get_logger()
+        self.stage_dict = {
+            "total": self._get_requests_id(perf_details)
+        }
+        self._get_legal_stats_list(stats_list)
+        self.result = {}
+        self.max_concurrency = perf_details["task"]["max_concurrency"]
+        self.data_count = {}
+        self.decode_latencies = {}
+        self.success_count = {}
+        self.empty_count = {}
+        self.infer_time = {}
+        self.metrics = {}
+        self.common_metrics = {}
+
+        for stage_name, _ in self.stage_dict.items():
+            self._process_result(perf_details.get("requests"), stage_name)
+
+    def _get_requests_id(self, perf_details):
+        return list(range(len(perf_details["requests"]["id"])))
+
+    def _get_legal_stats_list(self, stats_list):
+        if len(stats_list) > MAX_STATS_LEN:
+            self.logger.warning(f"Len of stats list is over {MAX_STATS_LEN}! Only reserve the first {MAX_STATS_LEN} stat!")
+            stats_list = stats_list[:MAX_STATS_LEN]
+        self.stats_list = []
+        for stat in stats_list:
+            if stat not in ["Average", "Min", "Max", "Median"] and not is_legal_percentage_str(stat):
+                self.logger.warning(f"Unknown stat: {stat}, won't take effect!")
+                continue
+            self.stats_list.append(stat)
+        if len(self.stats_list) == 0:
+            self.logger.warning("Can't find valid stat set, use \"Avarage\" stat.")
+            self.stats_list.append("Average")
+
+    def _process_result(self, full_result, stage_name):
+        id_list = self.stage_dict.get(stage_name)
+        result = {k: [v[i] for i in id_list] for k, v in full_result.items() if v is not None}
+        self.data_count[stage_name] = len(result["is_success"])
+        self.decode_latencies[stage_name] = result["decode_token_latencies"]
+        self.success_count[stage_name] = sum(result["is_success"])
+        self.empty_count[stage_name] = sum(result["is_empty"])
+        self.infer_time[stage_name] = max(result["end_time"]) - min(result["start_time"])
         per_request_avg_decode_time = []
         # Compute the average decode latency per request
-        for values in self.decode_latencies:
-            if values:  # Skip empty lists
-                per_request_avg_decode_time.append(round(np.average(values), 4))
+        for i, value in enumerate(result["seq_latency"]):
+            if value:  # Skip empty lists
+                tpot = (value - result["prefill_latency"][i]) / result["generate_tokens_len"][i]
+                per_request_avg_decode_time.append(tpot)
         result["average_decode_latencies"] = per_request_avg_decode_time[:]
-        self.result = self.convert_result(copy.deepcopy(result))
+        self.result[stage_name] = self.convert_result(copy.deepcopy(result))
 
-        self.logger = get_logger()
-
-        def new_metric_result():
-            return {
-                "Average": 0,
-                "Max": 0,
-                "Min": 0,
-                "Median": 0,
-                "P75": 0,
-                "P90": 0,
-                "P99": 0,
-                "N": 0,
-            }
-
-        self.metrics = collections.defaultdict(new_metric_result)
-
-        def new_common_result():
-            return {"Value": 0}
-
-        self.common_metrics = collections.defaultdict(new_common_result)
-
-    def get_common_res(self, concurrency):
-        self.common_metrics.update({"Max Concurrency": concurrency})
+    def get_common_res(self):
         return {k: v for k, v in self.common_metrics.items() if v is not None}
 
     def save_performance(self, out_path: str):
@@ -63,18 +82,19 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             if first_entry is None:
                 raise ValueError("Metrics data structure is invalid.")
 
-            headers = list(first_entry.keys())
+            headers = list(first_entry[list(self.stage_dict.keys())[0]].keys())
 
             with open(out_path, mode="w", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
 
                 # Write header: First column is the object name, followed by metric keys
-                writer.writerow(["Performance Parameters"] + headers)
+                writer.writerow(["Performance Parameters"] + ["Stage"] + headers)
 
                 # Write each object's data
                 for obj_name, values in self.metrics.items():
-                    row = [obj_name] + [values.get(key, "") for key in headers]
-                    writer.writerow(row)
+                    for stage_name, _ in self.stage_dict.items():
+                        row = [obj_name] + [stage_name] + [values[stage_name].get(key, "") for key in headers]
+                        writer.writerow(row)
 
         except (OSError, IOError) as e:
             raise RuntimeError(f"Failed to write to file '{out_path}': {e}")
@@ -139,37 +159,37 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
     def __calc_metrics(self):
         """Calculate various statistical metrics for performance analysis."""
         # Iterate over all collected metrics
-        for metric, value in self.result.items():
-            stats = {
-                "Average": 0,
-                "Min": 0,
-                "Max": 0,
-                "Median": 0,
-                "P75": 0,
-                "P90": 0,
-                "P99": 0,
-            }
+        for stage_name, _ in self.stage_dict.items():
+            for metric, value in self.result[stage_name].items():
+                stats = {k: 0 for k in self.stats_list}
+                if value:
+                    # Special handling for batch size metrics
+                    if metric in {"PrefillBatchsize", "DecoderBatchsize"}:
+                        value = self.__statistic_prefill_or_decode_batch_size(value)
 
-            if value:
-                # Special handling for batch size metrics
-                if metric in {"PrefillBatchsize", "DecoderBatchsize"}:
-                    value = self.__statistic_prefill_or_decode_batch_size(value)
+                    # Compute statistical values
+                    for stat in self.stats_list:
+                        if stat == "Average":
+                            stats[stat] = round(np.average(value), 4)
+                        elif stat == "Min":
+                            stats[stat] = round(float(min(value)), 4)
+                        elif stat == "Max":
+                            stats[stat] = round(float(max(value)), 4)
+                        elif stat == "Median":
+                            stats[stat] = round(np.percentile(value, 50), 4)
+                        elif is_legal_percentage_str(stat):
+                            stats[stat] = round(np.percentile(value, int(stat[1:])), 4)
 
-                # Compute statistical values
-                stats["Average"] = round(np.average(value), 4)
-                stats["Min"] = round(float(min(value)), 4)
-                stats["Max"] = round(float(max(value)), 4)
-                stats["Median"] = round(np.percentile(value, 50), 4)
-                stats["P75"] = round(np.percentile(value, 75), 4)
-                stats["P90"] = round(np.percentile(value, 90), 4)
-                stats["P99"] = round(np.percentile(value, 99), 4)
+                # Store the computed metrics
+                if self.metrics.get(metric) is None:
+                    self.metrics[metric] = {stage_name: stats}
+                else:
+                    self.metrics[metric][stage_name] = stats
 
-            # Store the computed metrics
-            self.metrics[metric] = stats
+            # Assign fixed count value for all metrics
+            for key in self.metrics:
+                self.metrics[key][stage_name]["N"] = self.success_count[stage_name]
 
-        # Assign fixed count value for all metrics
-        for key in self.metrics:
-            self.metrics[key]["N"] = self.success_count
 
     def __statistic_prefill_or_decode_batch_size(self, batch_sizes: list):
         """
@@ -214,49 +234,58 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         return statistics
 
     def __calc_common_metrics(self):
-        self.common_metrics["Benchmark Duration"] = round(self.infer_time * 1000, 4)
-        self.common_metrics["Total Requests"] = self.data_count
-        self.common_metrics["Failed Requests"] = self.data_count - self.success_count
-        self.common_metrics["Success Requests"] = self.success_count
-        self.common_metrics["Concurrency"] = round(
-            sum(self.result["E2EL"]) / self.infer_time / 1000, 4
-        )
-        self.common_metrics["Max Concurrency"] = self.common_metrics["Concurrency"]
+        common_metric_names = ["Benchmark Duration", "Total Requests", "Failed Requests", "Success Requests",
+            "Concurrency", "Max Concurrency", "Request Throughput", "Total Input Tokens",
+            "Prefill Token Throughput", "Total generated tokens", "Input Token Throughput",
+            "Output Token Throughput", "Total Token Throughput"]
+        for name in common_metric_names:
+            if self.common_metrics.get(name) is None:
+                self.common_metrics[name] = {}
 
-        try:
-            self.common_metrics["Request Throughput"] = round(
-                self.success_count / self.infer_time, 4
+        for stage_name, _ in self.stage_dict.items():
+            self.common_metrics["Benchmark Duration"][stage_name] = round(self.infer_time[stage_name] * 1000, 4)
+            self.common_metrics["Total Requests"][stage_name] = self.data_count[stage_name]
+            self.common_metrics["Failed Requests"][stage_name] = self.data_count[stage_name] - self.success_count[stage_name]
+            self.common_metrics["Success Requests"][stage_name] = self.success_count[stage_name]
+            self.common_metrics["Concurrency"][stage_name] = round(
+                sum(self.result[stage_name]["E2EL"]) / self.infer_time[stage_name] / 1000, 4
             )
-        except ZeroDivisionError:
-            self.common_metrics["Request Throughput"] = 0
+            self.common_metrics["Max Concurrency"][stage_name] = self.max_concurrency
 
-        self.common_metrics["Total Input Tokens"] = sum(self.result["InputTokens"])
-        if self.common_metrics["Total Input Tokens"] != 0 and self.result.get("TTFT") is not None:
-            self.common_metrics["Prefill Token Throughput"] = round(
-                1000
-                * self.common_metrics["Total Input Tokens"]
-                / sum(self.result["TTFT"]),
-                4,
-            )
-        else:
-            self.common_metrics.pop("Prefill Token Throughput", None)
-
-        self.common_metrics["Total generated tokens"] = sum(self.result["OutputTokens"])
-        if self.infer_time > 0:
-            self.common_metrics["Input Token Throughput"] = round(
-                self.common_metrics["Total Input Tokens"] / self.infer_time, 4
-            )
-            self.common_metrics["Output Token Throughput"] = round(
-                sum(self.result["OutputTokens"]) / self.infer_time, 4
-            )
-            self.common_metrics["Total Token Throughput"] = round(
-                (
-                    self.common_metrics["Total Input Tokens"]
-                    + sum(self.result["OutputTokens"])
+            try:
+                self.common_metrics["Request Throughput"][stage_name] = round(
+                    self.success_count[stage_name] / self.infer_time[stage_name], 4
                 )
-                / self.infer_time,
-                4,
-            )
+            except ZeroDivisionError:
+                self.common_metrics["Request Throughput"][stage_name] = 0
+
+            self.common_metrics["Total Input Tokens"][stage_name] = sum(self.result[stage_name]["InputTokens"])
+            if self.common_metrics["Total Input Tokens"][stage_name] != 0 and self.result[stage_name].get("TTFT") is not None:
+                self.common_metrics["Prefill Token Throughput"][stage_name] = round(
+                    1000
+                    * self.common_metrics["Total Input Tokens"][stage_name]
+                    / sum(self.result[stage_name]["TTFT"]),
+                    4,
+                )
+            else:
+                self.common_metrics.pop("Prefill Token Throughput", None)
+
+            self.common_metrics["Total generated tokens"][stage_name] = sum(self.result[stage_name]["OutputTokens"])
+            if self.infer_time[stage_name] > 0:
+                self.common_metrics["Input Token Throughput"][stage_name] = round(
+                    self.common_metrics["Total Input Tokens"][stage_name] / self.infer_time[stage_name], 4
+                )
+                self.common_metrics["Output Token Throughput"][stage_name] = round(
+                    sum(self.result[stage_name]["OutputTokens"]) / self.infer_time[stage_name], 4
+                )
+                self.common_metrics["Total Token Throughput"][stage_name] = round(
+                    (
+                        self.common_metrics["Total Input Tokens"][stage_name]
+                        + sum(self.result[stage_name]["OutputTokens"])
+                    )
+                    / self.infer_time[stage_name],
+                    4,
+                )
 
     def add_units(self):
         ms = " ms"
@@ -277,13 +306,15 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             "QueueWaitTime": " μs",
         }
 
+
         for metric, values in self.metrics.items():
-            if metric not in metrics_units_map or metrics_units_map.get(metric) is None:
-                continue
-            for key, val in values.items():
-                if key == "N":
+            for stage_name, _ in self.stage_dict.items():
+                if metric not in metrics_units_map or metrics_units_map.get(metric) is None:
                     continue
-                values[key] = str(val) + metrics_units_map.get(metric)
+                for key, val in values[stage_name].items():
+                    if key == "N":
+                        continue
+                    values[stage_name][key] = str(val) + metrics_units_map.get(metric)
         common_metric_units_map = {
             "Benchmark Duration": ms,
             "Total Requests": None,
@@ -301,11 +332,12 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         }
 
         for metric, value in self.common_metrics.items():
-            if (
-                metric not in common_metric_units_map
-                or common_metric_units_map.get(metric) is None
-            ):
-                continue
-            self.common_metrics[metric] = str(value) + common_metric_units_map.get(
-                metric
-            )
+            for stage_name, _ in self.stage_dict.items():
+                if (
+                    metric not in common_metric_units_map
+                    or common_metric_units_map.get(metric) is None
+                ):
+                    continue
+                self.common_metrics[metric][stage_name] = str(value[stage_name]) + common_metric_units_map.get(
+                    metric
+                )

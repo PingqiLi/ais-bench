@@ -16,7 +16,7 @@ from tqdm import tqdm
 from openai import OpenAI
 
 from ais_bench.benchmark.registry import MODELS
-from ais_bench.benchmark.utils.prompt import PromptList
+from ais_bench.benchmark.utils.prompt import PromptList, is_mm_prompt
 
 from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_input
 from ais_bench.benchmark.models.performance_api import PerformanceAPIModel
@@ -81,6 +81,11 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
         """Encode a string into tokens, measuring processing time."""
         if not self.tokenizer:
             self.logger.error("Tokenizer is not initialized.")
+            return 0.0, []
+
+        assert len(prompt)>0 and isinstance(prompt[0], dict)
+        if "content" in prompt[0] and isinstance(prompt[0]['content'], list):
+            self.logger.warning(f"Input type: expected a string, got list, InputTokens will be 0.")
             return 0.0, []
 
         messages = self.tokenizer.tokenizer.tokenizer_model.apply_chat_template(prompt, add_generation_prompt=True, tokenize=False)
@@ -155,7 +160,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
         if max_out_len <= 0:
             return ''
 
-        if isinstance(input, str):
+        if isinstance(input, (str, list)):
             messages = [{'role': 'user', 'content': input}]
         else:
             messages = []
@@ -238,11 +243,17 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
         self.endpoint_url = os.path.join(self.base_url, "chat/completions")
         self.model = model if model else self._get_service_model_path()
         self.client = custom_client(self.endpoint_url, retry)
+        self.is_multi_modal = False
 
     def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
         if not self.tokenizer:
             self.logger.error("Tokenizer is not initialized.")
+            return 0.0, []
+        
+        assert len(prompt)>0 and isinstance(prompt[0], dict)
+        if "content" in prompt[0] and isinstance(prompt[0]['content'], list):
+            self.logger.warning(f"Input type: expected a string, got list, InputTokens will be 0.")
             return 0.0, []
 
         messages = self.tokenizer.tokenizer.tokenizer_model.apply_chat_template(prompt, add_generation_prompt=True, tokenize=False)
@@ -316,7 +327,10 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
             data_id = -1
         if max_out_len <= 0:
             return ''
-        if isinstance(input, str):
+        if isinstance(input, str) or self.is_multi_modal:
+            messages = [{'role': 'user', 'content': input}]
+        elif is_mm_prompt(input):
+            self.is_multi_modal = True
             messages = [{'role': 'user', 'content': input}]
         else:
             messages = []

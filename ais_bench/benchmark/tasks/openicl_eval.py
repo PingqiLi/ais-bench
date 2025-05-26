@@ -78,7 +78,7 @@ class OpenICLEvalTask(BaseTask):
                     self.model_cfg, self.dataset_cfg,
                     osp.join(self.work_dir, 'results'))
                 if osp.exists(out_path):
-                    continue
+                    self.logger.warning(f'Output file {out_path} already exists and will be overwritten.')
                 self._score()
 
     def _score(self):

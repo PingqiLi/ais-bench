@@ -1,9 +1,13 @@
-import os
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import BBHDataset, BBHEvaluator, bbh_mcq_postprocess, BBHEvaluator_mcq
+from mmengine.config import read_base
+
+with read_base():
+    from .bbh_multiple_choice_sets_lib_prompt import bbh_multiple_choice_sets_dict
+    from .bbh_free_form_sets_lib_prompt import bbh_free_form_sets_dict
 
 bbh_reader_cfg = dict(input_columns=['input'], output_column='target')
 
@@ -40,16 +44,9 @@ bbh_free_form_sets = [
 ]
 dataset_path = "ais_bench/datasets/BBH/data" # 数据集路径
 
-base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
-if not os.path.isabs(dataset_path):
-    shot_file_path = os.path.join(base_path, dataset_path, '../lib_prompt')
-else:
-    shot_file_path = os.path.join(dataset_path, '../lib_prompt')
-
 bbh_datasets = []
 for _name in bbh_multiple_choice_sets:
-    with open(os.path.join(shot_file_path, f'{_name}.txt'), 'r') as f:
-        _hint = f.read()
+    _hint = bbh_multiple_choice_sets_dict[_name]
     bbh_infer_cfg = dict(
         prompt_template=dict(
             type=PromptTemplate,
@@ -79,8 +76,7 @@ for _name in bbh_multiple_choice_sets:
             eval_cfg=bbh_eval_cfg.copy()))
 
 for _name in bbh_free_form_sets:
-    with open(os.path.join(shot_file_path, f'{_name}.txt'), 'r') as f:
-        _hint = f.read()
+    _hint = bbh_free_form_sets_dict[_name]
     bbh_infer_cfg = dict(
         prompt_template=dict(
             type=PromptTemplate,
