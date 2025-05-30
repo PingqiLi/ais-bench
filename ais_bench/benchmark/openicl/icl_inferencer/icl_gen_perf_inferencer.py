@@ -152,6 +152,7 @@ class GenPerfInferencer(GenInferencer):
                 "task": task_params,
                 "requests": preds,
             }
+            logger.info("Dumping detail perf data ...")
             dump_results_dict(
                 perf_details,
                 osp.join(output_filepath, output_filename + "_details.json"),

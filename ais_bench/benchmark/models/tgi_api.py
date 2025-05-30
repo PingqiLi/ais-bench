@@ -18,6 +18,7 @@ from ais_bench.benchmark.utils.prompt import PromptList
 from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_input
 from ais_bench.benchmark.models.performance_api import PerformanceAPIModel
 from ais_bench.benchmark.clients import TGIStreamClient, TGITextClient
+from ais_bench.benchmark.utils.build import build_client_from_cfg
 
 PromptType = Union[PromptList, str, dict]
 
@@ -55,7 +56,7 @@ class TGICustomAPI(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = TGITextClient,
+                 custom_client = dict(type=TGITextClient),
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -70,7 +71,15 @@ class TGICustomAPI(PerformanceAPIModel):
         self.enable_ssl = enable_ssl
         self.base_url = self._get_base_url()
         self.endpoint_url = os.path.join(self.base_url, "generate")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.init_client(custom_client)
+
+    def init_client(self, custom_client):
+        if not isinstance(custom_client, dict):
+            self.logger.warning(f"Value of custom_client: {custom_client} is not a dict! Use Default")
+            custom_client = dict(type=TGITextClient)
+        custom_client['url'] = self.endpoint_url
+        custom_client['retry'] = self.retry
+        self.client = build_client_from_cfg(custom_client)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -159,7 +168,7 @@ class TGICustomAPIStream(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = TGIStreamClient,
+                 custom_client = dict(type=TGIStreamClient),
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                         max_seq_len=max_seq_len,
@@ -175,7 +184,15 @@ class TGICustomAPIStream(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.generation_kwargs = generation_kwargs
         self.endpoint_url = os.path.join(self.base_url, "generate_stream")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.init_client(custom_client)
+
+    def init_client(self, custom_client):
+        if not isinstance(custom_client, dict):
+            self.logger.warning(f"Value of custom_client: {custom_client} is not a dict! Use Default")
+            custom_client = dict(type=TGIStreamClient)
+        custom_client['url'] = self.endpoint_url
+        custom_client['retry'] = self.retry
+        self.client = build_client_from_cfg(custom_client)
 
     def generate(self,
                  inputs: List[PromptType],

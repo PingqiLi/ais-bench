@@ -58,12 +58,21 @@ class BaseAPIModel(BaseModel):
         self.path = path
         self.tqdm_pos = -1
         self.max_seq_len = max_seq_len
-        self.meta_template = meta_template
+        if hasattr(self, "is_chat_api") and self.is_chat_api:
+            self.meta_template = dict(
+                round=[
+                    dict(role="HUMAN", api_role="HUMAN"),
+                    dict(role="BOT", api_role="BOT", generate=True),
+                ],
+                reserved_roles=[dict(role="SYSTEM", api_role="SYSTEM")],
+            )
+        else:
+            self.meta_template = meta_template
         self.retry = retry
         self.rpm_verbose = rpm_verbose
         self.request_rate = request_rate
         self.token_bucket = None
-        self.template_parser = APITemplateParser(meta_template)
+        self.template_parser = APITemplateParser(self.meta_template)
         self.generation_kwargs = generation_kwargs
         self.verbose = verbose
         self.request_counter = dict(post_req_num=0, get_req_num=0, failed_num=0)

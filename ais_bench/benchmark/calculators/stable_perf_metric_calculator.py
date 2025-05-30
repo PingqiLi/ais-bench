@@ -1,4 +1,5 @@
 import csv
+from tqdm import tqdm
 import collections
 import math
 import numpy as np
@@ -12,14 +13,18 @@ WAVE_OFFSET = 0.02
 
 @PERF_METRIC_CALCULATORS.register_module()
 class StablePerfMetricCalculator(BasePerfMetricCalculator):
-    def __init__(self, perf_details: dict, stage_info: dict = {}, stats_list: list = DEFAULT_STATS):
+    def __init__(self, stats_list: list = DEFAULT_STATS):
         self.logger = get_logger()
+        self._get_legal_stats_list(stats_list)
+
+
+    def _init_datas(self, perf_details: dict):
         self.max_concurrency = perf_details["task"]["max_concurrency"]
         self.stage_section = [0, 0]
         self.stage_dict = {
-            "stable": self._get_requests_id(perf_details, stage_info)
+            "stable": self._get_requests_id(perf_details)
         }
-        self._get_legal_stats_list(stats_list)
+
         self.result = {}
         self.data_count = {}
         self.decode_latencies = {}
@@ -32,7 +37,7 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         for stage_name, _ in self.stage_dict.items():
             self._process_result(perf_details.get("requests"), stage_name)
 
-    def _get_requests_id(self, perf_details, stage_info):
+    def _get_requests_id(self, perf_details):
         request_time_sections = []
         for id in range(len(perf_details["requests"]["id"])):
             request_time_sections.append({
@@ -44,20 +49,25 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         sorted_time_sections = sorted(request_time_sections, key=lambda x: x["start_time"])
         id_lists = []
         working_reqs = {}
-        last_stable_reqs = {}
-        for i, section in enumerate(sorted_time_sections):
+        self.logger.info("Calculating stable stage ...")
+        for i, section in enumerate(tqdm(sorted_time_sections)):
+            poped_ids = []
             for k in list(working_reqs.keys()):
                 if working_reqs[k][1] < section["start_time"]:
+                    poped_ids.append(k)
                     working_reqs.pop(k, None)
             working_reqs[section["id"]] = [section["start_time"], section["end_time"]]
             if len(working_reqs) == self.max_concurrency:
                 id_lists.append(section["id"])
                 if len(id_lists) == 1:
                    self.stage_section[0] = min([perf_details["requests"]["end_time"][id] for id in list(working_reqs.keys())])  # total start time
-                last_stable_reqs = copy.deepcopy(working_reqs)
             elif len(working_reqs) >= int(self.max_concurrency * (1 - WAVE_OFFSET)) and len(id_lists) > 0:
                 id_lists.append(section["id"])
-                last_stable_reqs = copy.deepcopy(working_reqs)
+            else:
+                if len(id_lists) > 0: # start to leave stable
+                    self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in poped_ids])
+                    break
+
         if len(id_lists) > 0:
             id_lists.pop(0) # ignore first request that reached max concurrency
         if len(id_lists) == 0:
@@ -66,7 +76,8 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
             self.stage_section[1] = max(perf_details["requests"]["end_time"]) # total end time
             return list(range(len(perf_details["requests"]["id"])))
 
-        self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in list(last_stable_reqs.keys())]) # total end time
+        if self.stage_section[1] == 0:
+            self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in list(working_reqs.keys())]) # total end time
         return id_lists
 
     def _get_legal_stats_list(self, stats_list):
@@ -85,7 +96,10 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
 
     def _process_result(self, full_result, stage_name):
         id_list = self.stage_dict.get(stage_name)
-        result = {k: [v[i] for i in id_list] for k, v in full_result.items() if v is not None}
+        result = {}
+        for k, v in full_result.items():
+            if v is not None:
+                result[k] = [v[i] for i in id_list]
         self.data_count[stage_name] = len(result["is_success"])
         self.decode_latencies[stage_name] = result["decode_token_latencies"]
         self.success_count[stage_name] = sum(result["is_success"])
@@ -98,6 +112,7 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
                 tpot = (value - result["prefill_latency"][i]) / result["generate_tokens_len"][i]
                 per_request_avg_decode_time.append(tpot)
         result["average_decode_latencies"] = per_request_avg_decode_time[:]
+        self.logger.info("Converting perf results of stage ...")
         self.result[stage_name] = self.convert_result(copy.deepcopy(result))
 
     def get_common_res(self):

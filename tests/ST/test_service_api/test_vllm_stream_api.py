@@ -56,6 +56,28 @@ class TestClass:
                                  'OutputTokenThroughput']
 
     # mode infer
+    def test_vllm_stream_api_infer_chat_ds(self, monkeypatch):
+        fake_prediction = "Aisbench20"
+        fake_time_str = "vllm_stream_aime2024_gen_0_shot_chat_prompt"
+        datasets_abbr_name = "aime2024"
+        datasets_script_name = "aime2024_gen_0_shot_chat_prompt"
+        monkeypatch.setattr('sys.argv',
+            ["ais_bench", "--models", "vllm_api_general_stream", "--datasets", datasets_script_name,
+            "--mode", "infer", "-w", self.test_data_path])
+        monkeypatch.setattr("urllib3.PoolManager.request", lambda *args, **kwargs: Response())
+        monkeypatch.setattr("ais_bench.benchmark.models.vllm_custom_api.VLLMCustomAPIStream._get_service_model_path", lambda *arg: "qwen2")
+        monkeypatch.setattr("ais_bench.benchmark.cli.main.get_current_time_str", lambda *arg, **kwargs: fake_time_str)
+        main()
+
+        # check infer out
+        infer_outputs_json_path = os.path.join(self.test_data_path, f"{fake_time_str}/predictions/vllm-api-general-stream/{datasets_abbr_name}.json")
+        assert os.path.exists(infer_outputs_json_path)
+        with open(infer_outputs_json_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+
+        assert len(data) == AIME_DATA_COUNT
+        assert data.get(f"{AIME_DATA_COUNT - 1}").get("prediction") == fake_prediction
+
     def test_vllm_stream_api_infer(self, monkeypatch):
         fake_prediction = "Aisbench20"
         fake_time_str = "vllm_stream_aime2024_gen_0_shot_str"
@@ -91,7 +113,7 @@ class TestClass:
                             'prefill_batch_size': 0, 'decode_batch_size': [], 'queue_wait_time': [],
                             'request_id': '591c69416c694a6ab3194a06d6e1ed17',
                             'start_time': 1742952029.5993671, 'end_time': 1742952032.299417,
-                            'is_success': True, 'is_empty': False}]
+                            'is_success': True, 'is_empty': False, "chunk_time_point_list": [1, 2, 3, 4]}]
         fake_time_str = "vllm_stream_aime2024_gen_0_shot_str_perf"
         datasets_abbr_name = "aime2024dataset"
         datasets_script_name = "aime2024_gen_0_shot_str"

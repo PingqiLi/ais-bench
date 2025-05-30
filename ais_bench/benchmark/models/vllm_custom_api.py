@@ -22,6 +22,7 @@ from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_i
 from ais_bench.benchmark.models.performance_api import PerformanceAPIModel
 from ais_bench.benchmark.clients import OpenAIStreamClient, OpenAITextClient, VLLMTextClient
 from ais_bench.benchmark.utils.results import MiddleData
+from ais_bench.benchmark.utils.build import build_client_from_cfg
 
 PromptType = Union[PromptList, str, dict]
 
@@ -59,7 +60,7 @@ class VLLMCustomAPI(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = OpenAITextClient,
+                 custom_client = dict(type=OpenAITextClient),
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                         max_seq_len=max_seq_len,
@@ -75,7 +76,15 @@ class VLLMCustomAPI(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.model= model if model else self._get_service_model_path()
         self.endpoint_url = os.path.join(self.base_url, "completions")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.init_client(custom_client)
+
+    def init_client(self, custom_client):
+        if not isinstance(custom_client, dict):
+            self.logger.warning(f"Value of custom_client: {custom_client} is not a dict! Use Default")
+            custom_client = dict(type=OpenAITextClient)
+        custom_client['url'] = self.endpoint_url
+        custom_client['retry'] = self.retry
+        self.client = build_client_from_cfg(custom_client)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -175,7 +184,7 @@ class VLLMCustomAPIStream(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = OpenAIStreamClient,
+                 custom_client = dict(type=OpenAIStreamClient),
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -191,8 +200,15 @@ class VLLMCustomAPIStream(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.model= model if model else self._get_service_model_path()
         self.endpoint_url = os.path.join(self.base_url, "completions")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.init_client(custom_client)
 
+    def init_client(self, custom_client):
+        if not isinstance(custom_client, dict):
+            self.logger.warning(f"Value of custom_client: {custom_client} is not a dict! Use Default")
+            custom_client = dict(type=OpenAIStreamClient)
+        custom_client['url'] = self.endpoint_url
+        custom_client['retry'] = self.retry
+        self.client = build_client_from_cfg(custom_client)
 
     def generate(self,
                  inputs: List[PromptType],
@@ -291,7 +307,7 @@ class VLLMCustomAPIOld(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = VLLMTextClient,
+                 custom_client = dict(type=VLLMTextClient),
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -306,7 +322,15 @@ class VLLMCustomAPIOld(PerformanceAPIModel):
         self.enable_ssl = enable_ssl
         self.base_url = self._get_base_url()
         self.endpoint_url = os.path.join(self.base_url, "generate")
-        self.client = custom_client(self.endpoint_url, retry)
+        self.init_client(custom_client)
+
+    def init_client(self, custom_client):
+        if not isinstance(custom_client, dict):
+            self.logger.warning(f"Value of custom_client: {custom_client} is not a dict! Use Default")
+            custom_client = dict(type=VLLMTextClient)
+        custom_client['url'] = self.endpoint_url
+        custom_client['retry'] = self.retry
+        self.client = build_client_from_cfg(custom_client)
 
     def generate(self,
                  inputs: List[PromptType],

@@ -229,7 +229,7 @@ class GenInferencer(BaseInferencer):
         extra_kwargs['is_synthetic'] = self.is_synthetic
         extra_kwargs['batch_size'] = self.batch_size
         extra_kwargs['max_out_len'] = self.max_out_len
-        if  hasattr(self.model, "set_performance"):
+        if hasattr(self.model, "set_performance"):
             extra_kwargs['do_performance'] = self.model.do_performance
         return extra_kwargs
                      

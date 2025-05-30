@@ -82,7 +82,7 @@ class TestClass:
                             'prefill_batch_size': 0, 'decode_batch_size': [], 'queue_wait_time': [],
                             'request_id': '591c69416c694a6ab319·4a06d6e1ed17',
                             'start_time': 1742952029.5993671, 'end_time': 1742952032.299417,
-                            'is_success': True, 'is_empty': False}]
+                            'is_success': True, 'is_empty': False, "chunk_time_point_list": [1, 2, 3, 4]}]
         fake_time_str = "mindie_stream_aime2024_gen_0_shot_str_perf"
         datasets_abbr_name = "aime2024dataset"
         datasets_script_name = "aime2024_gen_0_shot_str"

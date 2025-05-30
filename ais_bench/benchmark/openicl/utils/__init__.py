@@ -1,1 +1,1 @@
-from .logging import *  # noqa
+from ais_bench.benchmark.openicl.utils.logging import *  # noqa
