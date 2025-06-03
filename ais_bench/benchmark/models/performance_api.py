@@ -117,6 +117,7 @@ class PerformanceAPIModel(BaseAPIModel):
 
     def get_performance_data(self) -> List[Dict[str, Any]]:
         """Retrieve performance data from cached results."""
+        use_tokenizer = 0
         if self.do_performance:
             if self.tqdm_pos < 0:
                 pos = None
@@ -126,8 +127,11 @@ class PerformanceAPIModel(BaseAPIModel):
                 # Failed requests are not saved
                 if not self.result_cache[key].is_success or self.result_cache[key].num_generated_tokens:
                     continue
+                use_tokenizer += 1
                 time_cost, tokens = self.encode(self.result_cache[key].output)
                 self.result_cache[key].num_generated_tokens = len(tokens)
+        if use_tokenizer:
+            self.logger.warning(f"Tokenization fallback triggered {use_tokenizer} times due to missing completion tokens from the server.")
         performance_data = []
         try:
             performance_data = [
