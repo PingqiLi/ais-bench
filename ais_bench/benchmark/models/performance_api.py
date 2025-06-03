@@ -124,7 +124,7 @@ class PerformanceAPIModel(BaseAPIModel):
                 pos = 3 * self.tqdm_pos + 2
             for key, _ in tqdm(self.result_cache.items(), desc="Encoding output text...", position=pos, total=len(self.result_cache)):
                 # Failed requests are not saved
-                if not self.result_cache[key].is_success:
+                if not self.result_cache[key].is_success or self.result_cache[key].num_generated_tokens:
                     continue
                 time_cost, tokens = self.encode(self.result_cache[key].output)
                 self.result_cache[key].num_generated_tokens = len(tokens)

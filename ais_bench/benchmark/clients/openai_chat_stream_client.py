@@ -25,6 +25,8 @@ class OpenAIChatStreamClient(BaseStreamClient, ABC):
                 else:
                     # 合并 choices
                     merged_data['choices'].extend(data['choices'])
+                if usage:=data.get('usage'):
+                    merged_data.update({'usage':usage})
             return json.dumps(merged_data)
         else:
             end_ix = cur_line.find("data: [DONE]")
@@ -40,6 +42,7 @@ class OpenAIChatStreamClient(BaseStreamClient, ABC):
             messages = inputs,
         )
         data = data | parameters
+        data.update(dict(stream_options={"include_usage":True}))
         return data
 
     def process_stream_line(self, json_content: dict) -> dict:
@@ -51,10 +54,15 @@ class OpenAIChatStreamClient(BaseStreamClient, ABC):
             response.update({"generated_text": generated_text})
         if self.do_performance:
             response.update({"token_str": generated_text})
+        if usage:=json_content.get('usage'):
+            response.update({'usage':usage})
         return response
 
     def update_middle_data(self, res: dict, inputs: MiddleData):
         generated_text = res.get("generated_text", "")
+        if usage:=res.get('usage'):
+            inputs.num_input_tokens = usage.get("prompt_tokens")
+            inputs.num_generated_tokens = usage.get("completion_tokens")
         if generated_text:
             inputs.output += generated_text
             inputs.num_generated_chars = len(generated_text)
@@ -67,5 +75,4 @@ class OpenAIChatStreamClient(BaseStreamClient, ABC):
         chunk_time_point = res.get("chunk_time_point")
         if chunk_time_point:
             inputs.chunk_time_point_list.append(chunk_time_point)
-        inputs.num_generated_tokens += 1
         return generated_text
