@@ -37,7 +37,6 @@ synthetic_config = {
         }
     },
     "TokenIdConfig" : { # tokenid类型的随机数据集的配置相关项
-        "ModelPath": "ModelPath", # 模型权重路径，必须与模型侧配置文件中的weight_dir/model/path等表示模型或词汇表的路径相同
         "RequestSize": 10 # 每条请求的长度，即每条请求中token id的个数，应与模型侧配置文件中的 input_seq_len 一致
     }
 }

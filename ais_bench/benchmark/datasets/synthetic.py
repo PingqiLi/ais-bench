@@ -63,16 +63,7 @@ def check_range(name: str, value: Any, param: NumberRange):
         if gt or ge:
             raise ValueError(f"Parameter {name} is {value}, not within the required range {interval_str}")
 
-def get_config(path, comment:str = None):
-    try:
-        with open(path, mode="r", encoding="utf-8") as file:
-            config = json.load(file)
-        return config
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        raise ValueError(f"Failed to load JSON config from `{comment}` file.") from e
-        return None
-
-def get_synthetic_dataset_config(path):
+def get_synthetic_dataset_config():
     try:
         from ais_bench.datasets.synthetic.synthetic_config import synthetic_config
         return synthetic_config
@@ -145,21 +136,15 @@ class SyntheticDataset(BaseDataset):
 
     @staticmethod
     def check_synthetic_tokenid_config(synthetic_config: Dict):
-        model_path_key = "ModelPath"
         request_size_key = "RequestSize"
-        _ensure_keys_present(synthetic_config.keys(), {model_path_key, request_size_key}, "SyntheticConfig")
-
-        model_path_value = synthetic_config.get(model_path_key)
-        check_type(model_path_key, model_path_value, types=(str, ))
-        if not os.path.exists(normalize_file_path(model_path_value)):
-            raise ValueError(f"ModelPath does not exist: {str(model_path_value)}")
+        _ensure_keys_present(synthetic_config.keys(), {request_size_key}, "SyntheticConfig")
 
         request_size_value = synthetic_config.get(request_size_key)
         check_type(request_size_key, request_size_value, types=(int, ))
         check_range(request_size_key, request_size_value, NumberRange(1, 2**20))
 
     @staticmethod
-    def _check_config_json(synthetic_config: Dict):
+    def _check_synthetic_config(synthetic_config: Dict):
         config_type_key = "Type"
         request_count_key = "RequestCount"
 
@@ -185,14 +170,9 @@ class SyntheticDataset(BaseDataset):
                              f"but got {config_type_value}.")
 
         type_config = {}
-        if config_type_value == "string":
-            string_config_key = "StringConfig"
-            _ensure_keys_present(synthetic_config.keys(), {string_config_key}, "SyntheticConfig")
-            type_config = synthetic_config.get(string_config_key)
-        elif config_type_value == "tokenid":
-            tokenid_config_key = "TokenIdConfig"
-            _ensure_keys_present(synthetic_config.keys(), {tokenid_config_key}, "SyntheticConfig")
-            type_config = synthetic_config.get(tokenid_config_key)
+        type_config_key = "StringConfig" if config_type_value == "string" else "TokenIdConfig"
+        _ensure_keys_present(synthetic_config.keys(), {type_config_key}, "SyntheticConfig")
+        type_config = synthetic_config.get(type_config_key)
 
         check_func(type_config)
 
@@ -293,9 +273,11 @@ class SyntheticDataset(BaseDataset):
 
     def load(self, path, **kwargs):
         self.logger = get_logger()
-        config = get_synthetic_dataset_config(path)
+        config = get_synthetic_dataset_config()
         dataset = []
-        self._check_config_json(config)
+        model_path_key = "ModelPath"
+        config[model_path_key] = kwargs.get("model_path", None)
+        self._check_synthetic_config(config)
         request_count = config.get("RequestCount")
         config_type = config.get("Type").lower()
         if config_type == "string":
@@ -314,19 +296,22 @@ class SyntheticDataset(BaseDataset):
 
         elif config_type == "tokenid":
             tokenid_config = config.get("TokenIdConfig")
-            request_size = tokenid_config["RequestSize"]
-            model_path = tokenid_config["ModelPath"]
+            request_size = tokenid_config.get("RequestSize", None)
+            model_path_value = config.get("ModelPath", None)
 
-            tokenizer_file_path = self.find_first_file_path(model_path, "tokenizer_config.json")
+            check_type(model_path_key, model_path_value, types=(str, ))
+            if not os.path.exists(normalize_file_path(model_path_value)):
+                raise ValueError(f"ModelPath does not exist: {str(model_path_value)}")
+
+            model_path_value = normalize_file_path(model_path_value)
+            tokenizer_file_path = self.find_first_file_path(model_path_value, "tokenizer_config.json")
             tokenizer = BenchmarkTokenizer(os.path.dirname(tokenizer_file_path))
-            if not tokenizer:
-                raise ValueError(f"Cannot get an expected tokenizer from {normalize_file_path(model_path)}")
             tokenizer_model = tokenizer.tokenizer.tokenizer_model
 
             vocab_size = tokenizer_model.vocab_size
-            vocab_size = tokenid_config.get("VocabSize") if not vocab_size else vocab_size # The vocab_size defined in the model has higher priority
+            vocab_size = tokenid_config.get("VocabSize", None) if not vocab_size else vocab_size # The vocab_size defined in the model has higher priority
             if not vocab_size:
-                raise ValueError(f"The configuration vocab_size was not found in the dataset config file {normalize_file_path(path)}",
+                raise ValueError(f"The configuration vocab_size was not found in the dataset config file {model_path_value}",
                                  f"or tokenizer config file {tokenizer_file_path}")
 
             all_special_ids = tokenizer_model.all_special_ids

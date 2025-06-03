@@ -13,6 +13,15 @@ def build_dataset_from_cfg(dataset_cfg: ConfigDict):
     return LOAD_DATASET.build(dataset_cfg)
 
 
+def build_synthetic_dataset_from_cfg(dataset_cfg: ConfigDict, model_cfg: ConfigDict):
+    dataset_cfg = copy.deepcopy(dataset_cfg)
+    dataset_cfg.pop('infer_cfg', None)
+    dataset_cfg.pop('eval_cfg', None)
+    dataset_cfg.pop('abbr', None)
+    dataset_cfg.update({'model_path' : model_cfg.get("path", "None")})
+    return LOAD_DATASET.build(dataset_cfg)
+
+
 def build_model_from_cfg(model_cfg: ConfigDict):
     model_cfg = copy.deepcopy(model_cfg)
     model_cfg.pop('run_cfg', None)
