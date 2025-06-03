@@ -310,8 +310,8 @@ class PromptTemplate:
             return prompt_template
 
         prompt = PromptList()
-        if 'conversations' in prompt_template:
-            prompt += prompt_template
+        if 'conversations' in prompt_template.get("round",[{}])[0]:
+            prompt += prompt_template.get("round")
             return prompt
 
         # TODO: Why can't we generate begin & end for ice template?
