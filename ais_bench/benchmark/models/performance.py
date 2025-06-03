@@ -27,4 +27,4 @@ class PerformanceModel(BaseModel):
         pass
 
     def set_performance(self):
-        self.is_performance = True
+        self.do_performance = True

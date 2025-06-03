@@ -1,4 +1,5 @@
 import csv
+from tqdm import tqdm
 import collections
 import math
 import numpy as np
@@ -11,12 +12,14 @@ from ais_bench.benchmark.calculators.base_perf_metric_calculator import is_legal
 
 @PERF_METRIC_CALCULATORS.register_module()
 class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
-    def __init__(self, perf_details: dict, stats_list: list = DEFAULT_STATS):
+    def __init__(self, stats_list: list = DEFAULT_STATS):
         self.logger = get_logger()
+        self._get_legal_stats_list(stats_list)
+
+    def _init_datas(self, perf_details: dict):
         self.stage_dict = {
             "total": self._get_requests_id(perf_details)
         }
-        self._get_legal_stats_list(stats_list)
         self.result = {}
         self.max_concurrency = perf_details["task"]["max_concurrency"]
         self.data_count = {}
@@ -49,11 +52,14 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
 
     def _process_result(self, full_result, stage_name):
         id_list = self.stage_dict.get(stage_name)
-        result = {k: [v[i] for i in id_list] for k, v in full_result.items() if v is not None}
-        self.data_count[stage_name] = len(result["is_success"])
+        result = {}
+        for k, v in full_result.items():
+            if v is not None:
+                result[k] = [v[i] for i in id_list]
+        self.data_count[stage_name] = len(full_result["is_success"])
         self.decode_latencies[stage_name] = result["decode_token_latencies"]
-        self.success_count[stage_name] = sum(result["is_success"])
-        self.empty_count[stage_name] = sum(result["is_empty"])
+        self.success_count[stage_name] = sum(full_result["is_success"])
+        self.empty_count[stage_name] = sum(full_result["is_empty"])
         self.infer_time[stage_name] = max(result["end_time"]) - min(result["start_time"])
         per_request_avg_decode_time = []
         # Compute the average decode latency per request
@@ -62,6 +68,7 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
                 tpot = (value - result["prefill_latency"][i]) / result["generate_tokens_len"][i]
                 per_request_avg_decode_time.append(tpot)
         result["average_decode_latencies"] = per_request_avg_decode_time[:]
+        self.logger.info("Converting perf results of stage ...")
         self.result[stage_name] = self.convert_result(copy.deepcopy(result))
 
     def get_common_res(self):

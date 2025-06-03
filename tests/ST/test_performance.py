@@ -257,9 +257,9 @@ class TestClass:
         assert float(data.loc[data['Performance Parameters'] == 'OutputTokens', 'Max'].values[0])==float(synthetic_config['StringConfig']['Output']['Params']['MinValue'])
 
     def test_hf_base_model_perf_gsm8k(self, monkeypatch):
-        os.environ['ASCEND_RT_VISIBLE_DEVICES']=
+        os.environ['ASCEND_RT_VISIBLE_DEVICES']= '0'
         fake_prediction = "12333"
-        fake_perf_result = {"e2e_latency": "23.6 ms"}
+        fake_perf_result = {"Benchmark Duration":{"total":"23.6 ms"}}
         fake_time_str = "gsm8k_gen_4_shot_str"
         datasets_abbr_name = "gsm8k"
         datasets_script_name = "gsm8k_gen_4_shot_cot_str"
@@ -299,7 +299,7 @@ class TestClass:
 
     def test_hf_chat_model_perf_synthetic(self, monkeypatch):
         fake_prediction = "12334"
-        fake_perf_result = {"e2e_latency": "27.7 ms"}
+        fake_perf_result = {"Benchmark Duration":{"total":"27.7 ms"}}
         fake_time_str = "synthetic_gen_4_shot_str"
         datasets_abbr_name = "synthetic"
         datasets_script_name = "synthetic_gen"

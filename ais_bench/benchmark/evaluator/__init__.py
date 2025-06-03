@@ -1,1 +1,1 @@
-from .generic_llm_evaluator import GenericLLMEvaluator  # noqa
+from ais_bench.benchmark.evaluator.generic_llm_evaluator import GenericLLMEvaluator  # noqa

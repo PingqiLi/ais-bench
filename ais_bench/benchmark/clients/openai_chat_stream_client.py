@@ -3,8 +3,10 @@ import json
 
 from ais_bench.benchmark.clients.base_client import BaseStreamClient
 from ais_bench.benchmark.utils import MiddleData
+from ais_bench.benchmark.registry import CLIENTS
 
 
+@CLIENTS.register_module()
 class OpenAIChatStreamClient(BaseStreamClient, ABC):
     def preprocess_cur_line(self, cur_line: str) -> str:
         if "\ndata" in cur_line:

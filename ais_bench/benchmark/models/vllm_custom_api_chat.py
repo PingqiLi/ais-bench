@@ -1,16 +1,9 @@
-import json
 import os
-import random
-import re
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
 from typing import Any, Dict, List, Optional, Union, Tuple
 
-import httpx
-import jieba
-import requests
 from tqdm import tqdm
 
 from openai import OpenAI
@@ -22,6 +15,7 @@ from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_i
 from ais_bench.benchmark.models.performance_api import PerformanceAPIModel
 from ais_bench.benchmark.clients import OpenAIChatStreamClient, OpenAIChatTextClient
 from ais_bench.benchmark.utils.results import MiddleData
+from ais_bench.benchmark.utils.build import build_client_from_cfg
 
 PromptType = Union[PromptList, str, dict]
 
@@ -46,6 +40,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
     """
 
     is_api: bool = True
+    is_chat_api: bool = True
 
     def __init__(self,
                  path: str = "",
@@ -59,7 +54,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = OpenAIChatTextClient,
+                 custom_client = dict(type=OpenAIChatTextClient),
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -75,7 +70,16 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.endpoint_url = os.path.join(self.base_url, "chat/completions")
         self.model= model if model else self._get_service_model_path()
-        self.client = custom_client(self.endpoint_url, retry)
+        self.is_multi_modal = False
+        self.init_client(custom_client)
+
+    def init_client(self, custom_client):
+        if not isinstance(custom_client, dict):
+            self.logger.warning(f"Value of custom_client: {custom_client} is not a dict! Use Default")
+            custom_client = dict(type=OpenAIChatTextClient)
+        custom_client['url'] = self.endpoint_url
+        custom_client['retry'] = self.retry
+        self.client = build_client_from_cfg(custom_client)
 
     def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
@@ -160,7 +164,10 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
         if max_out_len <= 0:
             return ''
 
-        if isinstance(input, (str, list)):
+        if isinstance(input, str) or self.is_multi_modal:
+            messages = [{'role': 'user', 'content': input}]
+        elif is_mm_prompt(input):
+            self.is_multi_modal = True
             messages = [{'role': 'user', 'content': input}]
         else:
             messages = []
@@ -213,6 +220,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
     """
 
     is_api: bool = True
+    is_chat_api: bool = True
 
     def __init__(self,
                  path,
@@ -226,7 +234,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                  host_ip: str = "localhost",
                  host_port: int = 8080,
                  enable_ssl: bool = False,
-                 custom_client = OpenAIChatStreamClient,
+                 custom_client = dict(type=OpenAIChatStreamClient),
                  generation_kwargs: Optional[Dict] = None):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -242,15 +250,23 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
         self.base_url = self._get_base_url()
         self.endpoint_url = os.path.join(self.base_url, "chat/completions")
         self.model = model if model else self._get_service_model_path()
-        self.client = custom_client(self.endpoint_url, retry)
+        self.init_client(custom_client)
         self.is_multi_modal = False
+
+    def init_client(self, custom_client):
+        if not isinstance(custom_client, dict):
+            self.logger.warning(f"Value of custom_client: {custom_client} is not a dict! Use Default")
+            custom_client = dict(type=OpenAIChatStreamClient)
+        custom_client['url'] = self.endpoint_url
+        custom_client['retry'] = self.retry
+        self.client = build_client_from_cfg(custom_client)
 
     def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
         if not self.tokenizer:
             self.logger.error("Tokenizer is not initialized.")
             return 0.0, []
-        
+
         assert len(prompt)>0 and isinstance(prompt[0], dict)
         if "content" in prompt[0] and isinstance(prompt[0]['content'], list):
             self.logger.warning(f"Input type: expected a string, got list, InputTokens will be 0.")
