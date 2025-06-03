@@ -231,11 +231,11 @@ def fill_perf_cfg(cfg, args):
                 max_num_workers=args.max_num_workers,
                 max_workers_per_gpu=args.max_workers_per_gpu,
                 debug=args.debug,
-                disable_cb=args.disable_cb,
                 task=dict(type=get_config_type(OpenICLPerfTask)),
                 type=get_config_type(LocalRunner)
             )), )
         for data_config in cfg['datasets']:
+            data_config['infer_cfg']['inferencer']['disable_cb'] = True
             data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenModelPerfInferencer)
 
     cfg.merge_from_dict(new_cfg)
@@ -263,10 +263,11 @@ def fill_merged_infer_cfg(cfg, args):
                 max_num_workers=args.max_num_workers,
                 max_workers_per_gpu=args.max_workers_per_gpu,
                 debug=args.debug,
-                disable_cb=args.disable_cb,
                 task=dict(type=get_config_type(OpenICLInferMergedTask)),
                 type=get_config_type(LocalRunner)
             )), )
+        for data_config in cfg['datasets']:
+            data_config['infer_cfg']['inferencer']['disable_cb'] = True
 
     for data_config in cfg['datasets']:
         data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenMergedInferencer)
@@ -295,12 +296,12 @@ def fill_infer_cfg(cfg, args):
             runner=dict(
                 max_num_workers=args.max_num_workers,
                 max_workers_per_gpu=args.max_workers_per_gpu,
-                disable_cb=args.disable_cb,
                 debug=args.debug,
                 task=dict(type=get_config_type(OpenICLInferTask)),
                 type=get_config_type(LocalRunner),
             )), )
-
+        for data_config in cfg['datasets']:
+            data_config['infer_cfg']['inferencer']['disable_cb'] = True
 
     cfg.merge_from_dict(new_cfg)
 

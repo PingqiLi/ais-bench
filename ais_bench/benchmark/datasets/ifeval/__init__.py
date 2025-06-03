@@ -1,1 +1,1 @@
-from .ifeval import IFEvalDataset, IFEvaluator  # noqa: F401, F403
+from ais_bench.benchmark.datasets.ifeval.ifeval import IFEvalDataset, IFEvaluator  # noqa: F401, F403

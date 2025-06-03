@@ -1,3 +1,3 @@
 # flake8: noqa
 
-from .agieval import *  # noqa: F401, F403
+from ais_bench.benchmark.datasets.agieval.agieval import *  # noqa: F401, F403

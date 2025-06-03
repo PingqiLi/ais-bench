@@ -29,7 +29,10 @@ class MindieLLMModel(PerformanceModel):
     def __init__(self,
                  environ_kwargs: Optional[Dict] = None,
                  **kwargs):
-
+        super().__init__(path=kwargs.get('weight_dir'),
+                         max_seq_len=kwargs.get('output_length'),
+                         tokenizer_only=False,
+                         meta_template=None)
         for key, value in environ_kwargs.items():
             os.environ[key] = value
 
@@ -61,7 +64,6 @@ class MindieLLMModel(PerformanceModel):
         self.logger = get_logger()
         self.pa_runner = None
         self.rank_table_file = kwargs.get('rank_table_file')
-        self.enable_detail_perf = kwargs.get('enable_detail_perf')
         if self.rank_table_file:
             os.environ['RANKTABLEFILE'] = self.rank_table_file
             try:
@@ -70,32 +72,83 @@ class MindieLLMModel(PerformanceModel):
                 raise TypeError("world_size invalid") from e
 
         self.batch_latencies = []
-
-        if self.enable_detail_perf:
-            os.environ["ATB_LLM_BENCHMARK_ENABLE"] = "1"
-            cur_dir = os.path.dirname(os.path.abspath(__file__))
-            self.pa_runner_perf_file_path = os.path.join(cur_dir, "../../../benchmark.csv")
-            os.environ["ATB_LLM_BENCHMARK_FILEPATH"] = self.pa_runner_perf_file_path
-            self.ignore_eos = True # out len equal to max_out_len
-            self.detail_perf_datas = []
+        self.pa_runner_perf_file_path = None
 
         self.get_model_or_runner(self.input_length, self.output_length)
         self.check_pa_runner()
         self.warm_up()
 
-        super().__init__(path=self.weight_dir,
-                         max_seq_len=self.output_length,
-                         tokenizer_only=False,
-                         meta_template=None)
-
+    def set_performance(self):
+        self.do_performance = True
+        os.environ["ATB_LLM_BENCHMARK_ENABLE"] = "1"
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        self.pa_runner_perf_file_path = os.path.join(cur_dir, "../../../benchmark.csv")
+        os.environ["ATB_LLM_BENCHMARK_FILEPATH"] = self.pa_runner_perf_file_path
+        self.ignore_eos = True # out len equal to max_out_len
+        self.detail_perf_datas = []
 
     def check_pa_runner(self):
         if self.pa_runner == None:
             raise RuntimeError("Model loading failed")
 
-
     def warm_up(self):
         self.pa_runner.warm_up()
+ 
+    def merge_perf_datas(self):
+        ms = " ms"
+        unit_token = " token/s"
+        total_req = len(self.detail_perf_datas)
+        e2el = sum(self.batch_latencies)
+        if total_req <= 0 or e2el <= 0:
+            self.logger.warning("No performance data to merge, please check")
+            return {}
+        common_metric_units_map = {
+            "Benchmark Duration": ms,
+            "Total Requests": None,
+            "Request Throughput": " req/s",
+            "Total Input Tokens": None,
+            "Prefill Token Throughput": "",
+            "Input Token Throughput": unit_token,
+            "Total Output Tokens": None,
+            "Output Token Throughput": unit_token,
+            "Total Token Throughput": unit_token,
+        }
+        perf_key = "total"
+        merge_res = {
+            "Benchmark Duration": {perf_key: e2el * 1000},
+            "Total Requests": {perf_key: total_req},
+            "Request Throughput": {perf_key: total_req / e2el},
+            "Total Input Tokens": {
+                perf_key: sum(data["seq_len_in"] for data in self.detail_perf_datas)
+            },
+            "Prefill Token Throughput": {
+                perf_key: sum(data["seq_len_in"] for data in self.detail_perf_datas)
+                / sum(data["first_token_time"] for data in self.detail_perf_datas)
+            },
+            "Input Token Throughput": {
+                perf_key: sum(data["seq_len_in"] for data in self.detail_perf_datas) / e2el
+            },
+            "Total Output Tokens": {
+                perf_key: sum(data["seq_len_out"] for data in self.detail_perf_datas)
+            },
+            "Output Token Throughput": {
+                perf_key: sum(data["seq_len_out"] for data in self.detail_perf_datas) / e2el
+            },
+            "Total Token Throughput": {
+                perf_key: (
+                    sum(
+                        data["seq_len_in"] + data["seq_len_out"]
+                        for data in self.detail_perf_datas
+                    )
+                    / e2el
+                )
+            },
+        }
+        for key,value in merge_res.items():
+            value[perf_key] = str(round(value[perf_key], 4))
+            if common_metric_units_map[key]:
+                value[perf_key] += common_metric_units_map[key]
+        return merge_res
 
     def handle_perf_result(self, output_filepath, output_filename):
         e2e_latency = sum(self.batch_latencies)
@@ -105,9 +158,10 @@ class MindieLLMModel(PerformanceModel):
             json_path = os.path.join(output_filepath, f"pa_runner_special_perf_data_{output_filename}.json")
             with open(json_path, "w") as file:
                 json.dump(self.detail_perf_datas, file, ensure_ascii=False, indent=4)
+                
             self.logger.info(f"PARUNNER special performance datas saved in {json_path}")
-
-        return {"e2e_latency":str(round(e2e_latency * 1000, 4)) + ' ms'}
+            return self.merge_perf_datas()
+        return {"Benchmark Duration":{"total":str(round(e2e_latency, 4)) + ' ms'}}
 
     def get_model_or_runner(self, input_length, output_length, warmup_bs=0):
 
@@ -187,7 +241,7 @@ class MindieLLMModel(PerformanceModel):
         Returns:
             List[str]: A list of generated strings.
         """
-        if self.enable_detail_perf and self.input_token_len is not None: # enable token_input
+        if self.do_performance and self.input_token_len is not None: # enable token_input
             inputs = self._trans_to_input_ids(inputs)
             inputs = [self._padding_input_ids(input_ids) for input_ids in inputs]
 
@@ -197,7 +251,7 @@ class MindieLLMModel(PerformanceModel):
                                                     self.ignore_eos,
                                                     self.is_chat_model)
 
-        if hasattr(self, "is_performance") and self.is_performance:
+        if hasattr(self, "do_performance") and self.do_performance:
             self.batch_latencies.append(e2e_latency_per_bs)
             if self.pa_runner_perf_file_path is not None and self.input_token_len is not None and self.rank == 0: # get pa runner special performance data
                 with open(self.pa_runner_perf_file_path, mode='r', encoding='utf-8') as file:

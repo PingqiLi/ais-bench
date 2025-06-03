@@ -118,10 +118,9 @@ def _get_meta_template(meta_template):
     default_meta_template = dict(
         round=[
             dict(role='HUMAN', api_role='HUMAN'),
-            # XXX: all system roles are mapped to human in purpose
-            dict(role='SYSTEM', api_role='HUMAN'),
             dict(role='BOT', api_role='BOT', generate=True),
-        ]
+        ],
+        reserved_roles=[dict(role='SYSTEM', api_role='SYSTEM')],
     )
     return APITemplateParser(meta_template or default_meta_template)
 
@@ -141,6 +140,12 @@ def _set_model_kwargs_torch_dtype(model_kwargs):
     if torch_dtype is not None:
         model_kwargs['torch_dtype'] = torch_dtype
     return model_kwargs
+
+
+def drop_error_generation_kwargs(generation_kwargs:dict)->dict:
+    for key in ['is_synthetic', 'batch_size', 'do_performance']:
+        generation_kwargs.pop(key)
+    return generation_kwargs
 
 
 @MODELS.register_module()
@@ -169,7 +174,14 @@ class HuggingFacewithChatTemplate(PerformanceModel):
                  stop_words: Optional[str] = [],
                  mode: str = 'none',
                  **other_kwargs):
-
+        super().__init__(
+            path,
+            max_seq_len,
+            tokenizer_only,
+            meta_template,
+            generation_kwargs,
+            False,
+        )
         self.logger = get_logger()
         self.path = path
         self.tokenizer_only = tokenizer_only
@@ -189,10 +201,10 @@ class HuggingFacewithChatTemplate(PerformanceModel):
         for k, v in other_kwargs.items():
             if v is not None:
                 self.logger.warning(f'Unused argument {k}={v}')
-
+        
     def handle_perf_result(self, output_filepath, output_filename):
         e2e_latency = max(self.timestamps) - min(self.timestamps)
-        return {"e2e_latency":str(round(e2e_latency, 4)) + ' ms'}
+        return {"Benchmark Duration":{"total":str(round(e2e_latency, 4)) + ' ms'}}
 
     def _load_tokenizer(self, path: Optional[str], kwargs: dict, pad_token_id: Optional[int] = None):
         from transformers import AutoTokenizer, GenerationConfig
@@ -481,6 +493,7 @@ class HuggingFacewithChatTemplate(PerformanceModel):
         if min_out_len is not None:
             generation_kwargs['min_new_tokens'] = min_out_len
         generation_kwargs['pad_token_id'] = self.tokenizer.pad_token_id
+        generation_kwargs = drop_error_generation_kwargs(generation_kwargs)
         self.logger.debug('Generation Args of Huggingface: ')
         self.logger.debug(generation_kwargs)
 
@@ -495,7 +508,7 @@ class HuggingFacewithChatTemplate(PerformanceModel):
         for stop in stopping_criteria:
             decodeds = [t.split(stop)[0] for t in decodeds]
 
-        if hasattr(self, "is_performance") and self.is_performance:
+        if hasattr(self, "do_performance") and self.do_performance:
             self.latencies.append(end_time - start_time)
             self.counts.append(batch_size)
             self.timestamps.extend([end_time, start_time])
@@ -537,7 +550,6 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
                  stop_words: Optional[str] = [],
                  drop_middle: bool = False,
                  **other_kwargs):
-
         self.logger = get_logger()
         self.path = path
         self.tokenizer_only = tokenizer_only
@@ -550,14 +562,14 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
         self.generation_kwargs = generation_kwargs
         self.stop_words = stop_words
         self.latencies, self.counts, self.timestamps = [], [], []
-
+        self.do_performance = False
         for k, v in other_kwargs.items():
             if v is not None:
                 self.logger.warning(f'Unused argument {k}={v}')
 
     def handle_perf_result(self, output_filepath, output_filename):
         e2e_latency = max(self.timestamps) - min(self.timestamps)
-        return {"e2e_latency":str(round(e2e_latency, 4)) + ' ms'}
+        return {"Benchmark Duration":{"total":str(round(e2e_latency, 4)) + ' ms'}}
 
     def generate(self,
                  inputs: List[str],
@@ -598,6 +610,7 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
         if min_out_len is not None:
             generation_kwargs['min_new_tokens'] = min_out_len
         generation_kwargs['pad_token_id'] = self.tokenizer.pad_token_id
+        generation_kwargs = drop_error_generation_kwargs(generation_kwargs)
 
         # step-2: conduct model forward to generate output
         start_time = time.perf_counter()
@@ -610,7 +623,7 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
         for stop in stopping_criteria:
             decodeds = [token.split(stop)[0] for token in decodeds]
 
-        if hasattr(self, "is_performance") and self.is_performance:
+        if hasattr(self, "do_performance") and self.do_performance:
             self.latencies.append(end_time - start_time)
             self.counts.append(batch_size)
             self.timestamps.extend([end_time, start_time])
