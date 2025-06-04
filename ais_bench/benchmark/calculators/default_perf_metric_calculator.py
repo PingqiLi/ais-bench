@@ -63,11 +63,14 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         self.infer_time[stage_name] = max(result["end_time"]) - min(result["start_time"])
         per_request_avg_decode_time = []
         # Compute the average decode latency per request
-        for i, value in enumerate(result["seq_latency"]):
-            if value:  # Skip empty lists
-                tpot = (value - result["prefill_latency"][i]) / result["generate_tokens_len"][i]
-                per_request_avg_decode_time.append(tpot)
-        result["average_decode_latencies"] = per_request_avg_decode_time[:]
+        if not math.isclose(sum(result["prefill_latency"]), 0):
+            for i, value in enumerate(result["seq_latency"]):
+                if value:  # Skip empty lists
+                    tpot = (value - result["prefill_latency"][i]) / result["generate_tokens_len"][i]
+                    per_request_avg_decode_time.append(tpot)
+            result["average_decode_latencies"] = per_request_avg_decode_time[:]
+        else:
+            result["average_decode_latencies"] = result["prefill_latency"]
         self.logger.info("Converting perf results of stage ...")
         self.result[stage_name] = self.convert_result(copy.deepcopy(result))
 
@@ -130,9 +133,6 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             "input_tokens_len": "InputTokens",
             "generate_tokens_len": "OutputTokens",
             "generate_tokens_speed": "OutputTokenThroughput",
-            "prefill_batch_size": "PrefillBatchsize",
-            "decode_batch_size": "DecoderBatchsize",
-            "queue_wait_time": "QueueWaitTime",
         }
 
         ans = {mapping_value: [] for mapping_value in mapping.values()}
@@ -144,13 +144,6 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
                     ans[mapping_value].extend(value)
                 else:
                     ans[mapping_value].append(value)
-        if sum(ans["PrefillBatchsize"]) == 0:
-            ans.pop("PrefillBatchsize")
-
-        for key in ["DecoderBatchsize", "QueueWaitTime"]:
-            res = ans.get(key)
-            if not res or not res[-1]:
-                ans.pop(key)
 
         for key in ["TTFT", "TPOT", "ITL"]:
             if math.isclose(sum(ans[key]), 0):
@@ -306,11 +299,6 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             "OutputTokens": None,
             "PrefillTokenThroughput": unit_token,
             "OutputTokenThroughput": unit_token,
-            "Tokenizer": ms,
-            "Detokenizer": ms,
-            "PrefillBatchsize": None,
-            "DecoderBatchsize": None,
-            "QueueWaitTime": " μs",
         }
 
 

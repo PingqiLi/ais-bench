@@ -17,3 +17,4 @@ from ais_bench.benchmark.utils.prompt import *  # noqa
 from ais_bench.benchmark.utils.text_postprocessors import *  # noqa
 from ais_bench.benchmark.utils.results import *
 from ais_bench.benchmark.utils.summarize_plot import *
+from ais_bench.benchmark.utils.range import *

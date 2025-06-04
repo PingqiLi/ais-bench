@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from time import sleep
 from typing import Dict, List, Optional, Tuple, Union, Any
 
-from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils import get_logger, PRESSURE_TIME_MAX, PRESSURE_TIME_MIN, CONNECTION_ADD_RATE_MIN
 from ais_bench.benchmark.global_consts import PRESSURE_TIME, CONNECTION_ADD_RATE
 from ais_bench.benchmark.utils.prompt import PromptList, is_mm_prompt
 
@@ -314,10 +314,21 @@ class BaseAPIModel(BaseModel):
         max_out_len = extra_gen_kwargs.get("max_out_len", 1)
         concurrency = extra_gen_kwargs.get("concurrency")
         total_concurrency = extra_gen_kwargs.get("total_concurrency")
+        pressure_time = PRESSURE_TIME
+        connection_add_rate = CONNECTION_ADD_RATE
+        if PRESSURE_TIME > PRESSURE_TIME_MAX:
+            self.logger.warning(f"PRESSURE_TIME is larger than {PRESSURE_TIME_MAX}, will be set to {PRESSURE_TIME_MAX}")
+            pressure_time = PRESSURE_TIME_MAX
+        elif PRESSURE_TIME < PRESSURE_TIME_MIN:
+            self.logger.warning(f"PRESSURE_TIME is smaller than {PRESSURE_TIME_MIN}, will be set to {PRESSURE_TIME_MIN}")
+            pressure_time = PRESSURE_TIME_MIN
+        if CONNECTION_ADD_RATE < CONNECTION_ADD_RATE_MIN:
+            self.logger.warning(f"CONNECTION_ADD_RATE is smaller than {CONNECTION_ADD_RATE_MIN}, will be set to {CONNECTION_ADD_RATE_MIN}")
+            connection_add_rate = CONNECTION_ADD_RATE_MIN
 
         thread_lock = threading.Lock()
         def generate_before_timeout(shared_inputs, total_input_idx, max_out_len):
-            while(time.perf_counter() - self.start_time <= PRESSURE_TIME):
+            while(time.perf_counter() - self.start_time <= pressure_time):
                 with lock:
                     with thread_lock:
                         cur_idx = total_input_idx.value % len(shared_inputs) #
@@ -341,7 +352,7 @@ class BaseAPIModel(BaseModel):
             while True:
                 if total_thread_count.value >= total_concurrency or local_thread_count >= concurrency:
                     break
-                if time.perf_counter() - self.start_time > PRESSURE_TIME:
+                if time.perf_counter() - self.start_time > pressure_time:
                     break
                 with lock:
                     total_thread_count.value += 1
@@ -350,7 +361,7 @@ class BaseAPIModel(BaseModel):
                 generate_thread.daemon = True
                 generate_threads.append(generate_thread)
                 generate_thread.start()
-                time.sleep(1 / CONNECTION_ADD_RATE)
+                time.sleep(1 / connection_add_rate)
 
         except KeyboardInterrupt:
             self.logger.warning("Interrupted by user (Ctrl+C).")

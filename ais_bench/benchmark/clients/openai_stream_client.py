@@ -35,7 +35,7 @@ class OpenAIStreamClient(BaseStreamClient, ABC):
         generated_text = res.get("generated_text", "")
         if generated_text:
             inputs.output += generated_text
-            inputs.num_generated_chars = len(generated_text)
+            inputs.num_generated_chars = len(inputs.output)
         prefill_time = res.get("prefill_time")
         if prefill_time:
             inputs.prefill_latency = prefill_time
