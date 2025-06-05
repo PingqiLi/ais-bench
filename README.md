@@ -549,7 +549,9 @@ outputs/default/
 │   └── performance       # 性能测评结果
 │       └── vllm-api-general-stream  #后端模型，以mindie_stream_api为例
 │           ├── syntheticdataset.csv     #单个推理请求性能输出结果
-│           └── syntheticdataset.json    #端到端性能输出结果
+│           ├── syntheticdataset.json    #端到端性能输出结果
+│           ├── syntheticdataset_details.json    #全量性能打点结果
+│           └── syntheticdataset_plot.html       #全量请求以及系统实时并发可视化界面
 ├── ...
 ```
 性能打屏基于syntheticdataset.csv和syntheticdataset.json
@@ -604,8 +606,8 @@ ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf_
 |Total Requests|测试数据量|
 |Failed Requests|失败请求数据量（包含空和未返回数据的响应）|
 |Success Requests|返回请求总数据量（包含非空和空）|
-|Concurrency|实际测试并发数|
-|Max Concurrency|最大测试并发数|
+|Concurrency|系统实际平均并发数|
+|Max Concurrency|最大并发数即配置并发数|
 |Request Throughput|请求吞吐率|
 |Total Input Tokens|输入总token数|
 |Prefill Token Throughput|prefill吞吐率|
@@ -626,15 +628,15 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 |任务名称|简介|使用前提|接口类型|支持的prompt格式(字符串格式或对话格式)|对应源码配置文件路径|
 | --- | --- | --- | --- | ---- | --- |
 |vllm_api_general|通过vllm兼容openai的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|文本接口|字符串格式|[vllm_api_general.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)|
-|vllm_api_general_stream|通过vllm兼容openai的流式api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|文本接口|字符串格式|[vllm_api_general_stream.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_stream.py)|
+|vllm_api_general_stream|通过vllm兼容openai的流式api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/completions子服务|基于支持v1/completions子服务的vllm版本，启动vllm推理服务|流式接口|字符串格式|[vllm_api_general_stream.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_stream.py)|
 |vllm_api_general_chat|通过vllm兼容openai的api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|文本接口|字符串格式、对话格式|[vllm_api_general_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py)|
 |vllm_api_stream_chat|通过vllm兼容openai的流式api访问vllm(0.6+版本)的推理服务化，访问服务链接的 v1/chat/completions子服务|基于支持v1/chat/completions子服务的vllm版本，启动vllm推理服务|流式接口|字符串格式、对话格式|[vllm_api_stream_chat.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py)|
 |vllm_api_old|通过vllm的api访问vllm(0.2.6版本)的推理服务化，访问服务链接的 generate子服务|基于支持generate子服务的vllm版本，启动vllm推理服务|文本接口|字符串格式|[vllm_api_old.py](ais_bench/benchmark/configs/models/vllm_api/vllm_api_old.py)|
 |mindie_stream_api_general|通过mindie的流式api访问mindie的推理服务化，访问服务链接的 infer子服务|基于支持infer子服务的mindie版本，启动mindie推理服务|流式接口|字符串格式|[mindie_stream_api_general.py](ais_bench/benchmark/configs/models/mindie_api/mindie_stream_api_general.py)|
 |triton_api_general|通过triton规定格式的api访问推理服务化，访问服务链接的v2/models/{model name}/generate子服务|启动支持triton api的推理服务|文本接口|字符串格式|[triton_api_general.py](ais_bench/benchmark/configs/models/triton_api/triton_api_general.py)|
-|triton_stream_api_general|通过triton规定格式的流式api访问推理服务化，访问服务链接的v2/models/{model name}/generate_stream子服务|启动支持triton api的推理服务|文本接口|字符串格式|[triton_stream_api_general.py](ais_bench/benchmark/configs/models/triton_api/triton_stream_api_general.py)|
+|triton_stream_api_general|通过triton规定格式的流式api访问推理服务化，访问服务链接的v2/models/{model name}/generate_stream子服务|启动支持triton api的推理服务|流式接口|字符串格式|[triton_stream_api_general.py](ais_bench/benchmark/configs/models/triton_api/triton_stream_api_general.py)|
 |tgi_api_general|通过TGI规定格式的api访问推理服务化，访问服务的generate子服务|启动支持TGI api的推理服务|文本接口|字符串格式|[tgi_api_general](ais_bench/benchmark/configs/models/tgi_api/tgi_api_general.py)|
-|tgi_stream_api_general|通过TGI规定格式的流式api访问推理服务化，访问服务的generate_stream子服务|启动支持TGI api的推理服务|文本接口|字符串格式|[tgi_stream_api_general](ais_bench/benchmark/configs/models/tgi_api/tgi_stream_api_general.py)|
+|tgi_stream_api_general|通过TGI规定格式的流式api访问推理服务化，访问服务的generate_stream子服务|启动支持TGI api的推理服务|流式接口|字符串格式|[tgi_stream_api_general](ais_bench/benchmark/configs/models/tgi_api/tgi_stream_api_general.py)|
 
 
 **注意:** 服务化推理测评api默认使用的服务IP为localhost，端口号为8080，实际使用时，需在对应配置文件中修改为服务化后端配置的IP和端口号。
@@ -679,10 +681,10 @@ ais_bench --models vllm_api_general --datasets gsm8k_gen --summarizer medium
 ### --summarizer支持的结果总结任务
 |任务名称|简介|对应源码配置文件路径|
 | --- | --- | --- |
-|medium|通用结果汇总模板，包含多种基本数据集，默认使用的模板|[medium.py](ais_bench/benchmark/configs/summarizers/medium.py)|
-|example|简单的汇总模板，覆盖目前所有支持的数据集|[example.py](ais_bench/benchmark/configs/summarizers/example.py)|
-|default_perf|性能结果的汇总模板，汇总全量请求的性能数据|[default_perf.py](ais_bench/benchmark/configs/summarizers/perf/default_perf.py)|
-|stable_stage|性能结果的汇总模板，汇总稳定状态（实际并发达到最大并发）请求的性能数据|[stable_stage.py](ais_bench/benchmark/configs/summarizers/perf/stable_stage.py)|
+|medium|通用精度测评结果汇总模板，呈现多种基本数据集，默认使用的模板|[medium.py](ais_bench/benchmark/configs/summarizers/medium.py)|
+|example|简单精度测评结果汇总模板，覆盖目前所有支持的数据集|[example.py](ais_bench/benchmark/configs/summarizers/example.py)|
+|default_perf|性能测评结果的汇总模板，汇总全量请求的性能数据，支持通过default_perf.py文件手动配置性能测评结果的统计值|[default_perf.py](ais_bench/benchmark/configs/summarizers/perf/default_perf.py)|
+|stable_stage|性能测评结果的汇总模板，汇总稳定状态（系统实际并发达到配置最大并发）请求的性能数据，支持通过stable_stage.py文件手动配置性能测评结果的统计值|[stable_stage.py](ais_bench/benchmark/configs/summarizers/perf/stable_stage.py)|
 
 ## 自定义配置文件样例列表
 |文件名|简介|
