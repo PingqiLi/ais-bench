@@ -1,152 +1,266 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from ais_bench.benchmark.utils import get_logger
+from typing import List
 import numpy as np
+import time
 
-def plot_sorted_request_timelines(request_times, output_file="timeline.html", unit = "ms"):
-    # ================== WebGL 加速核心配置 ==================
-    WEBGL_CONFIG = {
-        'scrollZoom': True,
-        'plotGlPixelRatio': 1,  # 渲染分辨率
-        'showLink': False,
-        'displaylogo': False,
-        'modeBarButtonsToRemove': ['toImage'],
-    }
+
+def plot_sorted_request_timelines(start_time_list: List[float], prefill_latency_list: List[float],
+                                  end_time_list: List[float], output_file: str = "timeline.html",
+                                  unit : str = "s"):
+    """
+    绘制请求时间线和并发图表
     
-    rescale = {
-        "s" : 1000,
-        "ms" : 1,
-    }
+    参数:
+    start_time_list -- 请求开始时间列表
+    prefill_latency_list -- 预填充延迟列表
+    end_time_list -- 请求结束时间列表
+    output_file -- 输出HTML文件名
+    unit -- 时间单位 (仅用于渲染时的内容显示，不涉及计算逻辑)
+    """
+    logger = get_logger()
+    prev_time = None
+    start_time = time.perf_counter()
+    prev_time = start_time
+    logger.info("Rendering request timeline diagram...")
+    
+    # ================== 参数校验 ==================
+    n_requests = len(start_time_list)
+    if n_requests == 0 | n_requests != len(prefill_latency_list) | n_requests != len(end_time_list):
+        logger.warning("No valid data to plot!")
+        return
 
-    # ================== 计算时间基准 ==================
-    all_raw_times = [(float(t) / rescale[unit]) for req in request_times for t in req]
-    global_x_min = min(all_raw_times)
-    time_offset = global_x_min  # 获取最小时间作为基准偏移量
+    # ================== 数据准备 ==================
+    logger.info("Processing the received data...")
+    
+    start = np.array(start_time_list)
+    prefill = np.array(prefill_latency_list) / 1000
+    end = np.array(end_time_list) if end_time_list is not None else (start + prefill)
+    
+    # 计算每个请求的关键时间点
+    first_token_time_list = start + prefill
+    end = np.array(end_time_list) if end_time_list is not None else first_token_time_list
 
-    # ================== 调整所有时间值为相对值 ==================
-    adjusted_requests = []
-    for times in request_times:
-        # 将每个请求的时间转换为相对时间
-        adjusted_times = [(float(t) / rescale[unit]) - time_offset for t in times]
-        adjusted_requests.append(adjusted_times)
+    # 找到全局最小时间，用于相对时间计算
+    global_x_min = np.min(start)
+    
+    # 计算所有请求的相对时间
+    adjusted_starts = (start - global_x_min)
+    adjusted_first_tokens = (first_token_time_list - global_x_min)
+    adjusted_ends = (end - global_x_min)
 
-    # ================== 公共参数计算（使用调整后的时间） ==================
-    all_times = [t for req in adjusted_requests for t in req]
-    adjusted_x_min = 0  # 最小值归零
-    adjusted_x_max = max(all_times)
-    x_range = [adjusted_x_min, adjusted_x_max]
+    curr_time = time.perf_counter()
+    logger.info(f"Data preprocessing completed! Time: {curr_time - prev_time:.4f} seconds")
+    prev_time = curr_time
+    logger.info("Processing data for request timeline diagram...")
 
-    # ================== 第一个图：请求时间线图 ==================
-    sorted_requests = sorted(
-        [(i, times) for i, times in enumerate(adjusted_requests)],
-        key=lambda x: x[1][0],
-        reverse=False
+    # ================== 请求图：准备渲染数据 ==================
+    # 所有请求都有效，因为每个请求都有关键时间点
+    n_valid = n_requests
+    
+    # ================== 预分配内存 ==================
+    # 红线段数据（TTFT）：每个请求3个点（起点、终点、断开点None）
+    red_x = np.full(3 * n_valid, np.nan, dtype=np.float32)
+    red_y = np.full(3 * n_valid, np.nan, dtype=np.float32)
+    
+    # 蓝线段数据（Decode）
+    blue_x = np.full(3 * n_valid, np.nan, dtype=np.float32)
+    blue_y = np.full(3 * n_valid, np.nan, dtype=np.float32)
+    
+    # 悬停文本，仅在起点存储
+    hover_text = np.full(3 * n_valid, None, dtype=object)
+    
+    # 使用开始时间排序
+    sorted_indices = np.argsort(adjusted_starts)
+    
+    # ================== 填充线段数据 ==================
+    for sorted_pos, orig_idx in enumerate(sorted_indices):
+        # 获取当前请求的关键时间点
+        start_t = adjusted_starts[orig_idx]
+        first_token_t = adjusted_first_tokens[orig_idx]
+        end_t = adjusted_ends[orig_idx]
+        
+        # 计算数组中的位置
+        arr_idx = sorted_pos * 3
+        
+        # 红线段（TTFT）：从开始到第一个token
+        red_x[arr_idx] = start_t
+        red_x[arr_idx + 1] = first_token_t
+        red_y[arr_idx:arr_idx + 2] = sorted_pos + 1
+        
+        blue_content_data = "NaN"
+
+        # 蓝线段（解码时间）：从第一个token到结束
+        if end_t > first_token_t:
+            blue_x[arr_idx] = first_token_t
+            blue_x[arr_idx + 1] = end_t
+            blue_y[arr_idx:arr_idx + 2] = sorted_pos + 1
+            decode_time = end_t - first_token_t
+            blue_content_data = f"{first_token_t:.2f}→{end_t:.2f}={decode_time:.2f}"
+        
+        # 悬停文本，触发点在红线段起点
+        ttft = first_token_t - start_t
+        e2e = end_t - start_t
+        
+        red_content = f"<span style='color:red'>TTFT({unit}): {start_t:.2f}→{first_token_t:.2f}={ttft:.2f}</span><br>"
+        blue_content = f"<span style='color:blue'>Decode({unit}): {blue_content_data}</span><br>"
+        e2e_content = f"E2E({unit}): {start_t:.2f}→{end_t:.2f}={e2e:.2f}"
+        
+        hover_text[arr_idx] = red_content + blue_content + e2e_content
+
+    curr_time = time.perf_counter()
+    logger.info(f"Timeline data processed! Time: {curr_time - prev_time:.4f} seconds")
+    prev_time = curr_time
+    logger.info("Request timeline diagram data processing complete! Rendering...")
+    
+    # ================== 请求图：分块渲染 ==================
+    CHUNK_SIZE = max(10000, 1000000 // n_valid)  # 每块最多渲染的点数
+    n_chunks = max(1, (n_valid + CHUNK_SIZE - 1) // CHUNK_SIZE)
+    timeline_traces = []
+
+    # 创建分块轨迹
+    for i in range(n_chunks):
+        start_idx = i * CHUNK_SIZE * 3
+        end_idx = min((i + 1) * CHUNK_SIZE * 3, len(red_x))
+        chunk = slice(start_idx, end_idx)
+        
+        # 红色TTFT轨迹
+        if any(~np.isnan(red_x[chunk])):
+            timeline_traces.append(go.Scattergl(
+                x=red_x[chunk],
+                y=red_y[chunk],
+                mode='lines',
+                line=dict(color='red', width=1, shape="hv"),
+                hoverinfo='text',
+                hovertext=hover_text[chunk],
+                showlegend=False,
+                connectgaps=False
+            ))
+        
+        # 蓝色Decode轨迹
+        if any(~np.isnan(blue_x[chunk])):
+            timeline_traces.append(go.Scattergl(
+                x=blue_x[chunk],
+                y=blue_y[chunk],
+                mode='lines',
+                line=dict(color='blue', width=1, shape="hv"),
+                hoverinfo='none',
+                showlegend=False,
+                connectgaps=False
+            ))
+    
+    # 清理大数组释放内存
+    del red_x, red_y, blue_x, blue_y, hover_text
+
+    curr_time = time.perf_counter()
+    logger.info(f"Timeline rendered! Time: {curr_time - prev_time:.4f} seconds")
+    prev_time = curr_time
+    logger.info("Processing data for request concurrency line chart...")
+
+    # ================== 并发图：请求并发数量线段图处理 ==================
+    # 生成事件数组（开始事件+1，结束事件-1）
+    events = np.empty((2 * n_valid, 2), dtype=np.float32)
+    events[:n_valid, 0] = adjusted_starts
+    events[:n_valid, 1] = 1  # 开始事件
+    events[n_valid:, 0] = adjusted_ends
+    events[n_valid:, 1] = -1  # 结束事件
+
+    # 稳定排序（时间相同则开始事件优先）
+    sort_indices = np.lexsort((events[:, 1], events[:, 0]))
+    events = events[sort_indices]
+
+    # 分组计算每个时间点的净变化
+    unique_times, indices = np.unique(
+        events[:, 0], 
+        return_index=False,
+        return_counts=False,
+        return_inverse=True
     )
-	
-    line_data = {
-        'red': {'x': [], 'y': [], 'text': []},
-        'blue': {'x': [], 'y': []},
-    }
+    delta_per_time = np.bincount(indices, weights=events[:, 1])
+    
+    # 计算结束后的并发状态
+    cumulative = np.cumsum(delta_per_time)
+    
+    # 精简数据结构：只存储结束状态 + 最终水平延伸点
+    conc_times = unique_times.copy()
+    conc_counts = cumulative.copy()
+    
+    # 添加最终水平延伸点（保持并发数不变）
+    if len(conc_times) > 0:
+        last_time = conc_times[-1] + 0.001 * (conc_times[-1] - conc_times[0]) 
+        last_time = max(last_time, conc_times[-1] + 0.1)  # 确保有最小延伸
+        conc_times = np.append(conc_times, last_time)
+        conc_counts = np.append(conc_counts, conc_counts[-1])
+    
+    # 创建简洁悬浮文本
+    conc_hover_text = [
+        f"Time: {t:.2f}{unit}<br>Concurrency: {c:.0f}" 
+        for t, c in zip(conc_times[:-1], conc_counts[:-1])
+    ]
+    conc_hover_text.append("")  # 最后延伸点无悬浮提示
 
-    for y_pos, (orig_idx, times) in enumerate(sorted_requests):
-        if len(times) < 2:
+    curr_time = time.perf_counter()
+    logger.info(f"Concurrency data processed! Time: {curr_time - prev_time:.4f} seconds")
+    prev_time = curr_time
+    logger.info("Request concurrency line chart data processing complete! Rendering...")
+
+    # ================== 并发图：分块渲染 ==================
+    CONCURRENCY_CHUNK_SIZE = max(10000, 1000000 // len(conc_times))
+    n_points = len(conc_times)
+    n_concurrency_chunks = max(1, (n_points + CONCURRENCY_CHUNK_SIZE - 1) // CONCURRENCY_CHUNK_SIZE)
+    concurrency_traces = []
+
+    for i in range(n_concurrency_chunks):
+        start_idx = i * CONCURRENCY_CHUNK_SIZE
+        end_idx = min((i + 1) * CONCURRENCY_CHUNK_SIZE, n_points)
+        
+        # 确保连续：每块起始点包含上一块结束点（第一块除外）
+        if i > 0:
+            start_idx = max(0, start_idx - 1)
+        
+        chunk_x = conc_times[start_idx:end_idx]
+        chunk_y = conc_counts[start_idx:end_idx]
+        chunk_hover = conc_hover_text[start_idx:end_idx]
+        
+        if len(chunk_x) == 0:
             continue
-        
-        red_start, red_end = times[0], times[1]
-        blue_start, blue_end = times[1], times[-1]
-        
-        # 红线段数据
-        
-        line_data['red']['x'].extend([red_start, red_end, None])
-        line_data['red']['y'].extend([y_pos, y_pos, None])
-        
-        # 悬停文本
-        hover_text = (
-            f"<span style='color:red'>TTFT({unit}): {red_start:.2f} → {red_end:.2f} = {(red_end - red_start):.2f}</span><br>"
-            f"<span style='color:blue'>Decode Time({unit}): {blue_start:.2f} → {blue_end:.2f} = {(blue_end - blue_start):.2f}</span><br>"
-            f"E2EL({unit}): {red_start:.2f} → {blue_end:.2f} = {(blue_end - red_start):.2f}"
-        )
-        
-        line_data['red']['text'].extend([hover_text, None, None])
-        
-        # 蓝线段数据
-        if blue_end > blue_start:
-            line_data['blue']['x'].extend([blue_start, blue_end, None])
-            line_data['blue']['y'].extend([y_pos, y_pos, None])
-        
-        
+            
+        # 创建并发轨迹块
+        concurrency_traces.append(go.Scattergl(
+            x=chunk_x,
+            y=chunk_y,
+            mode='lines',
+            line=dict(color='#4CAF50', width=1, shape='hv'),
+            fill='tozeroy',
+            fillcolor='rgba(76,175,80,0.1)',
+            hoverinfo="text",
+            hovertext=chunk_hover,
+            showlegend=False,
+            connectgaps=True
+        ))
 
-    # 构建红色轨迹（带悬停信息）
-    red_trace = go.Scattergl(
-        x=line_data['red']['x'],
-        y=line_data['red']['y'],
-        mode='lines',
-        line=dict(color='red', width=1, shape="hv"),  # 略微减小线宽
-        hoverinfo='text',
-        hovertext=line_data['red']['text'],
-        showlegend=False,
-        connectgaps=False
-    )
+    # 清理大数组释放内存
+    del events, sort_indices, unique_times, indices, delta_per_time, cumulative
+    del conc_times, conc_counts, conc_hover_text
 
-    # 构建蓝色轨迹（无悬停）
-    blue_trace = go.Scattergl(
-        x=line_data['blue']['x'],
-        y=line_data['blue']['y'],
-        mode='lines',
-        line=dict(color='blue', width=1, shape="hv"),
-        hoverinfo='none',
-        showlegend=False,
-        connectgaps=False
-    )
-
-    # ================== 第二个图：请求并发数变化趋势折线图 ==================
-    event_changes = []
-    for times in adjusted_requests:
-        if not times:
-            continue
-        event_changes.append((times[0], 1))
-        event_changes.append((times[-1], -1))
-
-    event_changes.sort(key=lambda x: (x[0], -x[1]))
-    
-    merged_events = []
-    current_time, current_delta = None, 0
-    for time, delta in event_changes:
-        if time == current_time:
-            current_delta += delta
-        else:
-            if current_time is not None:
-                merged_events.append((current_time, current_delta))
-            current_time, current_delta = time, delta
-    if current_time is not None:
-        merged_events.append((current_time, current_delta))
-
-    # 生成阶梯图数据
-    time_points, concurrent_counts = [], []
-    current = 0
-    for time, delta in merged_events:
-        time_points.extend([time, time])
-        concurrent_counts.extend([current, current + delta])
-        current += delta
-    
-    # 使用轻量级的图形参数
-    concurrency_trace = go.Scattergl(
-        x=time_points,
-        y=concurrent_counts,
-        mode='lines',
-        line=dict(color='#4CAF50', width=2, shape='hv'),
-        fill='tozeroy',
-        fillcolor='rgba(76,175,80,0.2)',  # 降低填充透明度
-        hovertemplate="Timestamp: %{x:.2f}<br>Request Concurrency Count: %{y}<extra></extra>",
-        showlegend=False,
-    )
+    curr_time = time.perf_counter()
+    logger.info(f"Request concurrency line chart rendered! Time: {curr_time - prev_time:.4f} seconds")
+    prev_time = curr_time
+    logger.info("Merging both diagrams...")
 
     # ================== 合并图表 ==================
     combined_fig = make_subplots(rows=2, cols=1, vertical_spacing=0.1)
-    combined_fig.add_trace(red_trace, row=1, col=1)
-    combined_fig.add_trace(blue_trace, row=1, col=1, )
-    combined_fig.add_trace(concurrency_trace, row=2, col=1)
+    
+    # 添加请求图轨迹
+    for trace in timeline_traces:
+        combined_fig.add_trace(trace, row=1, col=1)
+    
+    # 添加并发图轨迹
+    for trace in concurrency_traces:
+        combined_fig.add_trace(trace, row=2, col=1)
 
-    # 统一坐标轴配置
+    # ================== 坐标轴配置 ==================
     axis_config = dict(
         showline=True,
         showgrid=True,
@@ -154,6 +268,9 @@ def plot_sorted_request_timelines(request_times, output_file="timeline.html", un
         gridcolor='rgba(211,211,211,0.5)',
         linecolor='black',
     )
+    
+    # 计算X轴范围
+    x_range = [0, np.max(adjusted_ends)]
     
     xaxis_config = dict(
         showspikes=True,
@@ -164,7 +281,6 @@ def plot_sorted_request_timelines(request_times, output_file="timeline.html", un
         spikedash='dot',
         title=f"Relative Time ({unit})",
         range=x_range,
-        rangeslider=dict(visible=False),  # 禁用范围滑块提升性能
     )
     
     yaxis_config = dict(
@@ -203,11 +319,31 @@ def plot_sorted_request_timelines(request_times, output_file="timeline.html", un
         hovermode='closest',
     )
 
+    curr_time = time.perf_counter()
+    logger.info(f"The merged diagram has been set up! Time: {curr_time - prev_time:.4f} seconds")
+    prev_time = curr_time
+    logger.info("Rendering the merged diagram...")
+
+    # ================== 输出HTML ==================
+    # ========= WebGL 配置 ==========
+    WEBGL_CONFIG = {
+        'scrollZoom': True,
+        'plotGlPixelRatio': 1,  # 渲染分辨率
+        'showLink': False,
+        'displaylogo': False,
+        'modeBarButtonsToRemove': ['toImage'],
+        'queueLength': 10,      # 渲染队列长度
+    }
+
     combined_fig.write_html(
         output_file,
         include_plotlyjs='cdn',
         config=WEBGL_CONFIG,
         auto_open=False,
-        include_mathjax='cdn',
-        full_html=False # 生成更简洁的HTML
+        full_html=False,
     )
+
+    curr_time = time.perf_counter()
+    logger.info(f"Merged diagram rendered! Time: {curr_time - prev_time:.4f} seconds")
+    total_time = curr_time - start_time
+    logger.info(f"Succeed! HTML file saved! Total execution time: {total_time:.4f} seconds")

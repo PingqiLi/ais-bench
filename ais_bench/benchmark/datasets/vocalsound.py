@@ -32,16 +32,21 @@ class VocalSoundDataset(BaseDataset):
                 
         return Dataset.from_list(dataset)
 
-
 class VocalSoundEvaluator(BaseEvaluator):
 
-    def is_equal(self, pred, refer):
-        try:
-            if pred == refer or abs(float(pred) - int(refer)) < 1e-6:
-                return True
-        except Exception:
-            pass
-        return False
+    def find_choice(self, result):
+        choose_map = {
+            "A": "laughter",
+            "B": "sigh",
+            "C": "cough",
+            "D": "throatclearing",
+            "E": "sneeze",
+            "F": "sniff"
+        }
+        if result in choose_map.keys():
+            return choose_map[result]
+        else:
+            return ""
 
     def score(self, predictions, references):
         if len(predictions) != len(references):
@@ -54,8 +59,10 @@ class VocalSoundEvaluator(BaseEvaluator):
         details = []
         for i, j in zip(predictions, references):
             detail = {'pred': i, 'answer': j, 'correct': False}
+            if len(i) > 1:
+                i = self.find_choice(i[0])
             count += 1
-            if self.is_equal(i, j):
+            if i == j:
                 correct += 1
                 detail['correct'] = True
             details.append(detail)

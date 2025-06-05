@@ -23,7 +23,7 @@ vocalsound_infer_cfg = dict(
 )
 
 vocalsound_eval_cfg = dict(
-    evaluator=dict(type=VocalSoundEvaluator, version='v2'), pred_postprocessor=dict(type=math_postprocess_v2)
+    evaluator=dict(type=VocalSoundEvaluator)
 )
 
 vocalsound_datasets = [

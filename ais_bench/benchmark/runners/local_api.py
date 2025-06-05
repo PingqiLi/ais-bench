@@ -16,9 +16,9 @@ from tqdm import tqdm
 from ais_bench.benchmark.registry import RUNNERS, TASKS
 from ais_bench.benchmark.tasks import OpenICLInferTask, OpenICLPerfTask, OpenICLInferMergedTask
 from ais_bench.benchmark.tasks.base import BaseTask
-from ais_bench.benchmark.utils import (build_dataset_from_cfg, build_model_from_cfg,
-                               get_infer_output_path, get_logger,
-                               task_abbr_from_cfg)
+from ais_bench.benchmark.utils import (build_dataset_from_cfg, build_synthetic_dataset_from_cfg,
+                                       build_model_from_cfg, get_infer_output_path, 
+                                       get_logger, task_abbr_from_cfg)
 
 from .base import BaseRunner
 
@@ -38,7 +38,10 @@ def monkey_run_perf(self):
             self.model_cfg = model_cfg
             self.dataset_cfg = dataset_cfg
             self.infer_cfg = self.dataset_cfg["infer_cfg"]
-            self.dataset = build_dataset_from_cfg(self.dataset_cfg)
+            if self.dataset_cfg.get('type', None) == "ais_bench.benchmark.datasets.SyntheticDataset":
+                self.dataset = build_synthetic_dataset_from_cfg(self.dataset_cfg, self.model_cfg)
+            else:
+                self.dataset = build_dataset_from_cfg(self.dataset_cfg)
             self.build_inference()
             self.sub_cfg = {
                 "models": [self.model_cfg],

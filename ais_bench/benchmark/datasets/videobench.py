@@ -46,15 +46,15 @@ class VideoBenchDataset(BaseDataset):
 
 class VideoBenchEvaluator(BaseEvaluator):
 
-    def is_equal(self, pred, refer):
-        try:
-            if pred == refer or abs(float(pred) - int(refer)) < 1e-6:
-                return True
-        except Exception:
-            pass
-        return False
+    def find_choice(self, result):
+        choice_list = ['A', 'B', 'C', 'D', 'E', 'F']
+        for choice in choice_list:
+            if choice in result:
+                return choice
+        return ""
 
     def score(self, predictions, references):
+        references = [i['answer'] for i in references]
         if len(predictions) != len(references):
             return {
                 'error': 'predictions and references have different '
@@ -66,7 +66,7 @@ class VideoBenchEvaluator(BaseEvaluator):
         for i, j in zip(predictions, references):
             detail = {'pred': i, 'answer': j, 'correct': False}
             count += 1
-            if self.is_equal(i, j):
+            if self.find_choice(i) == j:
                 correct += 1
                 detail['correct'] = True
             details.append(detail)

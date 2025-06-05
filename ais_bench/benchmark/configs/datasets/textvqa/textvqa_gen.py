@@ -20,7 +20,7 @@ textvqa_infer_cfg = dict(
 )
 
 textvqa_eval_cfg = dict(
-    evaluator=dict(type=TEXTEvaluator, version='v2'), pred_postprocessor=dict(type=math_postprocess_v2)
+    evaluator=dict(type=TEXTEvaluator)
 )
 
 textvqa_datasets = [

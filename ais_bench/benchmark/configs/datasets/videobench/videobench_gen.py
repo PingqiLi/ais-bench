@@ -24,7 +24,7 @@ videobench_infer_cfg = dict(
 )
 
 videobench_eval_cfg = dict(
-    evaluator=dict(type=VideoBenchEvaluator, version='v2'), pred_postprocessor=dict(type=math_postprocess_v2)
+    evaluator=dict(type=VideoBenchEvaluator)
 )
 
 videobench_datasets = [
