@@ -51,6 +51,7 @@ class PromptTemplate:
         # A sign used to distinguish the prompt type
         self.prompt_type = 'origin'
         self._check_template_legacy()
+        self.num_audio_prompt = 0
 
     def _check_template_legacy(self):
         if isinstance(self.template, Dict):
@@ -235,6 +236,7 @@ class PromptTemplate:
         #vocalsound data
         elif isinstance(self.template, dict) and 'type' in self.template.keys() and self.template['type']=='audio_text':
             assert 'data' in self.template.keys() and isinstance(self.template['data'], list)
+            self.num_audio_prompt += 1
             template = []
             #build audio
             if 'audio_url' in self.template['data']:
@@ -249,7 +251,7 @@ class PromptTemplate:
             #build text
             if 'text' in self.template['data']:
                 assert 'prompt' in self.template
-                if 'audio_url_base64' in self.template['data']:
+                if 'audio_url_base64' in self.template['data'] and self.num_audio_prompt == 1:
                     self.template['prompt'] = '<|AUDIO|>' + self.template['prompt']  #vllm bug
                 template.append({'type': 'text', 'text': self.template['prompt']})
             return template
