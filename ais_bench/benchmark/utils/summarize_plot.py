@@ -7,19 +7,33 @@ import time
 
 
 def plot_sorted_request_timelines(start_time_list: List[float], prefill_latency_list: List[float],
-                                  end_time_list: List[float], output_file: str = "timeline.html",
-                                  unit : str = "s"):
+                                  end_time_list: List[float], decode_token_latencies_list: List[List[float]],
+                                  output_file: str = "timeline.html", unit : str = "s"):
     """
     绘制请求时间线和并发图表
     
     参数:
     start_time_list -- 请求开始时间列表
-    prefill_latency_list -- 预填充延迟列表
+    prefill_latency_list -- 首token时延列表
     end_time_list -- 请求结束时间列表
+    decode_token_latencies_list -- 非首token时延列表
     output_file -- 输出HTML文件名
     unit -- 时间单位 (仅用于渲染时的内容显示，不涉及计算逻辑)
     """
     logger = get_logger()
+
+    # ========= 渲染因子配置 ==========
+    MAX_POINTS_PER_TRACE = 10000  # 根据硬件性能调整
+    # ======= WebGL 配置 =======
+    WEBGL_CONFIG = {
+        'scrollZoom': True,
+        'plotGlPixelRatio': 1,  # 渲染分辨率
+        'showLink': False,
+        'displaylogo': False,
+        'modeBarButtonsToRemove': ['toImage'],
+        'queueLength': 10,      # 渲染队列长度
+    }
+
     prev_time = None
     start_time = time.perf_counter()
     prev_time = start_time
@@ -27,20 +41,34 @@ def plot_sorted_request_timelines(start_time_list: List[float], prefill_latency_
     
     # ================== 参数校验 ==================
     n_requests = len(start_time_list)
-    if n_requests == 0 | n_requests != len(prefill_latency_list) | n_requests != len(end_time_list):
+    if (n_requests == 0 or 
+        n_requests != len(prefill_latency_list) or 
+        n_requests != len(end_time_list) or
+        n_requests != len(decode_token_latencies_list)):
         logger.warning("No valid data to plot!")
+        logger.warning("Input list lengths mismatch! Details: ")
+        logger.warning(f"start_list:{n_requests}, prefill_latency_list:{len(prefill_latency_list)}, ")
+        logger.warning(f"end_list:{len(end_time_list)}, decode_token_latencies_list:{len(decode_token_latencies_list)}")
         return
 
     # ================== 数据准备 ==================
     logger.info("Processing the received data...")
     
-    start = np.array(start_time_list)
-    prefill = np.array(prefill_latency_list) / 1000
-    end = np.array(end_time_list) if end_time_list is not None else (start + prefill)
+    start = np.asarray(start_time_list, dtype=np.float64)
+    prefill = np.asarray(prefill_latency_list, dtype=np.float64) / 1000 #prefill数据单位为ms，而其他数据均为s
+    end = np.asarray(end_time_list, dtype=np.float64)
+
+    n_valid = n_requests # 有效数据数目，可根据场景调整
     
     # 计算每个请求的关键时间点
     first_token_time_list = start + prefill
-    end = np.array(end_time_list) if end_time_list is not None else first_token_time_list
+
+    # 对每条请求是否含有非首token时延判断请求索引对应的end_time是否需要更新，
+    # 因为end_time_list因为打点位置会有误差，需用first_token_time_list的值修正
+    no_decode_indices = [i for i, lst in enumerate(decode_token_latencies_list) if not lst]
+    if no_decode_indices:
+        end[no_decode_indices] = first_token_time_list[no_decode_indices]
+        del no_decode_indices
 
     # 找到全局最小时间，用于相对时间计算
     global_x_min = np.min(start)
@@ -56,12 +84,9 @@ def plot_sorted_request_timelines(start_time_list: List[float], prefill_latency_
     logger.info("Processing data for request timeline diagram...")
 
     # ================== 请求图：准备渲染数据 ==================
-    # 所有请求都有效，因为每个请求都有关键时间点
-    n_valid = n_requests
-    
     # ================== 预分配内存 ==================
     # 红线段数据（TTFT）：每个请求3个点（起点、终点、断开点None）
-    red_x = np.full(3 * n_valid, np.nan, dtype=np.float32)
+    red_x = np.full(3 * n_valid, np.nan, dtype=np.float32) # 标准化时间后不需要float64位存储
     red_y = np.full(3 * n_valid, np.nan, dtype=np.float32)
     
     # 蓝线段数据（Decode）
@@ -115,14 +140,16 @@ def plot_sorted_request_timelines(start_time_list: List[float], prefill_latency_
     logger.info("Request timeline diagram data processing complete! Rendering...")
     
     # ================== 请求图：分块渲染 ==================
-    CHUNK_SIZE = max(10000, 1000000 // n_valid)  # 每块最多渲染的点数
-    n_chunks = max(1, (n_valid + CHUNK_SIZE - 1) // CHUNK_SIZE)
+    points_per_request = 3
+    chunk_size = max(5000, min(n_valid, MAX_POINTS_PER_TRACE // points_per_request))
+    n_chunks = (n_valid + chunk_size - 1) // chunk_size
+    n_points = len(red_x)
     timeline_traces = []
 
     # 创建分块轨迹
     for i in range(n_chunks):
-        start_idx = i * CHUNK_SIZE * 3
-        end_idx = min((i + 1) * CHUNK_SIZE * 3, len(red_x))
+        start_idx = i * chunk_size * points_per_request
+        end_idx = min((i+1) * chunk_size * points_per_request, n_points)
         chunk = slice(start_idx, end_idx)
         
         # 红色TTFT轨迹
@@ -206,14 +233,14 @@ def plot_sorted_request_timelines(start_time_list: List[float], prefill_latency_
     logger.info("Request concurrency line chart data processing complete! Rendering...")
 
     # ================== 并发图：分块渲染 ==================
-    CONCURRENCY_CHUNK_SIZE = max(10000, 1000000 // len(conc_times))
     n_points = len(conc_times)
-    n_concurrency_chunks = max(1, (n_points + CONCURRENCY_CHUNK_SIZE - 1) // CONCURRENCY_CHUNK_SIZE)
+    chunk_size = min(len(conc_times), MAX_POINTS_PER_TRACE)
+    n_chunks = (len(conc_times) + chunk_size - 1) // chunk_size
     concurrency_traces = []
 
-    for i in range(n_concurrency_chunks):
-        start_idx = i * CONCURRENCY_CHUNK_SIZE
-        end_idx = min((i + 1) * CONCURRENCY_CHUNK_SIZE, n_points)
+    for i in range(n_chunks):
+        start_idx = i * chunk_size
+        end_idx = min((i + 1) * chunk_size, n_points)
         
         # 确保连续：每块起始点包含上一块结束点（第一块除外）
         if i > 0:
@@ -325,16 +352,6 @@ def plot_sorted_request_timelines(start_time_list: List[float], prefill_latency_
     logger.info("Rendering the merged diagram...")
 
     # ================== 输出HTML ==================
-    # ========= WebGL 配置 ==========
-    WEBGL_CONFIG = {
-        'scrollZoom': True,
-        'plotGlPixelRatio': 1,  # 渲染分辨率
-        'showLink': False,
-        'displaylogo': False,
-        'modeBarButtonsToRemove': ['toImage'],
-        'queueLength': 10,      # 渲染队列长度
-    }
-
     combined_fig.write_html(
         output_file,
         include_plotlyjs='cdn',

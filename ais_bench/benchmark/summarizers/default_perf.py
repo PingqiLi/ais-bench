@@ -78,12 +78,11 @@ class DefaultPerfSummarizer:
                 with open(perf_details_file, 'r', encoding='utf-8') as file:
                     self.logger.info(f"Loading detail perf data of {model=} {dataset=} ...")
                     details_data = json.load(file)
-                    decode_token_latencies = details_data["requests"]["decode_token_latencies"]
-                    decode_stage_exist = any(len(sub_list) != 0 for sub_list in decode_token_latencies)
                     plot_file_path = osp.join(self.work_dir, "performances", model, f"{dataset}_plot.html")
                     plot_sorted_request_timelines(details_data["requests"]["start_time"],
                                                   details_data["requests"]["prefill_latency"],
-                                                  details_data["requests"]["end_time"] if decode_stage_exist else None,
+                                                  details_data["requests"]["end_time"],
+                                                  details_data["requests"]["decode_token_latencies"],
                                                   output_file=plot_file_path, unit="s")
                     self.logger.info(f"The {dataset}_plot has been saved in {plot_file_path}")
                 calculators_per_model[dataset] = build_perf_metric_calculator_from_cfg(calculator_conf)
