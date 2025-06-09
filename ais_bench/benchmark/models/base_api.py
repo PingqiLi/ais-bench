@@ -316,6 +316,11 @@ class BaseAPIModel(BaseModel):
         total_concurrency = extra_gen_kwargs.get("total_concurrency")
         pressure_time = PRESSURE_TIME
         connection_add_rate = CONNECTION_ADD_RATE
+        if not isinstance(PRESSURE_TIME, (int, float)):
+            raise TypeError("Type of PRESSURE_TIME is not int or float!")
+        if not isinstance(CONNECTION_ADD_RATE, (int, float)):
+            raise TypeError("Type of CONNECTION_ADD_RATE is not int or float!")
+
         if PRESSURE_TIME > PRESSURE_TIME_MAX:
             self.logger.warning(f"PRESSURE_TIME is larger than {PRESSURE_TIME_MAX}, will be set to {PRESSURE_TIME_MAX}")
             pressure_time = PRESSURE_TIME_MAX
