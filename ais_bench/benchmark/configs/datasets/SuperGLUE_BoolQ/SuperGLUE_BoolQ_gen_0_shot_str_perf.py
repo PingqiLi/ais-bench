@@ -13,7 +13,7 @@ BoolQ_reader_cfg = dict(
 BoolQ_infer_cfg = dict(
     prompt_template=dict(
         type=PromptTemplate,
-        template='{passage}\n{question}\n'
+        template='{passage}{question}'
     ),
     retriever=dict(type=ZeroRetriever),
     inferencer=dict(type=GenInferencer),

@@ -129,9 +129,10 @@ class TritonCustomAPI(PerformanceAPIModel):
         if max_out_len <= 0:
             return ''
         cache_data = self.prepare_input_data(input, data_id)
-        self.generation_kwargs.update({"max_new_tokens": max_out_len})
+        generation_kwargs = self.generation_kwargs.copy()
+        generation_kwargs.update({"max_new_tokens": max_out_len})
 
-        response = self.client.request(cache_data, self.generation_kwargs)
+        response = self.client.request(cache_data, generation_kwargs)
         self.set_result(cache_data)
 
         return ''.join(response)
@@ -246,9 +247,10 @@ class TritonCustomAPIStream(PerformanceAPIModel):
         if max_out_len <= 0:
             return ''
         cache_data = self.prepare_input_data(input, data_id)
-        self.generation_kwargs.update({"max_new_tokens": max_out_len})
+        generation_kwargs = self.generation_kwargs.copy()
+        generation_kwargs.update({"max_new_tokens": max_out_len})
 
-        response = self.client.request(cache_data, self.generation_kwargs)
+        response = self.client.request(cache_data, generation_kwargs)
         self.set_result(cache_data)
 
 

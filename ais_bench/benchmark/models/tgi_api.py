@@ -7,9 +7,6 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from typing import Dict, List, Optional, Union
 
-import httpx
-import jieba
-import requests
 from tqdm import tqdm
 
 from ais_bench.benchmark.registry import MODELS
@@ -125,8 +122,9 @@ class TGICustomAPI(PerformanceAPIModel):
         else:
             data_id = -1
         cache_data = self.prepare_input_data(input, data_id)
-        self.generation_kwargs.update({"max_new_tokens": max_out_len})
-        response = self.client.request(cache_data, self.generation_kwargs)
+        generation_kwargs = self.generation_kwargs.copy()
+        generation_kwargs.update({"max_new_tokens": max_out_len})
+        response = self.client.request(cache_data, generation_kwargs)
         self.set_result(cache_data)
         return ''.join(response)
 
@@ -240,9 +238,10 @@ class TGICustomAPIStream(PerformanceAPIModel):
         if max_out_len <= 0:
             return ''
         cache_data = self.prepare_input_data(input, data_id)
-        self.generation_kwargs.update({"max_new_tokens": max_out_len})
+        generation_kwargs = self.generation_kwargs.copy()
+        generation_kwargs.update({"max_new_tokens": max_out_len})
 
-        response = self.client.request(cache_data, self.generation_kwargs)
+        response = self.client.request(cache_data, generation_kwargs)
         self.set_result(cache_data)
 
         return ''.join(response)

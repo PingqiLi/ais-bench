@@ -180,12 +180,13 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
                 elif item['role'] == 'SYSTEM':
                     msg['role'] = 'system'
                 messages.append(msg)
-
-        self.generation_kwargs.update({"max_tokens": max_out_len})
-        self.generation_kwargs.update({"model": self.model})
+                
+        generation_kwargs = self.generation_kwargs.copy()
+        generation_kwargs.update({"max_tokens": max_out_len})
+        generation_kwargs.update({"model": self.model})
         cache_data = self.prepare_input_data(messages, data_id)
 
-        response = self.client.request(cache_data, self.generation_kwargs)
+        response = self.client.request(cache_data, generation_kwargs)
         self.set_result(cache_data)
 
         return ''.join(response)
@@ -359,11 +360,12 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                 elif item['role'] == 'SYSTEM':
                     msg['role'] = 'system'
                 messages.append(msg)
-        self.generation_kwargs.update({"max_tokens": max_out_len})
-        self.generation_kwargs.update({"model": self.model})
+        generation_kwargs = self.generation_kwargs.copy()
+        generation_kwargs.update({"max_tokens": max_out_len})
+        generation_kwargs.update({"model": self.model})
         cache_data = self.prepare_input_data(messages, data_id)
 
-        response = self.client.request(cache_data, self.generation_kwargs)
+        response = self.client.request(cache_data, generation_kwargs)
         self.set_result(cache_data)
 
         return ''.join(response)
