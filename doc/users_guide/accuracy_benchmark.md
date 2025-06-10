@@ -25,7 +25,14 @@
 ```bash
 ais_bench --models vllm_api_general vllm_api_stream_chat --datasets gsm8k_gen math500_gen_0_shot_cot_chat_prompt
 ```
-示例中使用`v1/completions`和`v1/chat/completions`对[`GSM8K`](../../ais_bench/benchmark/configs/datasets/gsm8k/README.md)和[`MATH`](../../ais_bench/benchmark/configs/datasets/math/README.md)数据集进行测试，总共4个任务，任务结束后会在[`--work-dir`](cli_args.md#公共参数)生成如下文件内容：
+上述命令将执行以下4个精度测试任务：
++ [`v1/completions`](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py) + [`GSM8K`](../../ais_bench/benchmark/configs/datasets/gsm8k/README.md) 数据集
++ [`v1/completions`](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py) + [`MATH`](../../ais_bench/benchmark/configs/datasets/math/README.md) 数据集
++ [`v1/chat/completions`](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py) + [`GSM8K`](../../ais_bench/benchmark/configs/datasets/gsm8k/README.md) 数据集
++ [`v1/chat/completions`](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py) + [`MATH`](../../ais_bench/benchmark/configs/datasets/math/README.md) 数据集
+
+任务结束后会在[`--work-dir`](cli_args.md#公共参数)路径下生成如下目录结构：
+
 ```bash
 outputs/default/
 └── 20230220_183030     # 任务创建时间对应的输出目录
@@ -69,8 +76,7 @@ outputs/default/
 ### 多任务并行测评
 默认情况下，多个子任务采用串行执行，单个任务内默认开启Continous Batch，会根据用户配置的最大并发拉起多个进程发送和处理请求，允许配置较大的并发。在单个任务并发较小时，可以通过设置[`--max-num-workers`](cli_args.md#精度测评参数)参数实现多任务并行，示例如下：
 
-
-> ⚠️ 注意：启用 --max-num-workers 时必须关闭 Continous Batch（通过 --disable-cb 参数），此时每个任务建议最大并发不超过 500。
+> ⚠️ 注意：启用 `--max-num-workers` 时不能生效 Continous Batch（需通过指定 `--disable-cb` 手动关闭），此时每个任务建议最大并发不超过 500。
 ```bash
 ais_bench --models vllm_api_general vllm_api_stream_chat --datasets gsm8k_gen math500_gen_0_shot_cot_chat_prompt --disable-cb --max-num-workers 4
 ```
@@ -80,7 +86,7 @@ ais_bench --models vllm_api_general vllm_api_stream_chat --datasets gsm8k_gen ma
 在测评过程中发生中断或部分任务失败时，可通过`--reuse`开启断点管理功能实现任务续测，亦支持仅对失败用例进行自动重测，无需重复运行全部任务。示例如下：
 
 
-1、当用户使用如下命令首次推理时，由于任务异常退出导致的任务中断或由于服务端异常导致部分请求失败
+1、假设用户使用如下命令首次执行推理测评，若由于任务异常退出导致的任务中断或由于服务端异常导致部分请求失败
 ```bash
 ais_bench --models vllm_api_general --datasets gsm8k_gen
 ```
@@ -135,36 +141,8 @@ ais_bench --models vllm_api_general --datasets ceval_gen --merge-ds
 参考[服务化精度多任务并行测评使用方法](#多任务并行测评)。
 > ⚠️ 注意：纯模型精度测评多任务并行会占用不同GPU单元，并行任务所需的GPU单元应小于等于可使用的GPU总数。
 ### 中断续测
-支持从推理任务中断位置继续推理剩余请求。适用于Benchmark过程意外中断的推理任务失败场景。
-1、当用户使用如下命令首次推理时，由于任务异常退出导致的任务中断
-```bash
-ais_bench --models hf_base_model --datasets gsm8k_gen
-```
-此时部分推理结果会被保存下来，在[`--work-dir`](cli_args.md#公共参数)生成如下文件内容：
-
-```bash
-outputs/default/
-└── 20230220_196253     # 任务创建时间对应的输出目录
-    ├── configs         # 存储转储的配置文件。如果在同一实验目录下重复执行多个任务，可能会存在多个配置文件
-    │    └── 20230220_196253_7234891.py
-    ├── logs            # 推理与精度计算阶段的日志文件
-    │   └── infer       # 推理阶段日志
-    │       └── hf-base-model
-    │           └── gsm8k.out
-    └── predictions     # 本地模型推理结果，包含每条请求的输入、模型输出以及参考答案（用于精度评估）
-        └── hf-base-model
-            └── tmp_gsm8k.json   # 推理结果缓存文件，命名格式为：tmp_{数据集名称}.json
-
-```
-2、通过`--reuse`参数指定任务时间戳目录续推：
-```bash
-ais_bench --models hf_base_model --datasets gsm8k_gen --reuse 20230220_196253
-```
-日志中会打印如下内容，提示续推任务开启：
-```bash
-02/20 13:14:15 - AISBench - INFO - Found 10 tmp items, run infer task from the last interrupted position
-```
-续推结束后，会重新所有请求的精度结果并打印，生成结果可参考[多任务测评](#多任务测评)。
+在纯模型精度测评过程中，如遇任务中断，可通过 `--reuse` 参数指定任务时间戳目录，继续未完成的推理任务，实现断点续测。该功能无需重复运行全部任务，仅对未完成部分进行补充推理。使用详情可参考[服务化精度中断续测使用方法](#中断续测--失败用例重测)。
+> ⚠️ 注意，纯模型精度测评当前不支持失败用例自动重测。
 ### 合并子数据集推理
 参考[服务化精度合并子数据集推理使用方法](#合并子数据集推理)。
 
