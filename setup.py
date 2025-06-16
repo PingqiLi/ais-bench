@@ -109,7 +109,7 @@ def do_setup():
         name='ais_bench_benchmark',
         version=get_version(),
         description='A comprehensive toolkit for large model evaluation',
-        url='https://gitee.com/ascend/tools/',
+        url='https://gitee.com/aisbench/benchmark',
         long_description=readme(),
         long_description_content_type='text/markdown',
         maintainer='AISBench Authors',
