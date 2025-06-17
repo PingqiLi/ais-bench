@@ -9,6 +9,8 @@ import threading
 from ais_bench.benchmark.utils import get_logger
 from ais_bench.benchmark.utils.results import MiddleData
 import urllib3.util
+from http import HTTPStatus
+from urllib3.exceptions import HTTPError
 
 RETRY_ERROR_LIST = [104]
 
@@ -113,35 +115,41 @@ class BaseClient(ABC):
         parameters: dict = None,
     ):
         response = None
+        request_body = self.construct_request_body(
+            inputs.input_data,
+            parameters=parameters,
+        )
+        start_time = time.perf_counter()
+        inputs.chunk_time_point_list.append(start_time * 1000)
         try:
-            request_body = self.construct_request_body(
-                inputs.input_data,
-                parameters=parameters,
-            )
-            start_time = time.perf_counter()
-            inputs.chunk_time_point_list.append(start_time * 1000)
             response_raw = self.do_request(request_body, "POST")
-            if not self._is_stream:
-                response_obj = json.loads(response_raw.data.decode())
-                err_msg = response_obj.get("error", None)
-                if err_msg:
-                    raise_error(
-                        "Request failed, response from server is {}.".format(err_msg),
-                    self.lock,
-                    self.request_counter)
+        except HTTPError as e:
+            raise_error(f"{e}. Please check your host_ip and host_port!", self.lock, self.request_counter)
+        if response_raw.status != HTTPStatus.OK:
+            raise_error(
+                "Request failed, status is %r, response from server is %r." % (response_raw.status,
+                                                                                response_raw.data.decode()),
+                self.lock,
+                self.request_counter
+            )
+        if not self._is_stream:
+            try:
                 res_ = self.process_response(response_raw, start_time)
-                response = [self.update_middle_data(res_, inputs)]
-            else:
-                response = []
+            except json.JSONDecodeError:
+                # 打印decode失败时的原始数据
+                decode_data = response_raw.data.decode(errors="replace")
+                raise_error(f"Failed to decode text JSON response. Raw data: {decode_data}", self.lock, self.request_counter)
+            response = [self.update_middle_data(res_, inputs)]
+        else:
+            response = []
+            try:
                 for res_ in self.process_response(response_raw, start_time):
                     response.append(self.update_middle_data(res_, inputs))
-            self.rev_count()
-            self.update_request_time(inputs, start_time)
-            return "".join(response)
-        except urllib3.exceptions.TimeoutError:
-            raise_error("The http request timeout.", self.lock, self.request_counter)
-        except Exception as err:
-            raise_error("Request Failed :{}.".format(err), self.lock, self.request_counter)
+            except ValueError as e:
+                raise_error(f"Failed to process stream response. {e}", self.lock, self.request_counter)
+        self.rev_count()
+        self.update_request_time(inputs, start_time)
+        return "".join(response)
 
 
 
