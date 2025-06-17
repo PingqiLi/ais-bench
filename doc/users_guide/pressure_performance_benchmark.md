@@ -69,7 +69,7 @@ outputs/default/
 ```
 
 #### 推理并发过程可视化
-可以参考[性能测试可视化并发图使用说明.md](性能测试可视化并发图使用说明.md)在syntheticdataset_plot.html中查看稳定阶段的请求以及并发可视化图。
+可以参考[性能测试可视化并发图使用说明](./performance_visualize.md#性能测试可视化并发图使用说明)在syntheticdataset_plot.html中查看稳定阶段的请求以及并发可视化图。
 
 ### 重计算稳态性能数据
 #### 性能重计算条件
@@ -102,5 +102,5 @@ outputs/default/
 ```
 
 #### 推理并发过程可视化
-可以参考[性能测试可视化并发图使用说明.md](性能测试可视化并发图使用说明.md)在syntheticdataset_plot.html中查看稳定阶段的请求以及并发可视化图。
+可以参考[性能测试可视化并发图使用说明](./performance_visualize.md#性能测试可视化并发图使用说明)在syntheticdataset_plot.html中查看稳定阶段的请求以及并发可视化图。
 

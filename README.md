@@ -4,9 +4,9 @@ AISBench Benchmark 是基于 OpenCompass 构建的模型评测工具，兼容 Op
 
 当前，AISBench 支持两大类推理任务的评测场景：
 
-✅ [精度评测](#精度测评)：支持对服务化模型和本地模型在各类问答、推理基准数据集上的精度验证。
+🔍 [精度测评](#精度测评)：支持对服务化模型和本地模型在各类问答、推理基准数据集上的精度验证。
 
-🚀 [性能评测](#性能测评)：支持对服务化模型的延迟与吞吐率评估，并可进行压测场景下的极限性能测试。
+🚀 [性能测评](#性能测评)：支持对服务化模型的延迟与吞吐率评估，并可进行压测场景下的极限性能测试。
 
 ## 工具安装
 ✅ 环境要求
@@ -178,14 +178,13 @@ demo_math_prm800k_500   c4b6f0   accuracy gen                     50.00         
 ```
 
 #### 预设配置文件
-你可以在 `ais_bench/configs/` 文件夹下找到更多的Python脚本示例，详情参考:[Python自定义配置文件样例列表](./doc/users_guide/python_examples.md)。
-### 推理过程查看
-评测过程中，日志默认保存在：
-```swift
+在 `ais_bench/configs/` 目录下，提供了更多 Python 配置文件示例，便于快速上手和自定义评测任务。详细示例请参考：[Python自定义配置文件样例列表](./doc/users_guide/python_examples.md)。
+### 推理过程日志查看
+评测过程中，AISBench Benchmark 会将推理日志默认保存至：
+```text
 {work_dir}/{time_label}/logs/infer/{abbr_name}/{dataset}.out
 ```
-AISBench Benchmark的执行日志默认直接保存在日志文件中，启动推理后可以在{work_dir}/{time_label}/logs/infer/{abbr_name}/gsm8k.out 中查看推理结果，例如执行
-查看方式示例：
+您可以通过如下方式实时查看推理日志：
 ```shell
 # CLI 示例
 tail -f outputs/default/20250126_165049/logs/infer/vllm-api-general/gsm8k.out
@@ -193,11 +192,11 @@ tail -f outputs/default/20250126_165049/logs/infer/vllm-api-general/gsm8k.out
 # Python 脚本示例
 tail -f outputs/api_vllm_general/20250126_165049/logs/infer/vllm-api-general/gsm8k.out
 ```
-其中`{work_dir}/{time_label}/`会在工具的打屏中进行提示，示例：
+其中 `{work_dir}/{time_label}/` 路径会在工具运行时于控制台提示。例如：
 ```bash
 06/08 15:31:14 - AISBench - INFO - Current exp folder: outputs/demo-api-vllm-general-chat/20250608_160222
 ```
-你也可以在命令中添加 `--debug` 参数将日志直接输出到控制台。更多细节请见:[用户配置参数](doc/users_guide/cli_args.md#用户配置参数)
+如需将日志直接输出到控制台，可在命令中添加 `--debug` 参数。更多日志与参数说明详见：[用户配置参数](doc/users_guide/cli_args.md#用户配置参数)。
 
 ## 精度测评
 ### 服务化精度测评
@@ -230,7 +229,7 @@ tail -f outputs/api_vllm_general/20250126_165049/logs/infer/vllm-api-general/gsm
 ### 服务化性能测评
 - 功能描述：在真实部署环境中评估服务模型的运行效率（吞吐、延迟）
 
-- 要求：模型接口需支持流式请求
+- 要求：模型推理服务需支持**流式接口**方式访问
 
 - 支持：
 
@@ -245,7 +244,7 @@ tail -f outputs/api_vllm_general/20250126_165049/logs/infer/vllm-api-general/gsm
 
 - 要求：
 
-    - 支持流式输出接口
+    - 模型推理服务需支持**流式接口**方式访问
 
     - 明确设置最大并发参数
 

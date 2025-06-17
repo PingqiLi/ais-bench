@@ -43,6 +43,7 @@ models = [
             top_p = 0.95,
             seed = None,
             repetition_penalty = 1.03,
+            ignore_eos = True,
         )
     )
 ]
@@ -160,8 +161,8 @@ ais_bench --models  vllm_api_stream_chat --datasets synthetic_gen -m perf
 > - 为了保证不同后端 API 的测评维度一致，AISBench Benchmark 会将服务端返回结果先通过 Tokenizer 转换为对应的 Token id，再统计实际生成的 Token 长度。该统计值可能与服务端直接报告的 Token 数略有差异。
 > - 部分服务化后端不支持 `ignore_eos` 后处理参数，此时实际输出的 `Token` 数可能无法达到所配置的最大输出长度。
 ### 最大并发稳态性能测评
-「稳态」指在推理服务达到并保持最大并发时的系统运行状态。通常，在请求由启动到达到最大并发这一爬坡阶段，性能数据会受到请求速率（Request Rate）和后端响应效率的共同影响，统计到的性能指标并不能完全反映系统在稳态时的真实能力。
-AISBench Benchmark可实时记录每条请求的处理状态和服务化系统的并发状态，在推理任务结束后汇总生成[可视化html报告](./性能测试可视化并发图使用说明.md)。同时用户可通过配置[`--summarizer`参数](./summarizer.md#支持的结果汇总任务)测评系统的稳态性能，示例如下：
+「稳态」指在推理服务达到并保持最大并发时的系统运行状态。通常，在请求由启动到达到最大并发这一爬坡阶段，性能数据会受到请求速率（Request Rate）和后端响应效率的共同影响，统计到的性能指标并不能完全反映系统在稳态时的真实能力。稳态性能统计的详细介绍可参考：[稳定阶段性能数据计算方式说明](./pressure_performance_benchmark.md#稳定阶段性能数据计算方式说明)。
+AISBench Benchmark可实时记录每条请求的处理状态和服务化系统的并发状态，在推理任务结束后汇总生成[可视化html报告](./performance_visualize.md)。同时用户可通过配置[`--summarizer`参数](./summarizer.md#支持的结果汇总任务)测评系统的稳态性能，示例如下：
 ```bash
 ais_bench --models  vllm_api_stream_chat --datasets synthetic_gen  --summarizer stable_stage  -m perf 
 ```
@@ -173,9 +174,9 @@ outputs/default/
 │       └── <model_abbr>  # <model_abbr>与模型配置文件中的models的abbr参数一致
 │           ├── <dataset_abbr>_details.json    #全量性能打点结果, <model_abbr>与数据集配置文件中的datasets的abbr参数一致
 ```
-则可以基于原有的性能推理结果，通过修改原有性能测试模式为可视化任务`--mode viz`命令，并添加[`--reuse`](./cli_args.md#公共参数)参数重新生成稳态性能结果：
+则可以基于原有的性能推理结果，通过修改原有性能测试模式为可视化任务`--mode perf_viz`命令，并添加[`--reuse`](./cli_args.md#公共参数)参数重新生成稳态性能结果：
 ```bash
-ais_bench --models  vllm_api_stream_chat --datasets synthetic_gen  --summarizer stable_stage  --mode perf_viz  --reuse 20240220_120000
+ais_bench --models  vllm_api_stream_chat --datasets synthetic_gen  --summarizer stable_stage  --mode perf_viz --reuse 20240220_120000
 ```
 示例中读取 20240220_120000/performance/vllm-api-stream-chat/syntheticdataset_details.json 中的全量打点数据，重新计算并输出稳态阶段的 CSV/JSON/HTML 等文件。如下所示：
 
