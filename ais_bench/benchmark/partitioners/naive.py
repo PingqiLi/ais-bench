@@ -62,6 +62,7 @@ class NaivePartitioner(BasePartitioner):
         """
 
         tasks = []
+        is_predictions = osp.basename(osp.normpath(out_dir)) == 'predictions'
         for comb in model_dataset_combinations:
             for model in comb["models"]:
                 chunks = []
@@ -71,7 +72,7 @@ class NaivePartitioner(BasePartitioner):
                     dataset_abbr = dataset_abbr_from_cfg(dataset)
                     tmp_data = osp.join(osp.dirname(filename), "tmp_" + dataset_abbr)
                     task_name = "[" + model_abbr + "/" + dataset_abbr + "]"
-                    if osp.exists(filename):
+                    if osp.exists(filename) and is_predictions: # skip if not in predictions mode
                         stat_info = os.stat(filename)
                         if stat_info.st_uid != os.getuid():
                             self.logger.error(

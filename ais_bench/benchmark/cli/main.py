@@ -160,7 +160,7 @@ def main():
         if args.reuse == 'latest':
             if not os.path.exists(cfg.work_dir) or not os.listdir(
                     cfg.work_dir):
-                logger.warning('No previous results to reuse!')
+                logger.warning('No previous experiment results found to reuse.')
             else:
                 dirs = os.listdir(cfg.work_dir)
                 dir_time_str = sorted(dirs)[-1]
@@ -192,9 +192,11 @@ def main():
         cfg.infer.partitioner['out_dir'] = osp.join(cfg['work_dir'],
                                                     'performances')
         partitioner = PARTITIONERS.build(cfg.infer.partitioner)
+        logger.info("Starting performance evaluation tasks...")
         tasks = partitioner(cfg)
         runner = RUNNERS.build(cfg.infer.runner)
         runner(tasks)
+        logger.info("Performance evaluation tasks completed.")
 
     if cfg.get('infer', None) is None:
         if args.merge_ds:
@@ -212,6 +214,7 @@ def main():
                                                     'predictions/')
         cfg.dump(output_config_path)
         partitioner = PARTITIONERS.build(cfg.infer.partitioner)
+        logger.info("Starting inference tasks...")
         tasks = partitioner(cfg)
         if args.dry_run:
             return
@@ -222,6 +225,7 @@ def main():
                 cfg.attack.dataset = task.datasets[0][0].abbr
                 task.attack = cfg.attack
         runner(tasks)
+        logger.info("Inference tasks completed.")
 
     if cfg.get('eval', None) is None:
         if args.merge_ds:
@@ -242,6 +246,7 @@ def main():
         cfg.eval.partitioner['out_dir'] = osp.join(cfg['work_dir'], 'results/')
         cfg.dump(output_config_path)
         partitioner = PARTITIONERS.build(cfg.eval.partitioner)
+        logger.info("Starting evaluation tasks...")
         tasks = partitioner(cfg)
         if args.dry_run:
             return
@@ -253,9 +258,11 @@ def main():
                 runner(task_part)
         else:
             runner(tasks)
+        logger.info("Evaluation tasks completed.")
 
     # visualize accuracy results
     if args.mode in ['all', 'eval', 'viz']:
+        logger.info("Summarizing evaluation results...")
         summarizer_cfg = cfg.get('summarizer', {})
 
         # For subjective summarizer
@@ -298,6 +305,7 @@ def main():
         summarizer_cfg.pop('summary_groups', None)
         summarizer_cfg.pop('prompt_db', None)
         summarizer = build_from_cfg(summarizer_cfg)
+        logger.info("Summarizing performance results...")
         summarizer.summarize()
 
 
