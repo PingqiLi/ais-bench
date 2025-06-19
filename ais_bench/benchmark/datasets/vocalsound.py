@@ -23,7 +23,7 @@ class VocalSoundDataset(BaseDataset):
         dataset = []
         for file_path in path.glob("*.wav"):
             try:
-                answer = str(file_path).split('.')[0].split('_')[-1]
+                answer = os.path.splitext(file_path)[0].split('_')[-1]
                 dataset.append({"audio_path": str(file_path),
                                 "question": "To be replaced!",
                                 'answer': answer})

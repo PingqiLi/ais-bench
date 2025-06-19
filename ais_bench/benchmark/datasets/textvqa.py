@@ -12,7 +12,7 @@ from ais_bench.benchmark.utils import get_data_path
 from .base import BaseDataset
 
 
-MAX_TARGET_LENGTH = 2048
+MAX_TARGET_LENGTH = 32768
 
 
 class VQAEvalMethod:
