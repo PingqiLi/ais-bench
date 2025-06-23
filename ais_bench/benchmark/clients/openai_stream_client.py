@@ -20,6 +20,7 @@ class OpenAIStreamClient(BaseStreamClient, ABC):
             stream = True,
         )
         data = data | parameters
+        data["stream_options"] = {"include_usage": True}
         return data
 
     def process_stream_line(self, json_content: dict) -> dict:
@@ -29,6 +30,8 @@ class OpenAIStreamClient(BaseStreamClient, ABC):
             response.update({"generated_text": generated_text})
         if self.do_performance:
             response.update({"token_str": generated_text})
+        if json_content.get("usage"):
+            response.update({"completion_tokens": json_content["usage"]["completion_tokens"]})
         return response
 
     def update_middle_data(self, res: dict, inputs: MiddleData):
@@ -45,5 +48,6 @@ class OpenAIStreamClient(BaseStreamClient, ABC):
         chunk_time_point = res.get("chunk_time_point")
         if chunk_time_point:
             inputs.chunk_time_point_list.append(chunk_time_point)
-        inputs.num_generated_tokens += 1
+        if res.get("completion_tokens"):
+            inputs.num_generated_tokens = res.get("completion_tokens")
         return generated_text

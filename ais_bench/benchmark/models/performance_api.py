@@ -126,6 +126,8 @@ class PerformanceAPIModel(BaseAPIModel):
                 # Failed requests are not saved
                 if not self.result_cache[key].is_success:
                     continue
+                if self.result_cache[key].num_generated_tokens >= 1:
+                    continue
                 time_cost, tokens = self.encode(self.result_cache[key].output)
                 self.result_cache[key].num_generated_tokens = len(tokens)
         performance_data = []

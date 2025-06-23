@@ -180,7 +180,7 @@ def main():
                                   f'{cfg_time_str}_{os.getpid()}.py')
     cfg.dump(output_config_path)
     # eval nums set
-    if args.num_prompts and args.num_prompts <= 0:
+    if (args.num_prompts and args.num_prompts < 0) or args.num_prompts == 0:
         raise ValueError("Num Prompts must be a positive integer greater than 0.")
     cfg['num_prompts'] = args.num_prompts
     # Config is intentally reloaded here to avoid initialized

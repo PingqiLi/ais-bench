@@ -35,5 +35,4 @@ class TGIStreamClient(BaseStreamClient, ABC):
         chunk_time_point = res.get("chunk_time_point")
         if chunk_time_point:
             inputs.chunk_time_point_list.append(chunk_time_point)
-        inputs.num_generated_tokens += 1
         return generated_text
