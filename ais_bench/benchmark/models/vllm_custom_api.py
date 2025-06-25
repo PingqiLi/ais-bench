@@ -323,7 +323,7 @@ class VLLMCustomAPIOld(PerformanceAPIModel):
                          rpm_verbose=rpm_verbose,
                          retry=retry,
                          verbose=verbose,
-                         generation_kwargs=generation_kwargs
+                         generation_kwargs=generation_kwargs,
                          trust_remote_code=trust_remote_code)
         self.host_ip = host_ip
         self.host_port = host_port

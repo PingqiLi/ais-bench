@@ -247,7 +247,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                          rpm_verbose=rpm_verbose,
                          retry=retry,
                          generation_kwargs=generation_kwargs,
-                         verbose=verbose
+                         verbose=verbose,
                          trust_remote_code=trust_remote_code)
         self.host_ip = host_ip
         self.host_port = host_port
