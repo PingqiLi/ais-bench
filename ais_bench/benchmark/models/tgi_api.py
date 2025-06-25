@@ -54,7 +54,8 @@ class TGICustomAPI(PerformanceAPIModel):
                  host_port: int = 8080,
                  enable_ssl: bool = False,
                  custom_client = dict(type=TGITextClient),
-                 generation_kwargs: Optional[Dict] = None):
+                 generation_kwargs: Optional[Dict] = None,
+                 trust_remote_code: bool = False):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
@@ -62,7 +63,8 @@ class TGICustomAPI(PerformanceAPIModel):
                          rpm_verbose=rpm_verbose,
                          retry=retry,
                          verbose=verbose,
-                         generation_kwargs=generation_kwargs)
+                         generation_kwargs=generation_kwargs,
+                         trust_remote_code=trust_remote_code)
         self.host_ip = host_ip
         self.host_port = host_port
         self.enable_ssl = enable_ssl
@@ -167,7 +169,8 @@ class TGICustomAPIStream(PerformanceAPIModel):
                  host_port: int = 8080,
                  enable_ssl: bool = False,
                  custom_client = dict(type=TGIStreamClient),
-                 generation_kwargs: Optional[Dict] = None):
+                 generation_kwargs: Optional[Dict] = None,
+                 trust_remote_code: bool = False):
         super().__init__(path=path,
                         max_seq_len=max_seq_len,
                         meta_template=meta_template,
@@ -175,7 +178,8 @@ class TGICustomAPIStream(PerformanceAPIModel):
                         rpm_verbose=rpm_verbose,
                         retry=retry,
                         verbose=verbose,
-                        generation_kwargs=generation_kwargs)
+                        generation_kwargs=generation_kwargs,
+                        trust_remote_code=trust_remote_code)
         self.host_ip = host_ip
         self.host_port = host_port
         self.enable_ssl = enable_ssl

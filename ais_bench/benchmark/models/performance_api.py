@@ -22,6 +22,7 @@ class PerformanceAPIModel(BaseAPIModel):
         meta_template: Optional[Any] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
         verbose: bool = False,
+        trust_remote_code: bool = False,
     ) -> None:
         super().__init__(
             path,
@@ -38,11 +39,12 @@ class PerformanceAPIModel(BaseAPIModel):
         self.client = None
         self.tokenizer: Optional[BenchmarkTokenizer] = None
         self.result_cache: Dict[str, MiddleData] = defaultdict(MiddleData)
+        self.trust_remote_code = trust_remote_code
 
     def set_performance(self) -> None:
         """Initialize the tokenizer and enable performance mode."""
         if self.path and os.path.exists(self.path):
-            self.tokenizer = BenchmarkTokenizer(self.path)
+            self.tokenizer = BenchmarkTokenizer(self.path, trust_remote_code=self.trust_remote_code)
             self.do_performance = True
             self.client.set_performance()
         else:

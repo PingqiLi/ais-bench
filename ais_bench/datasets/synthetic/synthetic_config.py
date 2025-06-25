@@ -26,6 +26,7 @@
 synthetic_config = {
     "Type":"tokenid",   # [tokenid/string]，生成的随机数据集类型，支持固定长度的随机tokenid，和随机长度的string，两种类型的数据集
     "RequestCount": 10, # 生成的请求条数，应与模型侧配置文件中的 decode_batch_size 一致
+    "TrustRemoteCode": False, #是否信任远端代码，tokenid模式下需要加载tokenizer生成tokenid，默认为Fasle
     "StringConfig" : {  # string类型的随机数据集的配置相关项，请参考以上注释处："StringConfig中的随机生成方法参数说明"
         "Input" : {     # 每条请求的输入长度
             "Method": "uniform",

@@ -280,6 +280,7 @@ class SyntheticDataset(BaseDataset):
         self._check_synthetic_config(config)
         request_count = config.get("RequestCount")
         config_type = config.get("Type").lower()
+        trust_remote_code = config.get("TrustRemoteCode")
         if config_type == "string":
             string_config = config.get("StringConfig")
             input_method = string_config["Input"]["Method"]
@@ -305,7 +306,7 @@ class SyntheticDataset(BaseDataset):
 
             model_path_value = normalize_file_path(model_path_value)
             tokenizer_file_path = self.find_first_file_path(model_path_value, "tokenizer_config.json")
-            tokenizer = BenchmarkTokenizer(os.path.dirname(tokenizer_file_path))
+            tokenizer = BenchmarkTokenizer(os.path.dirname(tokenizer_file_path), trust_remote_code=trust_remote_code)
             tokenizer_model = tokenizer.tokenizer.tokenizer_model
 
             vocab_size = tokenizer_model.vocab_size

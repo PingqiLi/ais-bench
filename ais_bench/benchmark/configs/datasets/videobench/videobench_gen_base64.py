@@ -13,7 +13,7 @@ videobench_reader_cfg = dict(
 videobench_infer_cfg = dict(
     prompt_template=dict(
         type=PromptTemplate,
-        template={'type': "video_text", 'data': ['video_url', 'text'],
+        template={'type': "video_text", 'data': ['video_url_base64', 'text'], 'num_frames': '5',
                 'prompt1': '\n Among the choice_length options choice_list above,'
                             ' the one closest to the correct answer is:',
                 'prompt2': " Please respond with only the corresponding options and do not provide any explanations" 
