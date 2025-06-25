@@ -5,12 +5,14 @@ from abc import abstractmethod, ABC
 
 import urllib3
 import threading
+import urllib3.util
+from http import HTTPStatus
+from urllib3.exceptions import HTTPError, ReadTimeoutError, NewConnectionError, MaxRetryError
 
 from ais_bench.benchmark.utils import get_logger
 from ais_bench.benchmark.utils.results import MiddleData
-import urllib3.util
-from http import HTTPStatus
-from urllib3.exceptions import HTTPError
+from ais_bench.benchmark.utils.valid_global_consts import valid_max_chunk_size, valid_request_time_out
+
 
 RETRY_ERROR_LIST = [104]
 
@@ -38,14 +40,15 @@ def raise_error(message, lock, request_counter):
     with lock:
         request_counter['failed_num'] += 1
     logger = get_logger()
-    logger.error(message)
+    logger.error(f"[AisBenchClientException] {message}")
     raise AisBenchClientException(message=message) from None
 
 class BaseClient(ABC):
     def __init__(self, url, retry):
         self.logger = get_logger()
         self.valid_url = url
-        self._timeout = None
+        self._timeout = valid_request_time_out()
+        self.retry_num = retry
         self._is_stream = False
         self.do_performance = False
         self.request_counter = dict(get_req_num=0, failed_num=0)
@@ -100,7 +103,8 @@ class BaseClient(ABC):
         request_body: dict,
         request_method: str = "POST",
     ):
-        return self._http_pool_manager.request(
+        try:
+            raw_response = self._http_pool_manager.request(
             request_method,
             self.valid_url,
             headers={"Content-Type": "application/json"},
@@ -108,6 +112,37 @@ class BaseClient(ABC):
             timeout=self._timeout,
             preload_content=not self._is_stream,
         )
+        except (ReadTimeoutError, TimeoutError) as e:
+            raise_error(
+                f"Request failed due to read timeout after {self._timeout}s.",
+                self.lock,
+                self.request_counter,
+            )
+        except NewConnectionError:
+            raise_error(
+                "Request failed: Unable to establish a new connection. Please verify your host IP and port.",
+                self.lock,
+                self.request_counter,
+            )
+        except MaxRetryError:
+            raise_error(
+                f"Request failed: Exceeded maximum retry attempts ({self.retry_num}).",
+                self.lock,
+                self.request_counter,
+            )
+        except HTTPError as e:
+            raise_error(
+                f"HTTP error occurred during request: {e}.",
+                self.lock,
+                self.request_counter,
+            )
+        except Exception as e:
+            raise_error(
+                f"Unexpected error during request: {e}.",
+                self.lock,
+                self.request_counter,
+            )
+        return raw_response
 
     def request(
         self,
@@ -121,14 +156,10 @@ class BaseClient(ABC):
         )
         start_time = time.perf_counter()
         inputs.chunk_time_point_list.append(start_time * 1000)
-        try:
-            response_raw = self.do_request(request_body, "POST")
-        except HTTPError as e:
-            raise_error(f"{e}. Please check your host_ip and host_port!", self.lock, self.request_counter)
+        response_raw = self.do_request(request_body, "POST")
         if response_raw.status != HTTPStatus.OK:
             raise_error(
-                "Request failed, status is %r, response from server is %r." % (response_raw.status,
-                                                                                response_raw.data.decode()),
+                f"Request failed: HTTP status {response_raw.status}. Server response: {response_raw.data.decode()}",
                 self.lock,
                 self.request_counter
             )
@@ -136,9 +167,8 @@ class BaseClient(ABC):
             try:
                 res_ = self.process_response(response_raw, start_time)
             except json.JSONDecodeError:
-                # 打印decode失败时的原始数据
                 decode_data = response_raw.data.decode(errors="replace")
-                raise_error(f"Failed to decode text JSON response. Raw data: {decode_data}", self.lock, self.request_counter)
+                raise_error(f"Failed to decode JSON response. Raw data: {decode_data}", self.lock, self.request_counter)
             response = [self.update_middle_data(res_, inputs)]
         else:
             response = []
@@ -146,7 +176,10 @@ class BaseClient(ABC):
                 for res_ in self.process_response(response_raw, start_time):
                     response.append(self.update_middle_data(res_, inputs))
             except ValueError as e:
-                raise_error(f"Failed to process stream response. {e}", self.lock, self.request_counter)
+                raise_error(f"Error processing stream response: {e}", self.lock, self.request_counter)
+            except HTTPError as e:
+                raise_error(f"HTTP error during stream response processing: {e}.", self.lock, self.request_counter)
+                
         self.rev_count()
         self.update_request_time(inputs, start_time)
         return "".join(response)
@@ -159,8 +192,6 @@ class BaseStreamClient(BaseClient, ABC):
         self._is_stream = True
 
     def preprocess_cur_line(self, cur_line: str) -> str:
-        if cur_line == "engine callback timeout.":
-            raise_error("Engine time out. The tokens generation might be incomplete.", self.lock, self.request_counter)
         return cur_line
 
     @abstractmethod
@@ -169,7 +200,7 @@ class BaseStreamClient(BaseClient, ABC):
 
     def process_response(self, response, last_time_point):
         time_name = "prefill_time"
-        for byte_line in response.stream():
+        for byte_line in response.stream(amt=valid_max_chunk_size()):
             if byte_line == b"\n":
                 continue
             cur_line = self.preprocess_cur_line(byte_line.decode())
@@ -186,4 +217,4 @@ class BaseStreamClient(BaseClient, ABC):
                     time_name = "decode_time"
                     last_time_point = time.perf_counter()
             except Exception as error:
-                raise ValueError("[Error] %r! Response from server is: %r" % (error, cur_line))
+                raise ValueError(f"[StreamResponseError] {error}! Raw server response: {cur_line}")
