@@ -14,6 +14,7 @@ AISBench Benchmark当前支持的数据集类型如下：
 | SuperGLUE_BoolQ  | 自然语言理解（问答）  | [详细介绍](../../ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README.md) |
 | agieval          | 综合考试/推理         | [详细介绍](../../ais_bench/benchmark/configs/datasets/agieval/README.md) |
 | aime2024         | 数学推理              | [详细介绍](../../ais_bench/benchmark/configs/datasets/aime2024/README.md) |
+| aime2025         | 数学推理              | [详细介绍](../../ais_bench/benchmark/configs/datasets/aime2025/README.md) |
 | bbh              | 多任务（Big-Bench Hard） | [详细介绍](../../ais_bench/benchmark/configs/datasets/bbh/README.md) |
 | cmmlu            | 中文理解/知识问答     | [详细介绍](../../ais_bench/benchmark/configs/datasets/cmmlu/README.md) |
 | ceval            | 中文职业考试          | [详细介绍](../../ais_bench/benchmark/configs/datasets/ceval/README.md) |
