@@ -113,12 +113,6 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
         cache_data.data_id = data_id
         cache_data.request_id = rrid
         cache_data.input_data = inputs
-
-        if self.do_performance and self.tokenizer:
-            time_cost, token_id = self.encode_input(inputs)
-            cache_data.input_token_id = token_id
-            cache_data.num_input_tokens = len(token_id)
-            cache_data.num_input_chars = len(self._input_decode(token_id))
         return cache_data
 
     def generate(self,
@@ -296,12 +290,6 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
         cache_data.data_id = data_id
         cache_data.request_id = rrid
         cache_data.input_data = inputs
-
-        if self.do_performance and self.tokenizer:
-            time_cost, token_id = self.encode_input(inputs)
-            cache_data.input_token_id = token_id
-            cache_data.num_input_tokens = len(token_id)
-            cache_data.num_input_chars = len(self._input_decode(token_id))
         return cache_data
 
     def generate(self,

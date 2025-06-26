@@ -60,13 +60,24 @@ class PerformanceAPIModel(BaseAPIModel):
         cache_data.request_id = rrid
         cache_data.data_id = data_id
         cache_data.input_data = input_text
-        if self.do_performance and self.tokenizer:
-            time_cost, token_id = self.encode(input_text)
-            cache_data.input_token_id = token_id
-            cache_data.num_input_tokens = len(token_id)
-            cache_data.num_input_chars = len(input_text)
         return cache_data
 
+    def encode_input_data(self, cache_data:MiddleData):
+        input_text = cache_data.input_data
+        try:
+            if hasattr(self, "encode_input") and self.is_chat_api:
+                time_cost, token_id = self.encode_input(input_text)
+                cache_data.num_input_chars = len(self._input_decode(token_id))
+            else:
+                time_cost, token_id = self.encode(input_text)
+                cache_data.num_input_chars = len(input_text)
+        except Exception as e:
+            self.logger.error(f"Error encoding input data: {e}")
+            time_cost, token_id = 0.0, []
+            cache_data.num_input_chars = 0
+        cache_data.input_token_id = token_id
+        cache_data.num_input_tokens = len(token_id)
+        
     def set_result(self, data: MiddleData) -> None:
         """Update decoding information for a given request."""
         if not data.output:
@@ -128,6 +139,7 @@ class PerformanceAPIModel(BaseAPIModel):
                 # Failed requests are not saved
                 if not self.result_cache[key].is_success:
                     continue
+                self.encode_input_data(self.result_cache[key])
                 if self.result_cache[key].num_generated_tokens >= 1:
                     continue
                 time_cost, tokens = self.encode(self.result_cache[key].output)

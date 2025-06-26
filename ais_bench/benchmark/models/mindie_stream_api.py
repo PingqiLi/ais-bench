@@ -48,6 +48,7 @@ class MindieStreamApi(PerformanceAPIModel):
                  enable_ssl: bool = False,
                  custom_client = MindieStreamClient, # BaseClient
                  generation_kwargs: Optional[Dict] = None,
+                 trust_remote_code: bool = False,
                  ):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
@@ -57,6 +58,7 @@ class MindieStreamApi(PerformanceAPIModel):
                          retry=retry,
                          generation_kwargs=generation_kwargs,
                          verbose=verbose,
+                         trust_remote_code=trust_remote_code
                          )
         self.host_ip = host_ip
         self.host_port = host_port
