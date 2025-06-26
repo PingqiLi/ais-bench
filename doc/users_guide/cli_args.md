@@ -60,3 +60,5 @@ ais_bench [OPTIONS]
 | `CUSTOM_PACKAGE_DIR`| 指定自定义 Python 包的目录路径，Benchmark 工具将从该目录加载用户自定义的包。| 需为用户可访问的本地路径，指向包含自定义包的文件夹   |
 | `PRESSURE_TIME`| 压测持续时间，仅在指定 `--pressure` 模式时生效。单位为秒。| `[1, 86400]`（即 1 秒 至 24 小时） |
 | `CONNECTION_ADD_RATE`| 并发线程创建速率。表示每秒新增的并发线程数，直至达到最大并发限制。仅在指定 `--pressure` 模式时生效。 | `> 0.1`（单位：线程数 / 秒） |
+| `MAX_CHUNK_SIZE` | 流式推理模型后端返回的单个 chunk 最大缓存大小。默认值为 65535 字节（64KB）。 | `(0, 16777216]`（单位：Byte） |
+| `REQUEST_TIME_OUT` | Client 端请求发送后等待返回的超时时间。默认为 None，即无限等待，始终等待模型返回结果。 | `None` 或 `>0`（单位：秒）|
