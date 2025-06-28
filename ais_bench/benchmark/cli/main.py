@@ -6,17 +6,6 @@ import getpass
 import os
 import os.path as osp
 from datetime import datetime
-
-from mmengine.config import Config, DictAction
-
-from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
-from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
-from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
-from ais_bench.benchmark.utils import LarkReporter, get_logger
-from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
-from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg,
-    fill_merged_infer_cfg, fill_merged_eval_cfg)
-
 def get_current_time_str():
     return datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -32,6 +21,11 @@ def parse_args():
                         help='Debug mode, in which scheduler will run tasks '
                         'in the single process, and output will not be '
                         'redirected to files',
+                        action='store_true',
+                        default=False)
+    parser.add_argument('-s',
+                        '--search',
+                        help='Searching for the configs abs paths of --models --datasets and --summarizer',
                         action='store_true',
                         default=False)
     parser.add_argument('--dry-run',
@@ -145,6 +139,22 @@ def main():
 
     if args.dry_run:
         args.debug = True
+
+    # search
+    if args.search:
+        from ais_bench.benchmark.utils.file import search_configs_from_args
+        search_configs_from_args(args)
+        return
+
+    from mmengine.config import Config, DictAction
+    from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
+    from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
+    from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
+    from ais_bench.benchmark.utils import LarkReporter, get_logger
+    from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
+    from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg,
+        fill_merged_infer_cfg, fill_merged_eval_cfg)
+
     # initialize logger
     logger = get_logger(log_level='DEBUG' if args.debug else 'INFO')
 

@@ -12,60 +12,9 @@ from ais_bench.benchmark.runners import LocalAPIRunner, LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLInferTask, OpenICLPerfTask, OpenICLInferMergedTask, OpenICLEvalMergedTask
 from ais_bench.benchmark.openicl.icl_inferencer import (GenPerfInferencer, GenInferencer, GenMergedInferencer,
         GenPressureInferencer, GenModelPerfInferencer)
-from ais_bench.benchmark.utils import get_logger, match_files
+from ais_bench.benchmark.utils import get_logger, match_cfg_file
 
 logger = get_logger()
-
-def match_cfg_file(workdir: Union[str, List[str]],
-                   pattern: Union[str, List[str]]) -> List[Tuple[str, str]]:
-    """Match the config file in workdir recursively given the pattern.
-
-    Additionally, if the pattern itself points to an existing file, it will be
-    directly returned.
-    """
-    def _mf_with_multi_workdirs(workdir, pattern, fuzzy=False):
-        if isinstance(workdir, str):
-            workdir = [workdir]
-        files = []
-        for wd in workdir:
-            files += match_files(wd, pattern, fuzzy=fuzzy)
-        return files
-
-    if isinstance(pattern, str):
-        pattern = [pattern]
-    pattern = [p + '.py' if not p.endswith('.py') else p for p in pattern]
-    files = _mf_with_multi_workdirs(workdir, pattern, fuzzy=False)
-    if len(files) != len(pattern):
-        nomatched = []
-        ambiguous = []
-        ambiguous_return_list = []
-        err_msg = ('The provided pattern matches 0 or more than one '
-                   'config. Please verify your pattern and try again. '
-                   'You may use tools/list_configs.py to list or '
-                   'locate the configurations.\n')
-        for p in pattern:
-            files_ = _mf_with_multi_workdirs(workdir, p, fuzzy=False)
-            if len(files_) == 0:
-                nomatched.append([p[:-3]])
-            elif len(files_) > 1:
-                ambiguous.append([p[:-3], '\n'.join(f[1] for f in files_)])
-                ambiguous_return_list.append(files_[0])
-        if nomatched:
-            table = [['Not matched patterns'], *nomatched]
-            err_msg += tabulate.tabulate(table,
-                                         headers='firstrow',
-                                         tablefmt='psql')
-        if ambiguous:
-            table = [['Ambiguous patterns', 'Matched files'], *ambiguous]
-            warning_msg = 'Found ambiguous patterns, using the first matched config.\n'
-            warning_msg += tabulate.tabulate(table,
-                                         headers='firstrow',
-                                         tablefmt='psql')
-            logger.warning(warning_msg)
-            return ambiguous_return_list
-
-        raise ValueError(err_msg)
-    return files
 
 def try_fill_in_custom_cfgs(config):
     for i, dataset in enumerate(config['datasets']):
