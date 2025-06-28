@@ -136,7 +136,7 @@ def search_configs_from_args(args):
             summarizer_file = summarizer_arg
 
         s = match_cfg_file(summarizers_dir, [summarizer_file])[0]
-        table.append(["--summarizer", model[0], os.path.abspath(model[1])])
+        table.append(["--summarizer", s[0], os.path.abspath(s[1])])
     print(
         tabulate.tabulate(
             table,
