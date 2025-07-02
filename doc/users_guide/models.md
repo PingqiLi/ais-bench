@@ -71,7 +71,7 @@ models = [
 | `generation_kwargs` | Dict | 推理生成参数配置，依赖具体的服务化后端和接口类型。注意：当前不支持 `best_of` 和 `n` 等多次采样参数 |
 
 **注意事项：**
-- `request_rate` 受硬件性能影响，可通过增加  [WORKERS_NUM](./cli_args.md#配置常量文件参数) 提高并发能力。
+- `request_rate` 受硬件性能影响，可通过增加  📚 [WORKERS_NUM](./cli_args.md#配置常量文件参数) 提高并发能力。
 - `batch_size` 设置过大可能导致 CPU 占用过高，请根据硬件条件合理配置。
 - 服务化推理评测 API 默认使用的服务地址为 `localhost:8080`。实际使用时需根据实际部署修改为服务化后端的 IP 和端口。
 
@@ -118,9 +118,9 @@ models = [
 | `abbr` | String | 本地任务的唯一标识，用于区分多任务。建议使用英文与短横线组合，如：`hf-chat-model` |
 | `path` | String | 模型权重路径，需为本地可访问路径。使用 `AutoModel.from_pretrained(path)` 加载 |
 | `tokenizer_path` | String | Tokenizer 路径，通常与模型路径一致。使用 `AutoTokenizer.from_pretrained(tokenizer_path)` 加载 |
-| `tokenizer_kwargs` | Dict | Tokenizer 加载参数，参考 [PreTrainedTokenizerBase 文档](https://huggingface.co/docs/transformers/v4.50.0/en/internal/tokenization_utils#transformers.PreTrainedTokenizerBase) |
-| `model_kwargs` | Dict | 模型加载参数，参考 [AutoModel 配置](https://huggingface.co/docs/transformers/v4.50.0/en/model_doc/auto#transformers.AutoConfig.from_pretrained) |
-| `generation_kwargs` | Dict | 推理生成参数，参考 [Text Generation 文档](https://huggingface.co/docs/transformers/v4.18.0/en/main_classes/text_generation) |
+| `tokenizer_kwargs` | Dict | Tokenizer 加载参数，参考 🔗 [PreTrainedTokenizerBase 文档](https://huggingface.co/docs/transformers/v4.50.0/en/internal/tokenization_utils#transformers.PreTrainedTokenizerBase) |
+| `model_kwargs` | Dict | 模型加载参数，参考 🔗 [AutoModel 配置](https://huggingface.co/docs/transformers/v4.50.0/en/model_doc/auto#transformers.AutoConfig.from_pretrained) |
+| `generation_kwargs` | Dict | 推理生成参数，参考 🔗 [Text Generation 文档](https://huggingface.co/docs/transformers/v4.18.0/en/main_classes/text_generation) |
 | `run_cfg` | Dict | 运行配置，包含 `num_gpus`（使用的 GPU 数量）与 `num_procs`（使用的机器进程数） |
 | `max_out_len` | Int | 推理生成的最大输出 Token 数量，合法范围：(0, 131072] |
 | `batch_size` | Int | 推理请求的批处理大小，合法范围：(0, 64000] |

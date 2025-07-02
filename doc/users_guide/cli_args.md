@@ -21,10 +21,10 @@ ais_bench [OPTIONS]
 适用于所有模式，可同时与精度或性能参数联合使用。
 | 参数| 说明| 示例|
 | ---- | ---- | ----|
-| `--models`| 指定模型推理后端任务名称（对应 `ais_bench/benchmark/configs/models` 路径下一个已经实现的默认模型配置文件），支持传入多个任务名称，；与 `config` 参数二选一。详情参考[支持的模型](./models.md#支持的模型)| `--models vllm_api_general`  |
-| `--datasets`   | 指定数据集任务名称（对应 `ais_bench/benchmark/configs/datasets` 路径下一个已经实现的默认数据集配置文件），可传入多个；与 `config` 参数二选一。详情参考[支持的数据集类型](./datasets.md#支持数据集类型)| `--datasets gsm8k_gen`    |
-| `--summarizer` | 指定结果总结任务名称（对应 `ais_bench/benchmark/configs/summarizers` 路径下一个已经实现的默认模型配置文件）。详情参考[支持的结果汇总任务](./summarizer.md#支持的结果汇总任务) | `--summarizer medium`|
-| `--mode` 或 `-m`| 运行模式，可选：`all`、`infer`、`eval`、`viz`、`perf`、`perf_viz`；默认 `all`。<br>详细请见 [运行模式说明](./mode.md)。 | `--mode infer`<br>`-m all`|
+| `--models`| 指定模型推理后端任务名称（对应 `ais_bench/benchmark/configs/models` 路径下一个已经实现的默认模型配置文件），支持传入多个任务名称，；与 `config` 参数二选一。详情参考📚 [支持的模型](./models.md#支持的模型)| `--models vllm_api_general`  |
+| `--datasets`   | 指定数据集任务名称（对应 `ais_bench/benchmark/configs/datasets` 路径下一个已经实现的默认数据集配置文件），可传入多个；与 `config` 参数二选一。详情参考📚 [支持的数据集类型](./datasets.md#支持数据集类型)| `--datasets gsm8k_gen`    |
+| `--summarizer` | 指定结果总结任务名称（对应 `ais_bench/benchmark/configs/summarizers` 路径下一个已经实现的默认模型配置文件）。详情参考📚 [支持的结果汇总任务](./summarizer.md#支持的结果汇总任务) | `--summarizer medium`|
+| `--mode` 或 `-m`| 运行模式，可选：`all`、`infer`、`eval`、`viz`、`perf`、`perf_viz`；默认 `all`。<br>详细请见 📚 [运行模式说明](./mode.md)。 | `--mode infer`<br>`-m all`|
 | `--reuse` 或 `-r`| 指定已有工作目录下的时间戳，继续执行并覆盖原有结果。结合`--mode`参数值，可用于推理中断续推，或基于已有推理结果执行精度计算、可视化结果打印。若不加参，则自动选取 `--work-dir` 下最新时间戳。| `--reuse 20250126_144254`<br>`-r 20250126_144254` |
 | `--work-dir` 或 `-w`     | 指定评测工作目录，用于保存输出结果。默认 `outputs/default`。| `--work-dir /path/to/work`<br>`-w /path/to/work` |
 | `--config-dir` | `models`，`datasets`和`summarizers`配置文件所在的文件夹路径，默认 `ais_bench/benchmark/configs`。    | `--config-dir /xxx/xxx`   |
@@ -47,7 +47,7 @@ ais_bench [OPTIONS]
 | 参数| 说明| 示例 |
 | ---- | ---- | ---- |
 | `--num-prompts` | 指定数据集测评条数，需传入正整数，超过数据集条数或默认情况下表示对全量数据集进行测评。 | `--num-prompts 500` |
-| `--pressure`   | 	是否开启性能压测方式的开关，仅当 `--mode perf` 时有效，配置该参数表示开启，未配置表示关闭，默认未配置。压力测试详情可参考:[服务化性能压力测试](./pressure_performance_benchmark.md#服务化性能压力测试)。| `--pressure`|
+| `--pressure`   | 	是否开启性能压测方式的开关，仅当 `--mode perf` 时有效，配置该参数表示开启，未配置表示关闭，默认未配置。压力测试详情可参考:📚 [服务化性能压力测试](./pressure_performance_benchmark.md#服务化性能压力测试)。| `--pressure`|
 
 
 ## 配置常量文件参数

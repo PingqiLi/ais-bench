@@ -13,7 +13,7 @@
 
 > [NOTE]
 >
-> 以下仅做`synthetic_config.py`配置文件中参数的大概说明，详细取值要求需参考配置文件中预留的注释和使用场景
+> 以下仅做[synthetic_config.py](../../ais_bench/datasets/synthetic/synthetic_config.py)配置文件中参数的大概说明，详细取值要求需参考配置文件中预留的注释和使用场景。
 
 ### 2.1 公共参数
 

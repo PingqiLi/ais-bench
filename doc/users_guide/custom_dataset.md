@@ -69,7 +69,7 @@ question,answer
 
 |参数|说明|样例|
 | ----- | ----- | ---- |
-|--models|和普通数据集使用方式一致，指定模型推理后端任务名称（对应ais_bench/benchmark/configs/models路径下一个已经实现的默认模型配置文件），支持传入多个任务名称，支持的任务范围请参考父级目录的README中使用普通数据集为例的方式，"命令行指定模型和数据集" ("[AISBench benchmark评测工具](../README.md)"中的"命令行指定模型和数据集"章节) 方式的必选配置，与"配置文件指定模型和数据集" ("[AISBench benchmark评测工具](../README.md)"中的"配置文件指定模型和数据集"章节) 方式的"config"参数二选一|--models vllm_api_general|
+|--models|和普通数据集使用方式一致，指定模型推理后端任务名称（对应ais_bench/benchmark/configs/models路径下一个已经实现的默认模型配置文件）|--models vllm_api_general|
 |--custom-dataset-path|指定自定义数据集路径（支持绝对/相对路径），当`--datasets`配置时，该参数无效，默认未配置|--custom-dataset-path xxx/test_mcq.csv|
 |--custom-dataset-data-type|指定自定义数据集的任务类型，目前支持选项[`mcq`,`qa`]，表示选择题类型(`mcq`) 和问答题类型 (`qa`) 两种，未配置时会根据数据集格式自动识别类型，配置时则根据填入参数进行对应格式的解析|--custom-dataset-data-type mcq|
 |--custom-dataset-infer-method|指定自定义数据集的推理类型，目前仅支持选项[`gen`]，未配置时默认为`gen`|--custom-dataset-infer-method gen|

@@ -27,9 +27,10 @@ AISBench 当前仅提供源码安装方式，请确保安装环境联网：
 ```shell
 git clone https://gitee.com/aisbench/benchmark.git
 cd benchmark/
-pip3 install -e ./
+pip3 install -e ./ --use-pep517
 ```
 该命令会自动安装核心依赖。
+执行`ais_bench -h`，如果打印出AISBench评测工具的所有命令行的帮助信息，说明安装成功
 
 ⚙️ 服务化框架支持（可选）
 
@@ -46,29 +47,54 @@ pip3 uninstall ais_bench_benchmark
 ```
 
 ## 快速入门
-在 AISBench 中，每个评测任务由模型后端和数据集共同定义。支持两种配置方式：
-
-[命令行界面CLI指定模型和数据集](#命令行界面CLI指定模型和数据集)：适用于简单场景，启动便捷
-
-[Python配置文件指定模型和数据集](#Python配置文件指定模型和数据集)：适用于复杂或批量评测任务，配置灵活可复用
-
-> ⚠️ 注意： 所有评测任务依赖预配置的数据集。请参考 [数据集准备指南](./doc/users_guide/datasets.md#数据集准备指南) 进行数据集配置。
-
-### 命令行界面CLI指定模型和数据集
-#### 命令说明
-在任意路径下执行CLI命令：
-  ```bash
-    # 命令行界面 (CLI)
-    ais_bench --models {模型配置名称} --datasets {数据集配置名称} [OPTIONS]
-    #示例：ais_bench --models vllm_api_general --datasets gsm8k_gen
+### 命令含义
+AISBench命令执行的单个或多个评测任务是由模型任务（单个或多个）、数据集任务（单个或多个）和结果呈现任务（单个）的组合定义的，AISBench的其他命令行则规定了评测任务的场景（精度评测场景、性能评测场景等）。以如下AISBench命令为例：
+```shell
+ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt --summarizer example
 ```
-基本参数说明：
-- `--models`: 模型配置名称，支持的模型配置可参考：[模型配置说明](./doc/users_guide/models.md#模型配置说明)
-- `--datasets`: 数据集配置名称，请先按照[数据集准备指南](./doc/users_guide/datasets.md#数据集准备指南)完成所需数据集的配置
+此命令没有指定其他命令行，默认是一个精度评测场景的任务，其中：
+- `--models`指定了模型任务，即`vllm_api_general_chat`模型任务。
 
-`[OPTIONS]`为ais_bench的可选参数，若想进行更加自定义的评测，例如中断续推、结果可视化或日志调试可以查看：[用户配置参数](doc/users_guide/cli_args.md#用户配置参数)
-#### 示例：vLLM 服务化后端测评
-测评vLLM 服务化后端为例，参考[服务化推理后端](./doc/users_guide/models.md#服务化推理后端)修改其 `v1/chat/completions` 子服务的模型配置文件`vllm_api_general_chat.py`
+- `--datasets`指定了数据集任务，即`demo_gsm8k_gen_4_shot_cot_chat_prompt`数据集任务。
+
+- `--summarizer`指定了结果呈现任务，即`example`结果呈现任务(不指定`--summarizer`精度评测场景默认使用`example`任务)，一般使用默认，不需要在命令行中指定，后续命令不指定。
+
+### 任务含义查询(可选)
+所选模型任务`vllm_api_general_chat`、数据集任务`demo_gsm8k_gen_4_shot_cot_chat_prompt`和结果呈现任务`example`的具体信息(简介，使用约束等)可以分别从如下链接中查询含义：
+- `--models`: 📚 [服务化推理后端](doc/users_guide/models.md#服务化推理后端)
+
+- `--datasets`: 📚 [开源数据集](doc/users_guide/datasets.md#开源数据集) → 📚 [详细介绍](ais_bench/benchmark/configs/datasets/demo/README.md)
+
+- `--summarizer`: 📚 [结果汇总任务](doc/users_guide/#支持的结果汇总任务)
+
+### 运行命令前置准备
+- `--models`: 使用`vllm_api_general_chat`模型任务，需要准备支持`v1/chat/completions`子服务的推理服务，可以参考🔗 [VLLM启动OpenAI 兼容服务器](https://docs.vllm.com.cn/en/latest/getting_started/quickstart.html#openai-compatible-server)启动推理服务
+- `--datasets`: 使用`demo_gsm8k_gen_4_shot_cot_chat_prompt`数据集任务，需要准备gsm8k数据集，可以从🔗 [opencompass
+提供的gsm8k数据集压缩包](http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gsm8k.zip)下载。将解压后的`gsm8k/`文件夹部署到AISBench评测工具根路径下的`ais_bench/datasets`文件夹下。
+
+### 任务对应配置文件修改
+每个模型任务、数据集任务和结果呈现任务都对应一个配置文件，运行命令前需要修改这些配置文件的内容。这些配置文件路径可以通过在原有AISBench命令基础上加上`--search`来查询，例如：
+```shell
+ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt --search
+```
+> ⚠️ **注意**： 执行带search命令会打印出任务对应的配置文件的绝对路径。
+
+执行查询命令可以得到如下查询结果：
+```shell
+06/28 11:52:25 - AISBench - INFO - Searching configs...
+╒══════════════╤═══════════════════════════════════════╤════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╕
+│ Task Type    │ Task Name                             │ Config File Path                                                                                                               │
+╞══════════════╪═══════════════════════════════════════╪════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╡
+│ --models     │ vllm_api_general_chat                 │ /your_workspace/benchmark/ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py                                 │
+├──────────────┼───────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ --datasets   │ demo_gsm8k_gen_4_shot_cot_chat_prompt │ /your_workspace/benchmark/ais_bench/benchmark/configs/datasets/demo/demo_gsm8k_gen_4_shot_cot_chat_prompt.py                   │
+╘══════════════╧═══════════════════════════════════════╧════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╛
+
+```
+
+- 快速入门中数据集任务配置文件`demo_gsm8k_gen_4_shot_cot_chat_prompt.py`不需要做额外修改，数据集任务配置文件内容介绍可参考📚 [配置开源数据集](doc/users_guide/datasets.md#配置开源数据集)
+
+模型配置文件`vllm_api_general_chat.py`中包含了模型运行相关的配置内容，是需要依据实际情况修改的。快速入门中需要修改的内容用注释标明。
 ```python
 from ais_bench.benchmark.models import VLLMCustomAPIChat
 
@@ -78,7 +104,7 @@ models = [
         type=VLLMCustomAPIChat,
         abbr='vllm-api-general-chat',
         path="",
-        model="DeepSeek-R1",        # 指定服务端已加载模型名称
+        model="DeepSeek-R1",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）
         request_rate = 0,
         retry = 2,
         host_ip = "localhost",      # 指定推理服务的IP
@@ -95,163 +121,116 @@ models = [
     )
 ]
 ```
-修改好配置文件后，执行如下命令启动精度评测：
+### 执行命令
+修改好配置文件后，执行命令启动服务化精度评测（⚠️ 第一次执行建议加上`--debug`，可以将具体日志打屏，如果有请求推理服务过程中的报错更方便处理）：
 ```bash
-ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt
+# 命令行加上--debug，
+ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt --debug
+```
+#### 查看任务执行细节
+执行AISBench命令后，任务执行的细节会不断落盘在默认的输出路径，这个输出路径在运行中的打屏日志中有提示，例如：
+```shell
+06/28 15:13:26 - AISBench - INFO - Current exp folder: outputs/default/20250628_151326
 ```
 
+这段日志说明任务执行的细节落盘在执行命令的路径下的`outputs/default/20250628_151326`中。
+命令执行结束后`outputs/default/20250628_151326`中的任务执行的细节如下所示：
+
+```shell
+20250628_151326/
+├── configs # 模型任务、数据集任务和结构呈现任务对应的配置文件合成的一个配置
+│   └── 20250628_151326_29317.py
+├── logs # 执行过程中日志，命令中如果加--debug，不会有过程日志落盘（都直接打印出来了）
+│   ├── eval
+│   │   └── vllm-api-general-chat
+│   │       └── demo_gsm8k.out # 基于predictions/文件夹下的推理结果的精度评测过程的日志
+│   └── infer
+│       └── vllm-api-general-chat
+│           └── demo_gsm8k.out # 推理过程日志
+├── predictions
+│   └── vllm-api-general-chat
+│       └── demo_gsm8k.json # 推理结果（推理服务返回的所有输出）
+├── results
+│   └── vllm-api-general-chat
+│       └── demo_gsm8k.json # 精度评测计算的原始分数
+└── summary
+    ├── summary_20250628_151326.csv # 最终精度分数呈现（表格格式）
+    ├── summary_20250628_151326.md # 最终精度分数呈现（markdown格式）
+    └── summary_20250628_151326.txt # # 最终精度分数呈现（文本格式）
+```
+> ⚠️ **注意**： 不同评测场景落盘任务执行细节内容不同，具体请参考具体评测场景的指南。
+
 #### 输出结果
+因为只有8条数据，会很快跑出结果，结果显示的示例如下
 ```bash
 dataset                 version  metric   mode  vllm_api_general_chat
 ----------------------- -------- -------- ----- ----------------------
 demo_gsm8k              401e4c   accuracy gen                   62.50
 ```
 
-### Python配置文件指定模型和数据集
-#### 使用说明
-```bash
-ais_bench ais_bench/configs/{模型类型}_examples/{任务配置文件名}
-# 示例：
-ais_bench ais_bench/configs/api_examples/infer_vllm_api_general.py
-  ```
-#### 测试样例
-以下示例展示如何同时评测两个服务接口（[`v1/chat/completions`](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py) 与 [`v1/completions`](ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)）在 [GSM8K](ais_bench/benchmark/configs/datasets/gsm8k/README.md) 与 [MATH数据集](ais_bench/benchmark/configs/datasets/math/README.md)上的表现。参考示例：[demo_infer_vllm_api.py](ais_bench/configs/api_examples/demo_infer_vllm_api.py)：
-
-```python
-from mmengine.config import read_base
-from ais_bench.benchmark.partitioners import NaivePartitioner
-from ais_bench.benchmark.runners.local_api import LocalAPIRunner
-from ais_bench.benchmark.tasks import OpenICLInferTask
-from ais_bench.benchmark.models import VLLMCustomAPIChat
-
-with read_base():
-    from ais_bench.benchmark.configs.summarizers.example import summarizer
-    from ais_bench.benchmark.configs.datasets.gsm8k.gsm8k_gen_0_shot_cot_str import gsm8k_datasets as gsm8k_0_shot_cot_str
-    from ais_bench.benchmark.configs.datasets.math.math500_gen_0_shot_cot_chat_prompt import math_datasets as math500_gen_0_shot_cot_chat
-    from ais_bench.benchmark.configs.models.vllm_api.vllm_api_general import models as vllm_api_general
-
-# 只取部分样本进行 demo 测试
-gsm8k_0_shot_cot_str[0]['abbr'] = 'demo_' + gsm8k_0_shot_cot_str[0]['abbr']
-gsm8k_0_shot_cot_str[0]['reader_cfg']['test_range'] = '[0:8]'
-
-math500_gen_0_shot_cot_chat[0]['abbr'] = 'demo_' + math500_gen_0_shot_cot_chat[0]['abbr']
-math500_gen_0_shot_cot_chat[0]['reader_cfg']['test_range'] = '[0:8]'
-
-datasets = gsm8k_0_shot_cot_str + math500_gen_0_shot_cot_chat # 指定数据集列表，可通过累加添加不同的数据集配置
-models = [      # 指定模型配置列表
-    dict(
-        attr="service",
-        type=VLLMCustomAPIChat,
-        abbr='demo-vllm-api-general-chat',
-        path="",
-        model="",
-        request_rate = 0,
-        retry = 2,
-        host_ip = "localhost",  # 指定推理服务的IP
-        host_port = 8080,       # 指定推理服务的端口
-        max_out_len = 512,
-        batch_size=1,
-        generation_kwargs = dict(
-            temperature = 0.5,
-            top_k = 10,
-            top_p = 0.95,
-            seed = None,
-            repetition_penalty = 1.03,
-        )
-    )
-]
-
-models += vllm_api_general # 可组合不同的API模型
-
-work_dir = 'outputs/demo_api-vllm-general-chat/'
-```
-修改好配置文件后，执行如下命令启动精度评测：
-```
-ais_bench ais_bench/configs/api_examples/demo_infer_vllm_api_general_chat.py
-```
-#### 输出结果
-```bash
-dataset                 version  metric   mode  demo-vllm-api-general-chat demo-vllm-api-general
------------------------ -------- -------- ----- -------------------------- ---------------------
-demo_gsm8k              401e4c   accuracy gen                     62.50                62.50
-demo_math_prm800k_500   c4b6f0   accuracy gen                     50.00                62.50
-```
-
-#### 预设配置文件
-在 `ais_bench/configs/` 目录下，提供了更多 Python 配置文件示例，便于快速上手和自定义评测任务。详细示例请参考：[Python自定义配置文件样例列表](./doc/users_guide/python_examples.md)。
-### 推理过程日志查看
-评测过程中，AISBench Benchmark 会将推理日志默认保存至：
-```text
-{work_dir}/{time_label}/logs/infer/{abbr_name}/{dataset}.out
-```
-您可以通过如下方式实时查看推理日志：
-```shell
-# CLI 示例
-tail -f outputs/default/20250126_165049/logs/infer/vllm-api-general/gsm8k.out
-
-# Python 脚本示例
-tail -f outputs/api_vllm_general/20250126_165049/logs/infer/vllm-api-general/gsm8k.out
-```
-其中 `{work_dir}/{time_label}/` 路径会在工具运行时于控制台提示。例如：
-```bash
-06/08 15:31:14 - AISBench - INFO - Current exp folder: outputs/demo-api-vllm-general-chat/20250608_160222
-```
-如需将日志直接输出到控制台，可在命令中添加 `--debug` 参数。更多日志与参数说明详见：[用户配置参数](doc/users_guide/cli_args.md#用户配置参数)。
-
-## 精度测评
-### 服务化精度测评
+## 支持的评测场景
+### 精度测评
+#### 服务化精度测评
 - 功能描述：评估部署为服务形式的模型在特定数据集上的预测准确率
 
 - 要求：模型已部署，需测试其实际服务能力
 
-- 支持：
+- 此场景支持的模型任务和数据集任务：
 
-    - 数据集：[开源数据集](doc/users_guide/datasets.md#开源数据集) 与 [自定义数据集](doc/users_guide/datasets.md#自定义数据集)
+    - **模型任务**：📚 [服务化推理后端](doc/users_guide/models.md#服务化推理后端)
 
-    - 模型后端：[服务化推理后端](doc/users_guide/models.md#服务化推理后端)
+    - **数据集任务**：📚 [开源数据集](doc/users_guide/datasets.md#开源数据集) 与 📚 [自定义数据集](doc/users_guide/datasets.md#自定义数据集)
 
-📚 详见文档：[服务化精度测评指南](doc/users_guide/accuracy_benchmark.md#服务化精度测评)
+依据使用需求选好**模型任务**和**数据集任务**后，此场景的具体使用方法详见文档：📚 [服务化精度测评指南](doc/users_guide/accuracy_benchmark.md#服务化精度测评)
 
-### 纯模型精度测评
+#### 纯模型精度测评
 - 功能描述：评估本地加载模型（非服务化）在不同数据集上的准确性
 
 - 要求：离线模型权重和部署环境
 
 - 支持：
 
-    - 数据集：[开源数据集](doc/users_guide/datasets.md#开源数据集) 与 [自定义数据集](doc/users_guide/datasets.md#自定义数据集)
+    - **模型任务**：📚 [本地模型后端](doc/users_guide/models.md#本地模型后端)
 
-    - 模型后端：[本地模型后端](doc/users_guide/models.md#本地模型后端)
+    - **数据集任务**：📚 [开源数据集](doc/users_guide/datasets.md#开源数据集) 与 📚 [自定义数据集](doc/users_guide/datasets.md#自定义数据集)
 
-📚 详见文档：[纯模型精度测评指南](doc/users_guide/accuracy_benchmark.md#纯模型精度测评)
 
-## 性能测评
-### 服务化性能测评
+依据使用需求选好**模型任务**和**数据集任务**后，此场景的具体使用方法详见文档：📚 [纯模型精度测评指南](doc/users_guide/accuracy_benchmark.md#纯模型精度测评)
+
+### 性能测评
+#### 服务化性能测评
 - 功能描述：在真实部署环境中评估服务模型的运行效率（吞吐、延迟）
 
 - 要求：模型推理服务需支持**流式接口**方式访问
 
 - 支持：
 
-    - 数据集：[支持数据集类型](doc/users_guide/datasets.md#支持数据集类型)中的所有数据类型
+    - **模型任务**：📚 [服务化推理后端](doc/users_guide/models.md#服务化推理后端)中的流式接口类型
 
-    - 模型后端：[服务化推理后端](doc/users_guide/models.md#服务化推理后端)
+    - **数据集任务**：📚 [支持数据集类型](doc/users_guide/datasets.md#支持数据集类型)中的所有数据类型
 
-📚 详见文档：[服务化性能测评指南](doc/users_guide/performance_benchmark.md#服务化性能测评指南)。
+依据使用需求选好**模型任务**和**数据集任务**后，此场景的具体使用方法详见文档：📚 [服务化性能测评指南](doc/users_guide/performance_benchmark.md#服务化性能测评指南)。
 
-### 服务化性能压测
+#### 服务化性能压测
 - 功能描述：在最大并发场景下评估服务模型的运行效率（吞吐、延迟）
 
 - 要求：
 
     - 模型推理服务需支持**流式接口**方式访问
 
-    - 明确设置最大并发参数
-
 - 支持：
 
-    - 数据集：[支持数据集类型](doc/users_guide/datasets.md#支持数据集类型)中的所有数据类型
+    - **模型后端**：📚 [服务化推理后端](doc/users_guide/models.md#服务化推理后端)中的流式接口类型
 
-    - 模型后端：[服务化推理后端](doc/users_guide/models.md#服务化推理后端)
+    - **数据集任务**：📚 [支持数据集类型](doc/users_guide/datasets.md#支持数据集类型)中的所有数据类型
 
-📚 详见文档：[服务化性能压力测试指南](doc/users_guide/pressure_performance_benchmark.md)
+
+依据使用需求选好**模型任务**和**数据集任务**后，此场景的具体使用方法详见文档：📚 [服务化性能压力测试指南](doc/users_guide/pressure_performance_benchmark.md)
+
+
+## 全命令行参数说明
+详见📚 [用户配置参数](doc/users_guide/cli_args.md)
+
+## 高级用法
+### 自定义配置文件运行AISBench
+详见📚 [自定义配置文件运行AISBench](doc/users_guide/run_custom_config.md)

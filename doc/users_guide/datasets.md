@@ -9,6 +9,7 @@ AISBench Benchmark当前支持的数据集类型如下：
 开源数据集指的是社区广泛使用、公开可获取的数据集。它们通常用于模型训练、验证和比较不同算法的效果。AISBench Benchmark支持多个主流开源数据集，便于用户快速进行标准化测试，详细介绍和获取方式如下：
 | 数据集名称| 分类 | 详细介绍&获取方式 |
 |---------------|----------------------|-------------------|
+| DEMO            | 数学推理   | [详细介绍](../../ais_bench/benchmark/configs/datasets/demo/README.md) |
 | ARC_c            | 推理（常识+科学）     | [详细介绍](../../ais_bench/benchmark/configs/datasets/ARC_c/README.md) |
 | ARC_e            | 推理（常识+科学）     | [详细介绍](../../ais_bench/benchmark/configs/datasets/ARC_e/README.md) |
 | SuperGLUE_BoolQ  | 自然语言理解（问答）  | [详细介绍](../../ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README.md) |
@@ -41,7 +42,7 @@ AISBench Benchmark当前支持的数据集类型如下：
 | vocalsound       | 多模态理解（音频）     | [详细介绍](../../ais_bench/benchmark/configs/datasets/vocalsound/README.md) |
 | winogrande       | 常识推理（代词消解）   | [详细介绍](../../ais_bench/benchmark/configs/datasets/winogrande/README.md) |
 | Xsum             | 文本生成（摘要）       | [详细介绍](../../ais_bench/benchmark/configs/datasets/Xsum/README.md) |
- 
+
  **提示：** 用户可以将获取的数据集文件夹统一放置在`ais_bench/datasets/`目录下，AISBench Benchmark 会根据数据集配置文件自动检索改目录下的数据集文件进行测试
 ### 配置开源数据集
 AISBench Benchmark 开源数据集配置按照数据集名称保存在 [`configs/datasets`](../../ais_bench/benchmark/configs/datasets) 目录下，在各个数据集对应的文件夹下存在多个数据集配置，文件结构如下所示：
@@ -82,10 +83,10 @@ gsm8k_datasets = [
 ```
 
 ## 随机合成数据集
-合成数据集是通过程序自动生成的，适用于测试模型在不同输入长度、分布和模式下的泛化能力。AISBench Benchmark 提供两类合成数据集：随机字符序列和随机 token 序列。无需额外下载，用户只需通过配置文件进行参数设置即可使用。详见：[合成随机数据集配置文件使用指南](./synthetic_dataset.md)
+合成数据集是通过程序自动生成的，适用于测试模型在不同输入长度、分布和模式下的泛化能力。AISBench Benchmark 提供两类合成数据集：随机字符序列和随机 token 序列。无需额外下载，用户只需通过配置文件进行参数设置即可使用。详见：📚 [合成随机数据集配置文件使用指南](./synthetic_dataset.md)
 
 ### 配置随机合成数据集
 
 
 ## 自定义数据集
-AISBench Benchmark 支持用户接入自定义数据集，满足特定业务需求。用户可将私有数据整理为标准格式，通过内置接口无缝集成至评估流程中。详见：[自定义数据集使用指南](./custom_dataset.md)
+AISBench Benchmark 支持用户接入自定义数据集，满足特定业务需求。用户可将私有数据整理为标准格式，通过内置接口无缝集成至评估流程中。详见：📚 [自定义数据集使用指南](./custom_dataset.md)
