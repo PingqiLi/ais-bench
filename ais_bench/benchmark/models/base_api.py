@@ -337,7 +337,7 @@ class BaseAPIModel(BaseModel):
                 with lock:
                     with thread_lock:
                         cur_idx = total_input_idx.value % len(shared_inputs) #
-                input_data = shared_inputs[cur_idx]
+                input_data = dict(data_id=total_input_idx.value, prompt=shared_inputs[cur_idx], gold="")
                 total_input_idx.value += 1
                 try:
                     _ = self._generate(input_data, max_out_len)
@@ -791,7 +791,7 @@ def handle_synthetic_input(func):
             input_str = input.get('prompt')
             if not input_str:
                 raise ValueError(f"Input dict:{input} has no prompt key")
-        elif isinstance(input, str):
+        elif isinstance(input, (str, PromptList)):
             input_str = input
         else:
             raise TypeError(f"Excepted str or dict ,but got {type(input)}")
