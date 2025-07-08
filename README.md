@@ -1,5 +1,42 @@
-# AISBench Benchmark评测工具
-## 简介
+<div align="center">
+  <br />
+  <br />
+
+  # **AISBench 工具**
+  ##### 面向人工智能领域的测试基准工具
+  <!-- 用分隔线替代背景 -->
+  ---
+
+[![Release](https://img.shields.io/badge/dynamic/json?logo=gitee&label=release&logoColor=red&color=green&query=$.name&url=https://gitee.com/api/v5/repos/aisbench/benchmark/releases/latest)](https://gitee.com/aisbench/benchmark/releases)<br>
+[![Gitee Forks](https://img.shields.io/badge/dynamic/json?logo=forgejo&label=forks&logoColor=blue&color=blue&query=$.forks_count&url=https://gitee.com/api/v5/repos/aisbench/benchmark?)](https://gitee.com/aisbench/benchmark/members)
+[![Stars](https://img.shields.io/badge/dynamic/json?logo=ReverbNation&label=stars&logoColor=yellow&color=yellow&query=$.stargazers_count&url=https://gitee.com/api/v5/repos/aisbench/benchmark)](https://gitee.com/aisbench/benchmark/stargazers)
+[![Gitee Issues](https://img.shields.io/badge/dynamic/json?logo=gitee&label=issues&logoColor=red&color=red&query=$.open_issues_count&url=https://gitee.com/api/v5/repos/aisbench/benchmark)](https://gitee.com/aisbench/benchmark/issues)<br>
+[![License](https://img.shields.io/badge/license-Apache--2.0-red?logo=apache)](https://www.apache.org/licenses/LICENSE-2.0)
+<br><br>
+[🌐官方网站](https://www.aisbench.com) |
+[🛠️安装](#️-工具安装) |
+[🚀快速入门](#-快速入门) |
+[🔥最新进展](#-最新进展)|
+[🤔报告问题](https://gitee.com/aisbench/benchmark/issues/new/choose)
+
+</div>
+
+## 🔥 最新进展
+- **\[2025.6.19\]** 支持📚[性能评测结果可视化](doc/users_guide/performance_visualize.md)，辅助定位推理服务性能瓶颈！🔥🔥🔥
+- **\[2025.6.12\]** 支持[textvqa](ais_bench/benchmark/configs/datasets/textvqa/README.md)、[videobench](ais_bench/benchmark/configs/datasets/videobench/README.md)和[vocalsound](ais_bench/benchmark/configs/datasets/vocalsound/README.md)等多模态数据集的精度和性能评测！🔥🔥🔥
+
+- **\[2025.6.6\]** AISBench支持稳态性能评测，获取系统真实最佳性能，参考📚 [服务化稳定状态性能测试](doc/users_guide/stable_stage.md)进行快速上手! 🔥🔥🔥
+
+- **\[2025.5.16\]** 支持3W+高并发服务化性能评测，📚 [性能指标](doc/users_guide/performance_metric.md)对齐🔗 [vllm benchmark](https://github.com/vllm-project/vllm/tree/main/benchmarks)，参考📚 [服务化性能测评指南](doc/users_guide/performance_benchmark.md#服务化性能测评指南)了解详情！🔥🔥🔥
+
+- **\[2025.4.30\]** 精度评测支持断点续测和失败用例重测，大幅提高精度评测鲁棒性，参考📚 [中断续测 & 失败用例重测](doc/users_guide/accuracy_benchmark.md#中断续测--失败用例重测)进行快速上手! 🔥🔥🔥
+
+- **\[2025.4.15\]** 优化固定batch发送请求的方式为continuous batch模式发送请求，大幅提高精度评测效率! 🔥🔥🔥
+
+- **\[2025.4.12\]** 支持合并MMLU、Ceval等所有多文件数据集为单个数据集任务进行精度评测，参考📚 [合并多文件数据集](doc/users_guide/accuracy_benchmark.md#合并子数据集推理)了解详情！ 🔥🔥🔥
+
+
+## 🌏 简介
 AISBench Benchmark 是基于 OpenCompass 构建的模型评测工具，兼容 OpenCompass 的配置体系、数据集结构与模型后端实现，并在此基础上扩展了对服务化模型的支持能力。
 
 当前，AISBench 支持两大类推理任务的评测场景：
@@ -8,7 +45,7 @@ AISBench Benchmark 是基于 OpenCompass 构建的模型评测工具，兼容 Op
 
 🚀 [性能测评](#性能测评)：支持对服务化模型的延迟与吞吐率评估，并可进行压测场景下的极限性能测试。
 
-## 工具安装
+## 🛠️ 工具安装
 ✅ 环境要求
 
 **Python 版本**：仅支持 Python **3.10** 或 **3.11**
@@ -40,13 +77,13 @@ pip3 install -r requirements/api.txt
 pip3 install -r requirements/extra.txt
 ```
 如需进一步配置、使用 CLI 或 Python 脚本发起评测任务，请参考[快速入门指南](#快速入门)。
-## 工具卸载
+## ❌ 工具卸载
 如需卸载 AISBench Benchmark，可执行以下命令：
 ```shell
 pip3 uninstall ais_bench_benchmark
 ```
 
-## 快速入门
+## 🚀 快速入门
 ### 命令含义
 AISBench命令执行的单个或多个评测任务是由模型任务（单个或多个）、数据集任务（单个或多个）和结果呈现任务（单个）的组合定义的，AISBench的其他命令行则规定了评测任务的场景（精度评测场景、性能评测场景等）。以如下AISBench命令为例：
 ```shell
@@ -168,7 +205,7 @@ dataset                 version  metric   mode  vllm_api_general_chat
 demo_gsm8k              401e4c   accuracy gen                   62.50
 ```
 
-## 支持的评测场景
+## 📝 支持的评测场景
 ### 精度测评
 #### 服务化精度测评
 - 功能描述：评估部署为服务形式的模型在特定数据集上的预测准确率
@@ -211,26 +248,18 @@ demo_gsm8k              401e4c   accuracy gen                   62.50
 
 依据使用需求选好**模型任务**和**数据集任务**后，此场景的具体使用方法详见文档：📚 [服务化性能测评指南](doc/users_guide/performance_benchmark.md#服务化性能测评指南)。
 
-#### 服务化性能压测
-- 功能描述：在最大并发场景下评估服务模型的运行效率（吞吐、延迟）
 
-- 要求：
-
-    - 模型推理服务需支持**流式接口**方式访问
-
-- 支持：
-
-    - **模型后端**：📚 [服务化推理后端](doc/users_guide/models.md#服务化推理后端)中的流式接口类型
-
-    - **数据集任务**：📚 [支持数据集类型](doc/users_guide/datasets.md#支持数据集类型)中的所有数据类型
-
-
-依据使用需求选好**模型任务**和**数据集任务**后，此场景的具体使用方法详见文档：📚 [服务化性能压力测试指南](doc/users_guide/pressure_performance_benchmark.md)
-
-
-## 全命令行参数说明
+## ⌨ 全命令行参数说明
 详见📚 [用户配置参数](doc/users_guide/cli_args.md)
 
-## 高级用法
+
+## 🔬 高级用法
 ### 自定义配置文件运行AISBench
 详见📚 [自定义配置文件运行AISBench](doc/users_guide/run_custom_config.md)
+
+### 服务化稳定状态性能测试
+详见📚 [服务化稳定状态性能测试](doc/users_guide/stable_stage.md)
+
+
+
+<p align="right"><a href="#top">🔝Back to top</a></p>

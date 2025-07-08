@@ -1,26 +1,29 @@
 # piqa
 ## 数据集简介
-多语言小学数学能力测评基准（MGSM）是一个专注于小学数学题目的评估基准。
+PIQA 数据集提出了物理常识推理任务，并构建了相应的基准数据集 ——Physical Interaction: Question Answering（即 PIQA，物理交互问答）。
+物理常识是实现真正意义上 AI 完备性（包括能与世界交互、理解自然语言的机器人）道路上的一大难题。
 
-## 数据集原始获取链接
-[https://huggingface.co/datasets/ybisk/piqa](https://huggingface.co/datasets/ybisk/piqa)
+> 🔗 数据集主页[https://huggingface.co/datasets/ybisk/piqa](https://huggingface.co/datasets/ybisk/piqa)
 
-## 数据集内容格式
-### 文件结构
+## 数据集部署
+- 可以从🔗 [https://storage.googleapis.com/ai2-mosaic/public/physicaliqa/physicaliqa-train-dev.zip](https://storage.googleapis.com/ai2-mosaic/public/physicaliqa/physicaliqa-train-dev.zip)
+下载数据集压缩包。
+- 建议部署在`{工具根路径}/ais_bench/datasets`目录下（数据集任务中设置的默认路径），以linux上部署为例，具体执行步骤如下：
+```bash
+# linux服务器内，处于工具根路径下
+cd ais_bench/datasets
+wget https://storage.googleapis.com/ai2-mosaic/public/physicaliqa/physicaliqa-train-dev.zip
+unzip physicaliqa-train-dev.zip
+rm physicaliqa-train-dev.zip
 ```
-physicaliqa-train-dev
-├── dev.jsonl
-├── dev-labels.lst
-├── train.jsonl
-└── train-labels.lst
-```
-### 数据集内容样例格式
-|id|goal|sol1|sol2|
-| ----- | ---- | ---- | --- |
-|c36c629e-12e9-43cc-8936-e1a96d869ab0|How do I ready a guinea pig cage for it's new occupants?|Provide the guinea pig with a cage full of a few inches of bedding made of ripped paper strips, you will also need to supply it with a water bottle and a food dish.|Provide the guinea pig with a cage full of a few inches of bedding made of ripped jeans material, you will also need to supply it with a water bottle and a food dish.|
-
-### 处理后的数据集获取链接
-[https://storage.googleapis.com/ai2-mosaic/public/physicaliqa/physicaliqa-train-dev.zip](https://storage.googleapis.com/ai2-mosaic/public/physicaliqa/physicaliqa-train-dev.zip)
+- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree physicaliqa-train-dev/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+    ```
+    physicaliqa-train-dev
+    ├── dev.jsonl
+    ├── dev-labels.lst
+    ├── train.jsonl
+    └── train-labels.lst
+    ```
 
 ## 可用数据集任务
 ### piqa_gen_0_shot_chat_prompt
@@ -28,40 +31,4 @@ physicaliqa-train-dev
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
 |piqa_gen_0_shot_chat_prompt|piqa数据集生成式任务|accuracy|0-shot|对话格式|[piqa_gen_0_shot_chat_prompt.py](piqa_gen_0_shot_chat_prompt.py)|
-
-#### 命令行调用
-```shell
-ais_bench --models vllm_api_general_chat --datasets piqa_gen_0_shot_chat_prompt
-```
-#### 在自定义配置文件中导入
-```python
-from mmengine.config import read_base
-with read_base():
-    from ais_bench.benchmark.configs.datasets.piqa.piqa_gen_0_shot_chat_prompt import piqa_datasets
-datasets = [
-    *piqa_datasets,
-]
-```
-
-### piqa_gen_0_shot_str
-#### 基本信息
-|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
-| --- | --- | --- | --- | --- | --- |
 |piqa_gen_0_shot_str|piqa数据集生成式任务|accuracy|0-shot|字符串格式|[piqa_gen_0_shot_str.py](piqa_gen_0_shot_str.py)|
-
-#### 命令行调用
-```shell
-ais_bench --models vllm_api_general --datasets piqa_gen_0_shot_str
-```
-#### 在自定义配置文件中导入
-```python
-from mmengine.config import read_base
-with read_base():
-    from ais_bench.benchmark.configs.datasets.piqa.piqa_gen_0_shot_str import piqa_datasets
-datasets = [
-    *piqa_datasets,
-]
-```
-
-**注:** 数据集任务的详细配置的含义请参见Python源码配置文件的注释
-

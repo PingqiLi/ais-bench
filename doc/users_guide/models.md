@@ -10,7 +10,7 @@ AISBench Benchmark 支持多种服务化推理后端，包括 vLLM、Triton、Mi
 以在 GPU 上部署的 vLLM 推理服务为例，您可以参考 [vLLM 官方文档](https://docs.vllm.ai/en/stable/getting_started/quickstart.html) 启动服务。
 
 不同服务化后端对应的模型配置如下：
-| 模型配置名称| 简介| 使用前提| 接口类型 | 支持的 Prompt 格式 | 配置文件路径|
+| 模型配置名称| 简介| 使用前提| 接口类型 | 支持的数据集 Prompt 格式 | 配置文件路径|
 | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
 | `vllm_api_general` | 通过 vLLM 兼容 OpenAI 的 API 访问推理服务，接口为 `v1/completions`| 基于 vLLM 版本支持 `v1/completions` 子服务| 文本接口 | 字符串格式| [vllm_api_general.py](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)|
 | `vllm_api_general_stream`| 流式访问 vLLM 推理服务，接口为 `v1/completions`| 基于 vLLM 版本支持 `v1/completions` 子服务| 流式接口 | 字符串格式| [vllm_api_general_stream.py](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_stream.py) |

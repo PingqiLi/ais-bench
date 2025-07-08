@@ -2,65 +2,29 @@
 ## 数据集简介
 GPQA 是一个包含选择题的问答数据集，其中的高难度问题由生物学、物理学和化学领域的专家编写并验证。当这些专家尝试回答自己专业领域之外的问题时（例如，一位物理学家回答化学问题），即便他们能无限制地使用谷歌搜索，且花费超过 30 分钟作答，答题准确率也仅有 34%。
 
-## 数据集原始获取链接
-[https://github.com/idavidrein/gpqa](https://github.com/idavidrein/gpqa)
+> 🔗 数据集主页[https://github.com/idavidrein/gpqa](https://github.com/idavidrein/gpqa)
 
-## 数据集内容格式(处理后)
-### 文件结构
+## 数据集部署
+- 可以从opencompass提供的链接🔗 [http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gpqa.zip](http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gpqa.zip)下载数据集压缩包。
+- 建议部署在`{工具根路径}/ais_bench/datasets`目录下（数据集任务中设置的默认路径），以linux上部署为例，具体执行步骤如下：
+```bash
+# linux服务器内，处于工具根路径下
+cd ais_bench/datasets
+wget http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gpqa.zip
+unzip gpqa.zip
+rm gpqa.zip
 ```
-gpqa
-├── gpqa_diamond.csv
-├── gpqa_experts.csv
-├── gpqa_extended.csv
-├── gpqa_main.csv
-└── license.txt
-```
-### 数据集内容样例格式
-| Pre-Revision Question                                                                                                                                                                                                                                               | Pre-Revision Correct Answer | Pre-Revision Incorrect Answer 1 | Pre-Revision Incorrect Answer 2 | Pre-Revision Incorrect Answer 3 | Pre-Revision Explanation                                                                                                                                                                                                                | Self-reported question-writing time (minutes) | Question                                                                                                                                                                                                                                                                | Correct Answer | Incorrect Answer 1 | Incorrect Answer 2 | Incorrect Answer 3 | Explanation                                                                                                                                                                                                                              |
-|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------:|:-------------------------------:|:-------------------------------:|:-------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------:|:------------------:|:------------------:|:------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| "Two quantum states with energies E1 and E2 have a lifetime of 10^-9 sec and 10^-8 sec, respectively. We want to clearly distinguish these two energy levels. Which one of the following options could be their energy difference so that they be clearly resolved? | 10^-4 ev                    | 10^-8 ev                        | 10^-9 ev                        | 10^-11 ev                       | "According to uncertainty principle, Delta E* Delta t=hbar/2. Delta t is the lifetime and Delta E is the width of the energy level . With Delta t=10^-9 s==> Delta E1= 3.3 *10^-7 ev. And Delta t=10^-11 s gives Delta E2=3.3*10^-8 ev. | 30                                            | "Two quantum states with energies E1 and E2 have a lifetime of 10^-9 sec and 10^-8 sec, respectively. We want to clearly distinguish these two energy levels. Which one of the following options could be their energy difference so that they can be clearly resolved? | 10^-4 eV       | 10^-11 eV          | "10^-8 eV          | 10^-9 eV           | "According to the uncertainty principle, Delta E* Delta t=hbar/2. Delta t is the lifetime and Delta E is the width of the energy level. With Delta t=10^-9 s==> Delta E1= 3.3 10^-7 ev. And Delta t=10^-11 s gives Delta E2=3.310^-8 eV. |
-
-### 处理后的数据集获取链接
-[http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gpqa.zip](http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gpqa.zip)
-
+- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree gpqa/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+    ```
+    gpqa
+    ├── gpqa_diamond.csv
+    ├── gpqa_experts.csv
+    ├── gpqa_extended.csv
+    ├── gpqa_main.csv
+    └── license.txt
+    ```
 ## 可用数据集任务
-### gpqa_gen_0_shot_str
-#### 基本信息
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
 |gpqa_gen_0_shot_str|gpqa数据集生成式任务|accuracy(pass@1)|0-shot|字符串格式|[gpqa_gen_0_shot_str.py](gpqa_gen_0_shot_str.py)|
-#### 命令行调用
-```shell
-ais_bench --models vllm_api_general --datasets gpqa_gen_0_shot_str
-```
-#### 在自定义配置文件中导入
-```python
-from mmengine.config import read_base
-with read_base():
-    from ais_bench.benchmark.configs.datasets.gpqa.gpqa_gen_0_shot_str import gpqa_datasets
-datasets = [
-    *gpqa_datasets,
-]
-```
-
-### gpqa_gen_0_shot_cot_chat_prompt
-#### 基本信息
-|任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
-| --- | --- | --- | --- | --- | --- |
-|gpqa_gen_0_shot_cot_chat_prompt|gpqa数据集生成式任务|accuracy(pass@1)|0-shot|对话格式|[gpqa_gen_0_shot_cot_chat_prompt.py](gpqa_gen_0_shot_cot_chat_prompt.py)|
-#### 命令行调用
-```shell
-ais_bench --models vllm_api_general_chat --datasets gpqa_gen_0_shot_cot_chat_prompt
-```
-#### 在自定义配置文件中导入
-```python
-from mmengine.config import read_base
-with read_base():
-    from ais_bench.benchmark.configs.datasets.gpqa.gpqa_gen_0_shot_cot_chat_prompt import gpqa_datasets
-datasets = [
-    *gpqa_datasets,
-]
-```
-
-**注:** 数据集任务的详细配置的含义请参见Python源码配置文件的注释
-
+|gpqa_gen_0_shot_cot_chat_prompt|gpqa数据集生成式任务（对齐DeepSeek R1精度测试）|accuracy(pass@1)|0-shot|对话格式|[gpqa_gen_0_shot_cot_chat_prompt.py](gpqa_gen_0_shot_cot_chat_prompt.py)|
