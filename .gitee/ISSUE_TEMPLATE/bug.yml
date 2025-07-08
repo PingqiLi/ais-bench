@@ -1,0 +1,76 @@
+name: 🔧 Bug 报告
+description: 提交程序中的错误或异常
+title: "[Bug] "
+labels: ["bug", "待处理"]
+assignees: []  # 可添加默认指派用户，如 ["user1"]
+body:
+  - type: markdown
+    attributes:
+      value: "请确认已查阅文档和FAQ并尝试复现问题。"
+  - type: input
+    id: os_and_version
+    attributes:
+      label: 操作系统及版本
+      placeholder: 例：ubuntu 20.04等
+    validations:
+      required: true
+  - type: dropdown
+    id: python_env
+    attributes:
+      label: 安装工具的python环境
+      options:
+        - "在anaconda/miniconda创建的python虚拟环境"
+        - "在物理机/虚拟机自带python环境"
+        - "docker容器中的python环境"
+        - "其他"
+    validations:
+      required: true
+  - type: dropdown
+    id: python_version
+    attributes:
+      label: python版本
+      options:
+        - "3.10"
+        - "3.11"
+        - "其他"
+    validations:
+      required: true
+  - type: input
+    id: tool_version
+    attributes:
+      label: AISBench工具版本
+      placeholder: 例：最新代码（请给出具体的commit id），某个tag/release版本（请给出链接）
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 重现步骤
+      description: 清晰描述如何复现问题
+      placeholder: 1. 附上ais_bench命令。2. 附上这些命令执行时的使用的配置文件的内容(通过在 ais_bench命令基础上加上 --search执行可以得到实际执行的配置文件路径)。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: false
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 附错误日志或截图（可拖拽上传）
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 前置检查
+      options:
+        - label: 我已检索过FAQ，无重复问题
+          required: true
+        - label: 我已搜索过现有Issue，无重复问题
+          required: true
+        - label: 我已更新到最新版本，问题仍存在
+          required: false

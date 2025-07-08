@@ -1,0 +1,18 @@
+blank_issues_enabled: false  # 禁止空白 Issue，强制使用模板
+contact_links:
+  - name: 🧭 遇到问题先尝试检索FAQ
+    url: https://gitee.com/aisbench/benchmark/wikis/FAQ/AISBench%20FAQ%E4%B8%BB%E9%A1%B5
+    about: FAQ目前可以解决0%的问题
+templates:
+  - name: 🔧 Bug 报告
+    about: 提交程序中的错误或异常
+    file: bug.yml
+    labels: ["bug", "待处理"]  # 自动添加标签
+  - name: 🔬 功能需求
+    about: 提出新功能建议或现有功能优化
+    file: feature.yml
+    labels: ["enhancement", "需求讨论"]
+  - name: 📃 文档问题
+    about: 反馈文档中的错误或需要补充的内容
+    file: doc.yml
+    labels: ["documentation", "待更新"]
