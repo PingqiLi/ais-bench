@@ -1,0 +1,70 @@
+# .gitee/ISSUE_TEMPLATE/bug.yml
+name: Bug 报告
+description: 提交程序中的错误、异常或不符合预期的行为
+title: "[Bug] "  # 预设标题前缀，用户需补充具体内容
+labels: ["bug", "待处理"]  # 自动为该 Issue 添加的标签
+assignees: []  # 可选，自动指派给指定用户（如 ["developer1"]）
+body:
+  # 1. 问题描述（必填）
+  - type: textarea
+    id: bug_description
+    attributes:
+      label: 问题描述
+      description: 请详细说明你遇到的错误现象、预期结果与实际结果的差异
+      placeholder: 例如：点击"提交"按钮后，页面无响应，控制台报错"xxx"
+    validations:
+      required: true  # 此字段必须填写
+
+  # 2. 复现步骤（必填）
+  - type: textarea
+    id: reproduce_steps
+    attributes:
+      label: 复现步骤
+      description: 请列出具体操作步骤，确保他人能复现问题
+      placeholder: |
+        1. 打开页面：xxx
+        2. 点击按钮：xxx
+        3. 输入内容：xxx
+        4. 观察到的错误：xxx
+    validations:
+      required: true
+
+  # 3. 环境信息（必填）
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - 移动端（iOS）
+        - 移动端（Android）
+    validations:
+      required: true
+
+  - type: textinput
+    id: software_version
+    attributes:
+      label: 软件版本
+      description: 如 v1.2.3 或 commit 哈希值
+    validations:
+      required: true
+
+  # 4. 补充信息（可选）
+  - type: textarea
+    id:补充_info
+    attributes:
+      label: 补充信息
+      description: 如截图、日志、浏览器控制台输出等
+    validations:
+      required: false  # 可选填
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 确认项
+      options:
+        - label: 我已搜索过现有 Issue，未发现相同问题
+          required: true  # 必须勾选
+        - label: 我已尝试更新到最新版本，问题仍存在
