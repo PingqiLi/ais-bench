@@ -21,6 +21,9 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
     def _init_datas(self, perf_details: dict):
         self.max_concurrency = perf_details["task"]["max_concurrency"]
         self.stage_section = [0, 0]
+        if sum(perf_details["requests"]["is_success"]) == 0:
+            self.logger.error("All requests failed, can't calculate performance results. Please check the ERROR log from every responses!")
+            raise ValueError("All requests failed!")
         self.stage_dict = {
             "stable": self._get_requests_id(perf_details)
         }
@@ -71,10 +74,7 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         if len(id_lists) > 0:
             id_lists.pop(0) # ignore first request that reached max concurrency
         if len(id_lists) == 0:
-            self.logger.warning("Can not find a stable stage, all request will be calculated!")
-            self.stage_section[0] = min(perf_details["requests"]["start_time"]) # total start time
-            self.stage_section[1] = max(perf_details["requests"]["end_time"]) # total end time
-            return list(range(len(perf_details["requests"]["id"])))
+            raise RuntimeError("Can not find a stable stage!")
 
         if self.stage_section[1] == 0:
             self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in list(working_reqs.keys())]) # total end time
@@ -290,6 +290,8 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
             self.common_metrics["Benchmark Duration"][stage_name] = round(self.infer_time[stage_name] * 1000, 4)
             self.common_metrics["Total Requests"][stage_name] = self.data_count[stage_name]
             self.common_metrics["Failed Requests"][stage_name] = self.data_count[stage_name] - self.success_count[stage_name]
+            if self.common_metrics["Failed Requests"][stage_name] > 0:
+                self.logger.warning("Some requests failed, please check the ERROR log from responses!")
             self.common_metrics["Success Requests"][stage_name] = self.success_count[stage_name]
             self.common_metrics["Concurrency"][stage_name] = round(
                 sum(self.result[stage_name]["E2EL"]) / self.infer_time[stage_name] / 1000, 4

@@ -89,7 +89,12 @@ class DefaultPerfSummarizer:
                     if has_plot:
                         self.logger.info(f"The {dataset}_plot has been saved in {plot_file_path}")
                 calculators_per_model[dataset] = build_perf_metric_calculator_from_cfg(calculator_conf)
-                calculators_per_model[dataset]._init_datas(details_data)
+                try:
+                    calculators_per_model[dataset]._init_datas(details_data)
+                except RuntimeError as e:
+                    self.logger.error(f"Failed to calculate performance data, detail error is: \"{e}\", please check {plot_file_path} to do further analysis.")
+                    raise RuntimeError("Calculate perf data failed!")
+
             self.calculators[model] = calculators_per_model
 
     def _dump_calculated_perf_data(self):

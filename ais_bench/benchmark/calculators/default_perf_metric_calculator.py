@@ -17,6 +17,9 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         self._get_legal_stats_list(stats_list)
 
     def _init_datas(self, perf_details: dict):
+        if sum(perf_details["requests"]["is_success"]) == 0:
+            self.logger.error("All requests failed, can't calculate performance results. Please check the ERROR log from every responses!")
+            raise ValueError("All requests failed!")
         self.stage_dict = {
             "total": self._get_requests_id(perf_details)
         }
@@ -246,6 +249,8 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             self.common_metrics["Benchmark Duration"][stage_name] = round(self.infer_time[stage_name] * 1000, 4)
             self.common_metrics["Total Requests"][stage_name] = self.data_count[stage_name]
             self.common_metrics["Failed Requests"][stage_name] = self.data_count[stage_name] - self.success_count[stage_name]
+            if self.common_metrics["Failed Requests"][stage_name] > 0:
+                self.logger.warning("Some requests failed, please check the ERROR log from responses!")
             self.common_metrics["Success Requests"][stage_name] = self.success_count[stage_name]
             self.common_metrics["Concurrency"][stage_name] = round(
                 sum(self.result[stage_name]["E2EL"]) / self.infer_time[stage_name] / 1000, 4
