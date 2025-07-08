@@ -3,7 +3,7 @@
   <br />
 
   # **AISBench 工具**
-  ##### 面向人工智能领域的测试基准工具
+  #### 面向人工智能领域的测试基准工具
   <!-- 用分隔线替代背景 -->
   ---
 
@@ -37,7 +37,7 @@
 
 
 ## 🌏 简介
-AISBench Benchmark 是基于 OpenCompass 构建的模型评测工具，兼容 OpenCompass 的配置体系、数据集结构与模型后端实现，并在此基础上扩展了对服务化模型的支持能力。
+AISBench Benchmark 是基于 [OpenCompass]((https://github.com/open-compass/opencompass)) 构建的模型评测工具，兼容 OpenCompass 的配置体系、数据集结构与模型后端实现，并在此基础上扩展了对服务化模型的支持能力。
 
 当前，AISBench 支持两大类推理任务的评测场景：
 
@@ -260,6 +260,14 @@ demo_gsm8k              401e4c   accuracy gen                   62.50
 ### 服务化稳定状态性能测试
 详见📚 [服务化稳定状态性能测试](doc/users_guide/stable_stage.md)
 
+## 🔜 即将退出
+- **\[2025.7.15\]** 性能评测场景使用自定义数据集，将支持定义每条数据对应的最大输出长度限制。
 
+- **\[2025.7.30\]** 将支持ShareGPT、BFCL等多轮对话数据集的性能评测。
+
+## 🤝 致谢
+- 本项目代码基于🔗 [OpenCompass](https://github.com/open-compass/opencompass)做拓展开发。
+- 本项目部分数据集和提示词实现修改自[simple-evals](https://github.com/openai/simple-evals)。
+- 本项目代码中打点的性能指标与[VLLM Benchmark](https://github.com/vllm-project/vllm/tree/main/benchmarks)对齐。
 
 <p align="right"><a href="#top">🔝Back to top</a></p>
