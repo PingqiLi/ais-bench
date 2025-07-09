@@ -68,6 +68,8 @@ body:
     attributes:
       label: 前置检查
       options:
+        - label: 我已读懂主页文档的快速入门，无法解决问题
+          required: true
         - label: 我已检索过FAQ，无重复问题
           required: true
         - label: 我已搜索过现有Issue，无重复问题

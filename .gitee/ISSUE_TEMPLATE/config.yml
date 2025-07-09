@@ -1,6 +1,9 @@
 blank_issues_enabled: false  # 禁止空白 Issue，强制使用模板
 contact_links:
-  - name: 🧭 遇到问题先尝试检索FAQ
+  - name: 🌟 第一次使用遇到问题？
+    url: https://gitee.com/aisbench/benchmark#-%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8
+    about: 按快速入门走一遍能解决90%的工具基本使用问题！
+  - name: 🧭 快速入门无法解决再尝试检索FAQ
     url: https://gitee.com/aisbench/benchmark/wikis/FAQ/AISBench%20FAQ%E4%B8%BB%E9%A1%B5
     about: FAQ目前可以解决0%的问题
 templates:
@@ -8,11 +11,15 @@ templates:
     about: 提交程序中的错误或异常
     file: bug.yml
     labels: ["bug", "待处理"]  # 自动添加标签
-  - name: 🔬 功能需求
-    about: 提出新功能建议或现有功能优化
-    file: feature.yml
-    labels: ["enhancement", "需求讨论"]
+  - name: ❓使用疑问
+    about: 咨询工具使用过程中的问题
+    file: consult.yml
+    labels: ["question", "待回复"]
   - name: 📃 文档问题
     about: 反馈文档中的错误或需要补充的内容
     file: doc.yml
     labels: ["documentation", "待更新"]
+  - name: 🔬 功能需求
+    about: 提出新功能建议或现有功能优化
+    file: feature.yml
+    labels: ["enhancement", "需求讨论"]
