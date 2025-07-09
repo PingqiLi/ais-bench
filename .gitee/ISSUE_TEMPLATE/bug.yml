@@ -6,7 +6,12 @@ assignees: []  # 可添加默认指派用户，如 ["user1"]
 body:
   - type: markdown
     attributes:
-      value: "请确认已查阅文档和FAQ并尝试复现问题。"
+      value: |
+        ### ⚠️请再次确认已查阅
+        [🚀 快速入门](https://gitee.com/aisbench/benchmark#-%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8)
+        [📑 FAQ](https://gitee.com/aisbench/benchmark/wikis/FAQ/AISBench%20FAQ%E4%B8%BB%E9%A1%B5)
+        [🔖 Issue](https://gitee.com/aisbench/benchmark/issues)
+        并发现无法解决问题。
   - type: input
     id: os_and_version
     attributes:
