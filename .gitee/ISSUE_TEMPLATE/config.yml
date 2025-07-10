@@ -1,8 +1,5 @@
 blank_issues_enabled: false  # 禁止空白 Issue，强制使用模板
 templates:
-  - name: 👉 遇到问题先看这里
-    about: 这里也许能快速解决您的问题
-    file: a_guide.yml
   - name: 🔧 Bug 报告
     about: 提交程序中的错误或异常
     file: bug.yml
