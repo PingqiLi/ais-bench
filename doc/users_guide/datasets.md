@@ -7,6 +7,7 @@ AISBench Benchmark当前支持的数据集类型如下：
 
 ## 开源数据集
 开源数据集指的是社区广泛使用、公开可获取的数据集。它们通常用于模型训练、验证和比较不同算法的效果。AISBench Benchmark支持多个主流开源数据集，便于用户快速进行标准化测试，详细介绍和获取方式如下：
+### LLM类数据集
 | 数据集名称| 分类 | 详细介绍&获取方式 |
 |---------------|----------------------|-------------------|
 | DEMO            | 数学推理   | [详细介绍](../../ais_bench/benchmark/configs/datasets/demo/README.md) |
@@ -36,12 +37,19 @@ AISBench Benchmark当前支持的数据集类型如下：
 | mmlu_pro         | 多学科理解（专业版）   | [详细介绍](../../ais_bench/benchmark/configs/datasets/mmlu_pro/README.md) |
 | piqa             | 物理常识推理          | [详细介绍](../../ais_bench/benchmark/configs/datasets/piqa/README.md) |
 | siqa             | 社会常识推理          | [详细介绍](../../ais_bench/benchmark/configs/datasets/siqa/README.md) |
-| textvqa          | 多模态理解（图+文）    | [详细介绍](../../ais_bench/benchmark/configs/datasets/textvqa/README.md) |
 | triviaqa         | 知识问答              | [详细介绍](../../ais_bench/benchmark/configs/datasets/triviaqa/README.md) |
-| videobench       | 多模态理解（视频）     | [详细介绍](../../ais_bench/benchmark/configs/datasets/videobench/README.md) |
-| vocalsound       | 多模态理解（音频）     | [详细介绍](../../ais_bench/benchmark/configs/datasets/vocalsound/README.md) |
 | winogrande       | 常识推理（代词消解）   | [详细介绍](../../ais_bench/benchmark/configs/datasets/winogrande/README.md) |
 | Xsum             | 文本生成（摘要）       | [详细介绍](../../ais_bench/benchmark/configs/datasets/Xsum/README.md) |
+### 多模态类数据集
+| 数据集名称| 分类 | 详细介绍&获取方式 |
+|---------------|----------------------|-------------------|
+| textvqa          | 多模态理解（图+文）    | [详细介绍](../../ais_bench/benchmark/configs/datasets/textvqa/README.md) |
+| videobench       | 多模态理解（视频）     | [详细介绍](../../ais_bench/benchmark/configs/datasets/videobench/README.md) |
+| vocalsound       | 多模态理解（音频）     | [详细介绍](../../ais_bench/benchmark/configs/datasets/vocalsound/README.md) |
+### 多轮对话类数据集
+| 数据集名称| 分类 | 详细介绍&获取方式 |
+|---------------|----------------------|-------------------|
+| sharegpt         | 多轮对话            | [详细介绍](../../ais_bench/benchmark/configs/datasets/sharegpt/README.md) |
 
  **提示：** 用户可以将获取的数据集文件夹统一放置在`ais_bench/datasets/`目录下，AISBench Benchmark 会根据数据集配置文件自动检索改目录下的数据集文件进行测试
 ### 配置开源数据集

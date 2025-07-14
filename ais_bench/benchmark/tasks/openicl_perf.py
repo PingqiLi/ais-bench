@@ -18,7 +18,7 @@ from ais_bench.benchmark.registry import (
 from ais_bench.benchmark.tasks.base import BaseTask
 from ais_bench.benchmark.utils import (
     build_dataset_from_cfg,
-    build_synthetic_dataset_from_cfg,
+    build_dataset_from_cfg_with_model_path,
     build_model_from_cfg,
     get_infer_output_path,
     get_perf_output_path,
@@ -110,8 +110,9 @@ class OpenICLPerfTask(BaseTask):
                 self.model_cfg = model_cfg
                 self.dataset_cfg = dataset_cfg
                 self.infer_cfg = self.dataset_cfg["infer_cfg"]
-                if self.dataset_cfg.get('type', None) == "ais_bench.benchmark.datasets.SyntheticDataset":
-                    self.dataset = build_synthetic_dataset_from_cfg(self.dataset_cfg, self.model_cfg)
+                if self.dataset_cfg.get('type', None) in ["ais_bench.benchmark.datasets.SyntheticDataset", 
+                                                          "ais_bench.benchmark.datasets.ShareGPTDataset"]:
+                    self.dataset = build_dataset_from_cfg_with_model_path(self.dataset_cfg, self.model_cfg)
                 else:
                     self.dataset = build_dataset_from_cfg(self.dataset_cfg)
                 self.build_inference()

@@ -255,7 +255,12 @@ class PromptTemplate:
                     self.template['prompt'] = '<|AUDIO|>' + self.template['prompt']  #vllm bug
                 template.append({'type': 'text', 'text': self.template['prompt']})
             return template
-        
+            
+        # #multi-turn conversations
+        elif isinstance(self.template, dict) and 'type' in self.template.keys() and self.template['type']=='conversations':
+            template = entry['human']
+            return template
+
         elif self.prompt_type == 'origin':
             # This if is only effective when you are using GenInferecner
             # with multi-label prompts.
