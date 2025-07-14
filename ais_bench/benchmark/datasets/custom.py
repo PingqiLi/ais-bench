@@ -128,6 +128,8 @@ def make_mcq_gen_config(meta):
         input_columns=meta['input_columns'],
         output_column=meta['output_column'],
     )
+    if max_tokens_column:= meta.get('max_tokens_column'):
+        reader_cfg.update({'max_tokens_column':max_tokens_column})
     if 'test_range' in meta:
         reader_cfg['test_range'] = meta['test_range']
     infer_cfg = dict(
@@ -156,6 +158,7 @@ def make_mcq_gen_config(meta):
     )
     return dataset
 
+
 def make_qa_gen_config(meta):
     if meta.get('template', None) is None:
         human_prompt = meta.get('human_prompt', '{question}')
@@ -170,6 +173,8 @@ def make_qa_gen_config(meta):
         input_columns=meta['input_columns'],
         output_column=meta['output_column'],
     )
+    if max_tokens_column:= meta.get('max_tokens_column'):
+        reader_cfg.update({'max_tokens_column':max_tokens_column})
     if 'test_range' in meta:
         reader_cfg['test_range'] = meta['test_range']
     infer_cfg = dict(
@@ -197,6 +202,7 @@ def make_qa_gen_config(meta):
     )
     return dataset
 
+
 def parse_example_dataset(config):
     # config -> .meta.jsonl -> parsed_results
     path = config['path']
@@ -216,10 +222,16 @@ def parse_example_dataset(config):
         raise ValueError(f'Unsupported ext: {path}, .jsonl or .csv required')
 
     parsed_meta['path'] = path
-    input_columns = [i for i in data_item.keys() if i != 'answer']
+
+    input_columns = [i for i in data_item.keys() if i == 'question']
+    if not input_columns:
+        raise ValueError(f'Unsupported dataset format: NOT contain "question" in {path}')
     parsed_meta['input_columns'] = input_columns
     output_column = 'answer' if 'answer' in data_item else None
     parsed_meta['output_column'] = output_column
+    max_tokens_column = 'max_tokens' if 'max_tokens' in data_item else None
+    parsed_meta['max_tokens_column'] = max_tokens_column
+
     options = []
     for i in range(26):
         i = chr(ord('A') + i)

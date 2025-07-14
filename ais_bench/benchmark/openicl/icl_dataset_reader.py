@@ -59,6 +59,7 @@ class DatasetReader:
                  dataset: Union[Dataset, DatasetDict, str],
                  input_columns: Union[List[str], str],
                  output_column: Optional[str],
+                 max_tokens_column: Optional[str] = None,
                  input_template: Optional[PromptTemplate] = None,
                  output_template: Optional[PromptTemplate] = None,
                  train_split: str = 'train',
@@ -71,7 +72,10 @@ class DatasetReader:
         self.output_column = None
         if output_column:
             self.output_column = _check_str(output_column)
-
+        self.max_tokens_column = None
+        if max_tokens_column:
+            self.max_tokens_column = _check_str(max_tokens_column)
+        
         train_range = _check_type_list(train_range, [None, int, float, str])
         test_range = _check_type_list(test_range, [None, int, float, str])
 
