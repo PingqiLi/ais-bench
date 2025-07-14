@@ -1,5 +1,6 @@
 import csv
 import json
+import orjson
 import collections
 import math
 from typing import Optional, Dict, Any
@@ -16,6 +17,10 @@ def dump_results_dict(results_dict, filename, formatted = True):
             json.dump(results_dict, json_file, indent=4, ensure_ascii=False)
         else:
             json.dump(results_dict, json_file, ensure_ascii=False)
+
+def fast_dump_results_dict(results_dict, filename):
+    with open(filename, 'wb') as f:
+        f.write(orjson.dumps(results_dict))
 
 
 @dataclass
@@ -65,9 +70,7 @@ class MiddleData:
             "output": self.output,
             "output_token_id": self.output_token_id,
             "prefill_latency": self.prefill_latency,
-            "prefill_throughput": len(self.input_token_id)
-            / self.prefill_latency
-            * 1000 if self.prefill_latency > 0 else 0,
+            "prefill_throughput": round(len(self.input_token_id) / self.prefill_latency * 1000, 4) if self.prefill_latency > 0 else 0,
             "decode_token_latencies": self.decode_cost[:],
             "last_decode_latency": self.decode_cost[-1] if self.decode_cost else 0.0,
             "decode_max_token_latency": (
@@ -76,13 +79,11 @@ class MiddleData:
             "seq_latency": self.req_latency,
             "input_tokens_len": self.num_input_tokens,
             "generate_tokens_len": self.num_generated_tokens,
-            "generate_tokens_speed": self.num_generated_tokens
-            / self.req_latency
-            * 1000 if self.req_latency > 0 else 0,
+            "generate_tokens_speed": round(self.num_generated_tokens / self.req_latency * 1000, 4) if self.req_latency > 0 else 0,
             "input_characters_len": len(self.input_data),
             "generate_characters_len": self.num_generated_chars,
             "characters_per_token": (
-                self.num_generated_chars / self.num_generated_tokens
+                round(self.num_generated_chars / self.num_generated_tokens, 4)
                 if self.num_generated_tokens
                 else 0.0
             ),

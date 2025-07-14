@@ -5,6 +5,7 @@ import getpass
 import math
 import csv
 import json
+import orjson
 import os.path as osp
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -75,19 +76,18 @@ class DefaultPerfSummarizer:
                 perf_details_file = osp.join(self.work_dir, "performances", model, f"{dataset}_details.json")
                 if not osp.exists(perf_details_file):
                     continue
-                with open(perf_details_file, 'r', encoding='utf-8') as file:
-                    self.logger.info(f"Loading detail perf data of {model=} {dataset=} ...")
-                    details_data = json.load(file)
-                    plot_file_path = osp.join(self.work_dir, "performances", model, f"{dataset}_plot.html")
-                    has_plot = plot_sorted_request_timelines(
-                        details_data["requests"]["start_time"],
-                        details_data["requests"]["prefill_latency"],
-                        details_data["requests"]["end_time"],
-                        details_data["requests"]["decode_token_latencies"],
-                        output_file=plot_file_path, unit="s"
-                    )
-                    if has_plot:
-                        self.logger.info(f"The {dataset}_plot has been saved in {plot_file_path}")
+                self.logger.info(f"Loading detail perf data of {model=} {dataset=} ...")
+                details_data = orjson.loads(open(perf_details_file, "rb").read())
+                plot_file_path = osp.join(self.work_dir, "performances", model, f"{dataset}_plot.html")
+                has_plot = plot_sorted_request_timelines(
+                    details_data["requests"]["start_time"],
+                    details_data["requests"]["prefill_latency"],
+                    details_data["requests"]["end_time"],
+                    details_data["requests"]["decode_token_latencies"],
+                    output_file=plot_file_path, unit="s"
+                )
+                if has_plot:
+                    self.logger.info(f"The {dataset}_plot has been saved in {plot_file_path}")
                 calculators_per_model[dataset] = build_perf_metric_calculator_from_cfg(calculator_conf)
                 try:
                     calculators_per_model[dataset]._init_datas(details_data)

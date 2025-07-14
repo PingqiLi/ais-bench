@@ -9,10 +9,10 @@ import multiprocessing
 from pathlib import Path
 from multiprocessing import RLock, freeze_support
 from typing import List, Optional, Tuple, Any
-
 import torch
 import shutil
 from tqdm import tqdm
+import itertools
 
 from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
@@ -24,6 +24,7 @@ from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
 from ..utils.logging import get_logger
 from .icl_base_inferencer import BaseInferencer, GenInferencerOutputHandler
+import concurrent.futures
 
 logger = get_logger(__name__)
 
@@ -43,7 +44,7 @@ def submit_single_model(model_cfg, mp_queue, **extra_gen_kwargs):
         raise AttributeError(f'{model} has no except outputs, please check model config')
     return model.get_performance_data()
 
-    
+
 @ICL_INFERENCERS.register_module()
 class GenInferencer(BaseInferencer):
     """Generation Inferencer class to directly evaluate by generation.
@@ -115,7 +116,7 @@ class GenInferencer(BaseInferencer):
             logger.warning(f"Inputs data number is {len(inputs)}, result will be empty")
             return results
         max_concurrency = extra_gen_kwargs.get("batch_size", 1)
-        
+
         # Maximum MAX_CONCURRENCY_PER_PROCESS concurrency per process, number of processes less than number of cores
         workers_num = min(
             multiprocessing.cpu_count(), (max_concurrency - 1) // DEFAULT_MAX_CONCURRENCY_PER_PROCESS + 1
@@ -141,7 +142,7 @@ class GenInferencer(BaseInferencer):
             data_buckets = []
             real_data_nums = []
             bucket_index = 0
-            data_index = 0 
+            data_index = 0
             while data_index <len(inputs):
                 bucket_size = data_bucket_sizes[bucket_index]
                 mp_queue = manager.Queue(bucket_size + 1)
@@ -171,7 +172,7 @@ class GenInferencer(BaseInferencer):
                 mp_queue.put(None)
                 data_buckets.append(mp_queue)
                 real_data_nums.append(real_data_num)
-        
+
             request_rate = model.request_rate
             if request_rate < 0.1:
                 logger.info(f"get request_rate {request_rate} small than 0.1, all requests will send together!")
@@ -191,7 +192,7 @@ class GenInferencer(BaseInferencer):
                     "process_id":  i,
                     "qps":         request_rate_mean * data_bucket_sizes[i] / max_data_bucket_size
                 })
-                res = pool.apply_async(func=submit_single_model, 
+                res = pool.apply_async(func=submit_single_model,
                                         args=(model_cfg, data_buckets[i],),
                                         kwds=new_gen_kwargs,
                                         error_callback=lambda x:logger.error(x)
@@ -199,8 +200,8 @@ class GenInferencer(BaseInferencer):
                 async_results.append(res)
             pool.close()
             pool.join()
-            for res in async_results:
-                results.extend(res.get())
+            iterables = [res for res in async_results]
+            results = list(itertools.chain.from_iterable(res.get() for res in iterables))
         return results
 
     def extract_data(self, ds_reader, datum: Any) -> Tuple[List, List]:
@@ -244,7 +245,7 @@ class GenInferencer(BaseInferencer):
         if hasattr(self.model, "set_performance"):
             extra_kwargs['do_performance'] = self.model.do_performance
         return extra_kwargs
-                     
+
     def inference(self,
                   retriever: BaseRetriever,
                   ice_template: Optional[PromptTemplate] = None,

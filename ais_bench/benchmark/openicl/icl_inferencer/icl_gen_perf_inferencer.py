@@ -22,7 +22,7 @@ from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
 from ..utils.logging import get_logger
 from .icl_base_inferencer import GenInferencerOutputHandler
-from ais_bench.benchmark.utils.results import dump_results_dict
+from ais_bench.benchmark.utils.results import dump_results_dict, fast_dump_results_dict
 from .icl_gen_inferencer import GenInferencer
 
 logger = get_logger(__name__)
@@ -125,28 +125,14 @@ class GenPerfInferencer(GenInferencer):
             parsed_entries = self.model.parse_template(entry, mode='gen')
             results = self.inference_with_multi_process(
                 self.model, self.model_cfg, parsed_entries, golds, **extra_gen_kwargs)
-            results.sort(key=lambda x: x['id'])
+        logger.info("Start extracting pref datas ...")
         preds = self.extract_preds(results)
+        logger.info("Finish extracting pref datas!")
         task_params = {"max_concurrency": self.batch_size}
 
         num_return_sequences = getattr(self.model, "generation_kwargs", {}).get(
             "num_return_sequences", 1
         )
-
-        for prediction in batched(results, num_return_sequences):
-            if num_return_sequences == 1:
-                prediction = prediction[0]
-            if not prediction.get('is_success'):
-                pred = ""
-            else:
-                pred = prediction.get('output')
-            data_id = prediction.get('id')
-            if data_id >= len(golds) or data_id < 0:
-                raise IndexError(f"No gold of output id {data_id}")
-            output_handler.save_results(parsed_entries[data_id],
-                                        pred,
-                                        data_id,
-                                        gold=golds[data_id])
 
         end_time_stamp = time.perf_counter()
 
@@ -157,11 +143,12 @@ class GenPerfInferencer(GenInferencer):
                 "requests": preds,
             }
             logger.info("Dumping detail perf data ...")
-            dump_results_dict(
+            dump_start = time.perf_counter()
+            fast_dump_results_dict(
                 perf_details,
-                osp.join(output_filepath, output_filename + "_details.json"),
-                False
+                osp.join(output_filepath, output_filename + "_details.json")
             )
+            logger.info(f"Dump detail perf data cost: {time.perf_counter() - dump_start}(s)")
 
         if self.dump_timer and self.is_main_process:
             timer_filepath = osp.join(output_filepath, "timer", "time.jsonl")
@@ -192,6 +179,9 @@ class GenPerfInferencer(GenInferencer):
         }
         preds["is_success"] = [pred.get("is_success", False) for pred in results]
         preds["is_empty"] = [pred.get("is_empty", False) for pred in results]
+        del preds["chunk_time_point_list"]
+        del preds["input_data"]
+        del preds["output"]
         return preds
 
 

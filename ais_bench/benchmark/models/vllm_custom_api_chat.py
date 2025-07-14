@@ -176,7 +176,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
                 elif item['role'] == 'SYSTEM':
                     msg['role'] = 'system'
                 messages.append(msg)
-                
+
         generation_kwargs = self.generation_kwargs.copy()
         generation_kwargs.update({"max_tokens": max_out_len})
         generation_kwargs.update({"model": self.model})

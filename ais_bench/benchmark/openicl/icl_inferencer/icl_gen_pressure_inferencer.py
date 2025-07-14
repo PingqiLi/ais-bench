@@ -20,7 +20,7 @@ from ais_bench.benchmark.utils.build import build_model_from_cfg
 from ais_bench.benchmark.global_consts import WORKERS_NUM
 from ..utils.logging import get_logger
 from .icl_base_inferencer import GenInferencerOutputHandler
-from ais_bench.benchmark.utils.results import dump_results_dict
+from ais_bench.benchmark.utils.results import dump_results_dict, fast_dump_results_dict
 from .icl_gen_perf_inferencer import GenPerfInferencer
 from .icl_gen_inferencer import DEFAULT_MAX_CONCURRENCY_PER_PROCESS
 
@@ -167,7 +167,6 @@ class GenPressureInferencer(GenPerfInferencer):
             parsed_entries = self.model.parse_template(entry, mode='gen')
             results = self.pressure_infer_with_multiprocess(
                 self.model, self.model_cfg, parsed_entries, golds, **extra_gen_kwargs)
-            results.sort(key=lambda x: x['id'])
         preds = self.extract_preds(results)
         preds['id'] = [i for i in range(len(preds['request_id']))]
         task_params = {"max_concurrency": self.batch_size}
@@ -180,11 +179,13 @@ class GenPressureInferencer(GenPerfInferencer):
                 "task": task_params,
                 "requests": preds,
             }
-            dump_results_dict(
+            logger.info("Dumping detail perf data ...")
+            dump_start = time.perf_counter()
+            fast_dump_results_dict(
                 perf_details,
                 osp.join(output_filepath, output_filename + "_details.json"),
-                False
             )
+            logger.info(f"Dump detail perf data cost: {time.perf_counter() - dump_start}(s)")
 
         if self.dump_timer and self.is_main_process:
             timer_filepath = osp.join(output_filepath, "timer", "time.jsonl")

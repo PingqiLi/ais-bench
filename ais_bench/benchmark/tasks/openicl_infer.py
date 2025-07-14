@@ -106,7 +106,7 @@ class OpenICLInferTask(BaseTask):
         self._set_default_value(inferencer_cfg, 'batch_size', self.batch_size)
         inferencer_cfg['max_seq_len'] = self.model_cfg.get('max_seq_len')
         self.inferencer = ICL_INFERENCERS.build(inferencer_cfg)
-        
+
     def _inference(self):
         self.logger.info(
             f'Start inferencing {task_abbr_from_cfg(self.sub_cfg)}')
@@ -127,7 +127,7 @@ class OpenICLInferTask(BaseTask):
 
         # set inferencer's default value according to model's config'
         self.build_inference()
-        
+
         self.inferencer.update_model_cfg(self.model_cfg)
 
         out_path = get_infer_output_path(

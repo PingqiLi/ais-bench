@@ -17,7 +17,7 @@ from ais_bench.benchmark.registry import RUNNERS, TASKS
 from ais_bench.benchmark.tasks import OpenICLInferTask, OpenICLPerfTask, OpenICLInferMergedTask
 from ais_bench.benchmark.tasks.base import BaseTask
 from ais_bench.benchmark.utils import (build_dataset_from_cfg, build_synthetic_dataset_from_cfg,
-                                       build_model_from_cfg, get_infer_output_path, 
+                                       build_model_from_cfg, get_infer_output_path,
                                        get_logger, task_abbr_from_cfg)
 
 from .base import BaseRunner

@@ -1,4 +1,5 @@
 import csv
+import heapq
 from tqdm import tqdm
 import collections
 import math
@@ -41,43 +42,45 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
             self._process_result(perf_details.get("requests"), stage_name)
 
     def _get_requests_id(self, perf_details):
-        request_time_sections = []
-        for id in range(len(perf_details["requests"]["id"])):
-            request_time_sections.append({
-                "id": id,
-                "start_time": perf_details["requests"]["start_time"][id],
-                "end_time": perf_details["requests"]["end_time"][id],
-            })
-
+        request_time_sections = [
+            {"id": id, "start_time": perf_details["requests"]["start_time"][id], "end_time": perf_details["requests"]["end_time"][id]}
+            for id in range(len(perf_details["requests"]["id"]))
+        ]
         sorted_time_sections = sorted(request_time_sections, key=lambda x: x["start_time"])
+
+        active_heap = []  # 最小堆存储(end_time, id)
         id_lists = []
-        working_reqs = {}
         self.logger.info("Calculating stable stage ...")
-        for i, section in enumerate(tqdm(sorted_time_sections)):
-            poped_ids = []
-            for k in list(working_reqs.keys()):
-                if working_reqs[k][1] < section["start_time"]:
-                    poped_ids.append(k)
-                    working_reqs.pop(k, None)
-            working_reqs[section["id"]] = [section["start_time"], section["end_time"]]
-            if len(working_reqs) == self.max_concurrency:
+
+        for section in tqdm(sorted_time_sections):
+            # 1. 清理过期请求并记录最小结束时间
+            poped_min_end = None
+            while active_heap and active_heap[0][0] < section["start_time"]:
+                end_time, req_id = heapq.heappop(active_heap)
+                poped_min_end = end_time if poped_min_end is None else min(poped_min_end, end_time)
+
+            # 2. 添加当前请求
+            heapq.heappush(active_heap, (section["end_time"], section["id"]))
+            current_active = len(active_heap)
+
+            # 3. 判断稳定阶段
+            if current_active == self.max_concurrency:
                 id_lists.append(section["id"])
                 if len(id_lists) == 1:
-                   self.stage_section[0] = min([perf_details["requests"]["end_time"][id] for id in list(working_reqs.keys())])  # total start time
-            elif len(working_reqs) >= int(self.max_concurrency * (1 - WAVE_OFFSET)) and len(id_lists) > 0:
+                    self.stage_section[0] = active_heap[0][0]  # 堆顶即最小结束时间
+            elif current_active >= int(self.max_concurrency * (1 - WAVE_OFFSET)) and len(id_lists) > 0:
                 id_lists.append(section["id"])
-            else:
-                if len(id_lists) > 0: # start to leave stable
-                    self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in poped_ids])
-                    break
+            elif len(id_lists) > 0:  # 退出稳定阶段
+                self.stage_section[1] = poped_min_end if poped_min_end is not None else active_heap[0][0]
+                break
 
-        if len(id_lists) > 0:
-            id_lists.pop(0) # ignore first request that reached max concurrency
-        if len(id_lists) == 0:
+        # 4. 后处理
+        if id_lists:
+            id_lists.pop(0)
+        if not id_lists:
             raise RuntimeError("Can not find a stable stage!")
-
         if self.stage_section[1] == 0:
-            self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in list(working_reqs.keys())]) # total end time
+            self.stage_section[1] = active_heap[0][0] if active_heap else sorted_time_sections[-1]["end_time"]
         return id_lists
 
     def _get_legal_stats_list(self, stats_list):
@@ -116,7 +119,8 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         else:
             result["average_decode_latencies"] = result["prefill_latency"]
         self.logger.info("Converting perf results of stage ...")
-        self.result[stage_name] = self.convert_result(copy.deepcopy(result))
+        self.result[stage_name] = self.convert_result(result)
+        self.logger.info("Finish Converting!")
 
     def get_common_res(self):
         return {k: v for k, v in self.common_metrics.items() if v is not None}
@@ -196,9 +200,13 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         return ans
 
     def calculate(self):
+        self.logger.info("Start calculating metrics ...")
         self.__calc_metrics()
+        self.logger.info("Start calculating common metrics ...")
         self.__calc_common_metrics()
+        self.logger.info("Start calculating add units ...")
         self.add_units()
+        self.logger.info("Finish calculating perf data!")
 
     def __calc_metrics(self):
         """Calculate various statistical metrics for performance analysis."""
@@ -212,17 +220,18 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
                         value = self.__statistic_prefill_or_decode_batch_size(value)
 
                     # Compute statistical values
+                    arr = np.array(value)
                     for stat in self.stats_list:
                         if stat == "Average":
-                            stats[stat] = round(np.average(value), 4)
+                            stats[stat] = round(arr.mean(), 4)
                         elif stat == "Min":
-                            stats[stat] = round(float(min(value)), 4)
+                            stats[stat] = round(float(arr.min()), 4)
                         elif stat == "Max":
-                            stats[stat] = round(float(max(value)), 4)
+                            stats[stat] = round(float(arr.max()), 4)
                         elif stat == "Median":
-                            stats[stat] = round(np.percentile(value, 50), 4)
+                            stats[stat] = round(np.percentile(arr, 50), 4)
                         elif is_legal_percentage_str(stat):
-                            stats[stat] = round(np.percentile(value, int(stat[1:])), 4)
+                            stats[stat] = round(np.percentile(arr, int(stat[1:])), 4)
 
                 # Store the computed metrics
                 if self.metrics.get(metric) is None:

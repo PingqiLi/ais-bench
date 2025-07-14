@@ -179,7 +179,7 @@ class BaseClient(ABC):
                 raise_error(f"Error processing stream response: {e}", self.lock, self.request_counter)
             except HTTPError as e:
                 raise_error(f"HTTP error during stream response processing: {e}.", self.lock, self.request_counter)
-                
+
         self.rev_count()
         self.update_request_time(inputs, start_time)
         return "".join(response)
@@ -209,9 +209,7 @@ class BaseStreamClient(BaseClient, ABC):
                     cur_time_point = time.perf_counter()
                     response_dict = self.process_stream_line(json_content)
                     if time_name not in response_dict.keys():
-                        response_dict[time_name] = (
-                            cur_time_point - last_time_point
-                        ) * 1000
+                        response_dict[time_name] = round((cur_time_point - last_time_point) * 1000, 4)
                         response_dict["chunk_time_point"] = cur_time_point * 1000
                     yield response_dict
                     time_name = "decode_time"

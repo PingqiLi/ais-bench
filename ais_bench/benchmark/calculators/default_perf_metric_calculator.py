@@ -75,7 +75,8 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         else:
             result["average_decode_latencies"] = result["prefill_latency"]
         self.logger.info("Converting perf results of stage ...")
-        self.result[stage_name] = self.convert_result(copy.deepcopy(result))
+        self.result[stage_name] = self.convert_result(result)
+        self.logger.info("Finish Converting!")
 
     def get_common_res(self):
         return {k: v for k, v in self.common_metrics.items() if v is not None}
@@ -155,9 +156,13 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         return ans
 
     def calculate(self):
+        self.logger.info("Start calculating metrics ...")
         self.__calc_metrics()
+        self.logger.info("Start calculating common metrics ...")
         self.__calc_common_metrics()
+        self.logger.info("Start calculating add units ...")
         self.add_units()
+        self.logger.info("Finish calculating perf data!")
 
     def __calc_metrics(self):
         """Calculate various statistical metrics for performance analysis."""
@@ -171,17 +176,18 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
                         value = self.__statistic_prefill_or_decode_batch_size(value)
 
                     # Compute statistical values
+                    arr = np.array(value)
                     for stat in self.stats_list:
                         if stat == "Average":
-                            stats[stat] = round(np.average(value), 4)
+                            stats[stat] = round(arr.mean(), 4)
                         elif stat == "Min":
-                            stats[stat] = round(float(min(value)), 4)
+                            stats[stat] = round(float(arr.min()), 4)
                         elif stat == "Max":
-                            stats[stat] = round(float(max(value)), 4)
+                            stats[stat] = round(float(arr.max()), 4)
                         elif stat == "Median":
-                            stats[stat] = round(np.percentile(value, 50), 4)
+                            stats[stat] = round(np.percentile(arr, 50), 4)
                         elif is_legal_percentage_str(stat):
-                            stats[stat] = round(np.percentile(value, int(stat[1:])), 4)
+                            stats[stat] = round(np.percentile(arr, int(stat[1:])), 4)
 
                 # Store the computed metrics
                 if self.metrics.get(metric) is None:

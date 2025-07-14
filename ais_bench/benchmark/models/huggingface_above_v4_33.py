@@ -201,7 +201,7 @@ class HuggingFacewithChatTemplate(PerformanceModel):
         for k, v in other_kwargs.items():
             if v is not None:
                 self.logger.warning(f'Unused argument {k}={v}')
-        
+
     def handle_perf_result(self, output_filepath, output_filename):
         e2e_latency = max(self.timestamps) - min(self.timestamps)
         return {"Benchmark Duration":{"total":str(round(e2e_latency, 4)) + ' ms'}}

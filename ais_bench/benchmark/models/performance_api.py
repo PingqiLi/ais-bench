@@ -77,7 +77,7 @@ class PerformanceAPIModel(BaseAPIModel):
             cache_data.num_input_chars = 0
         cache_data.input_token_id = token_id
         cache_data.num_input_tokens = len(token_id)
-        
+
     def set_result(self, data: MiddleData) -> None:
         """Update decoding information for a given request."""
         if not data.output:
@@ -146,10 +146,12 @@ class PerformanceAPIModel(BaseAPIModel):
                 self.result_cache[key].num_generated_tokens = len(tokens)
         performance_data = []
         try:
+            self.logger.info("Start converting origin perf data ...")
             performance_data = [
                 cache_data.convert_to_performance_data()
                 for cache_data in self.result_cache.values()
             ]
+            self.logger.info("Finish converting origin perf data")
         except Exception as e:
             self.logger.error(f"Error converting performance data: {e}")
         finally:
