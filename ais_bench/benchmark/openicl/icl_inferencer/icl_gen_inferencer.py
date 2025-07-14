@@ -18,7 +18,7 @@ from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched, build_model_from_cfg
 from ais_bench.benchmark.global_consts import WORKERS_NUM
-
+from ais_bench.benchmark.utils.types import convert_positive_integers
 
 from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
@@ -103,6 +103,7 @@ class GenInferencer(BaseInferencer):
         self.save_every = save_every
         self.is_synthetic = is_synthetic
         self.tmp_result_ids = []
+        self.max_out_lens = []
 
     def inference_with_multi_process(
         self, model, model_cfg, inputs, golds, **extra_gen_kwargs
@@ -148,7 +149,18 @@ class GenInferencer(BaseInferencer):
                 while bucket_size > 0:
                     if data_index not in self.tmp_result_ids:
                         try:
-                            mp_queue.put(dict(data_id=data_index, prompt=inputs[data_index], gold=golds[data_index]))
+                            mp_queue.put(
+                                dict(
+                                    data_id=data_index,
+                                    prompt=inputs[data_index],
+                                    gold=golds[data_index],
+                                    max_tokens=(
+                                        self.max_out_len
+                                        if data_index >= len(self.max_out_lens)
+                                        else self.max_out_lens[data_index]
+                                    ),
+                                )
+                            )
                             real_data_num += 1
                         except IndexError as e:
                             logger.error(f"data index out of range")
@@ -268,6 +280,9 @@ class GenInferencer(BaseInferencer):
         if ds_reader.output_column:
             gold_ans = ds_reader.dataset['test'][ds_reader.output_column]
             prompt_list = list(zip(prompt_list, gold_ans))
+        if ds_reader.max_tokens_column:
+            self.max_out_lens:List[int] = convert_positive_integers(ds_reader.dataset['test'][ds_reader.max_tokens_column],
+                                                                    ds_reader.max_tokens_column)
 
         extra_gen_kwargs = self._build_extra_gen_kwargs()
         num_return_sequences = getattr(self.model, 'generation_kwargs', {}).get('num_return_sequences', 1)

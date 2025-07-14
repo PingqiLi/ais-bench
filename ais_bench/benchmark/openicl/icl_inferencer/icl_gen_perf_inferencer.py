@@ -16,6 +16,7 @@ from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched
 from ais_bench.benchmark.utils.build import build_perf_metric_calculator_from_cfg
+from ais_bench.benchmark.utils.types import convert_positive_integers
 
 from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
@@ -80,6 +81,9 @@ class GenPerfInferencer(GenInferencer):
             prompt_template=prompt_template,
         )
         ds_reader = retriever.dataset_reader
+        if ds_reader.max_tokens_column:
+            self.max_out_lens:List[int] = convert_positive_integers(ds_reader.dataset['test'][ds_reader.max_tokens_column],
+                                                                    ds_reader.max_tokens_column)
         if ds_reader.output_column:
             gold_ans = ds_reader.dataset["test"][ds_reader.output_column]
             prompt_list = list(zip(prompt_list, gold_ans))
