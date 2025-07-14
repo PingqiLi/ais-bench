@@ -59,3 +59,16 @@ def _check_dict(obj) -> Dict:
         return obj
     else:
         raise TypeError(f'Expected a Dict object, but got {obj}')
+
+
+def convert_positive_integers(str_list:List[str], list_name:str = "") -> List[int]:
+    converted = []
+    for idx, s in enumerate(str_list):
+        try:
+            num = int(s)
+            if num <= 0:
+                raise ValueError(f"Invalid {list_name} value in datasets: index: {idx}, with value: {s}.")
+            converted.append(num)
+        except ValueError:
+            raise ValueError(f"Invalid {list_name} value in datasets: index: {idx}, with value: {s}.")
+    return converted
