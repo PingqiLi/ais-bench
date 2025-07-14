@@ -271,6 +271,7 @@ class TEXTEvaluator(BaseEvaluator):
             res_data = res_data.replace('\n', ' ')
             res_data = res_data.replace('\t', ' ')
             res_data = res_data.strip()
+            res_data = vqa_eval.remove_special_characters(res_data)
             res_data = vqa_eval.process_punctuation(res_data)
             res_data = vqa_eval.process_digit_article(res_data)
             gt_answer_list = [ans[answer_] for ans in gt_answers]
