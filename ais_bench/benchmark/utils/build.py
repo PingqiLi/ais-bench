@@ -17,7 +17,7 @@ def validate_model_cfg(model_cfg: dict) -> dict:
 
     validators = {
         "attr": lambda v: (v in ("local", "service"), "attr must be 'local' or 'service'"),
-        "abbr": lambda v: (isinstance(v, str) and re.fullmatch(r'[A-Za-z\-]+', v),
+        "abbr": lambda v: (isinstance(v, str) and re.fullmatch(r'[_A-Za-z0-9\-]+', v),
                            "abbr must contain only letters and hyphens (e.g., 'vllm-api-general-chat')"),
         "path": lambda v: (not v or (isinstance(v, str) and os.path.exists(v)),
                            f"path is not accessible or does not exist: {v}"),
@@ -56,7 +56,7 @@ def validate_model_cfg(model_cfg: dict) -> dict:
             check(valid, key, msg)
 
     return errors
-    
+
 
 def build_dataset_from_cfg(dataset_cfg: ConfigDict):
     dataset_cfg = copy.deepcopy(dataset_cfg)
