@@ -22,6 +22,7 @@
 </div>
 
 ## 🔥 最新进展
+- **\[2025.7.15\]** 支持[sharegpt](ais_bench/benchmark/configs/datasets/sharegpt/README.md)多轮对话数据集服务化性能测评！🔥🔥🔥
 - **\[2025.6.19\]** 支持📚[性能评测结果可视化](doc/users_guide/performance_visualize.md)，辅助定位推理服务性能瓶颈！🔥🔥🔥
 - **\[2025.6.12\]** 支持[textvqa](ais_bench/benchmark/configs/datasets/textvqa/README.md)、[videobench](ais_bench/benchmark/configs/datasets/videobench/README.md)和[vocalsound](ais_bench/benchmark/configs/datasets/vocalsound/README.md)等多模态数据集的精度和性能评测！🔥🔥🔥
 

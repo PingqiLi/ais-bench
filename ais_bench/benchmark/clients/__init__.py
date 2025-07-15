@@ -9,3 +9,4 @@ from ais_bench.benchmark.clients.triton_text_client import TritonTextClient
 from ais_bench.benchmark.clients.openai_text_client import OpenAITextClient
 from ais_bench.benchmark.clients.openai_chat_text_client import OpenAIChatTextClient
 from ais_bench.benchmark.clients.vllm_text_client import VLLMTextClient
+from ais_bench.benchmark.clients.openai_chat_stream_sglang_client import OpenAIChatStreamSglangClient

@@ -179,6 +179,8 @@ class BaseClient(ABC):
                 raise_error(f"Error processing stream response: {e}", self.lock, self.request_counter)
             except HTTPError as e:
                 raise_error(f"HTTP error during stream response processing: {e}.", self.lock, self.request_counter)
+            except Exception as e:
+                raise_error(f"Other error during stream response processing: {e}.", self.lock, self.request_counter)
 
         self.rev_count()
         self.update_request_time(inputs, start_time)
