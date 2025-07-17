@@ -32,7 +32,7 @@ requests>=2.31.0
 retrying
 rich
 rouge
--e git+https://github.com/Isaac-JL-Chen/rouge_chinese.git@master#egg=rouge_chinese
+rouge_chinese
 rouge_score
 sacrebleu
 scikit_learn==1.5.0
