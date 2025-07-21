@@ -19,10 +19,13 @@ class OpenAIChatTextClient(BaseClient, ABC):
 
     def update_middle_data(self, res: dict, inputs: MiddleData):
         try:
-            generated_text = res['choices'][0]['message']['content']
+            generated_text = res['choices'][0]['message'].get('content', '')
+            reasoning_content = res['choices'][0]['message'].get('reasoning_content', '')
         except Exception as e:
             raise RuntimeError(f"Process response failed and the reason is {e}")
         if generated_text:
             inputs.output = generated_text
             inputs.num_generated_chars = len(generated_text)
-        return generated_text
+        if reasoning_content:
+            inputs.output_reasoning = reasoning_content
+            inputs.num_generated_chars += len(reasoning_content)

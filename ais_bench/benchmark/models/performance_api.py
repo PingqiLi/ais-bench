@@ -146,14 +146,14 @@ class PerformanceAPIModel(BaseAPIModel):
                 self.result_cache[key].num_generated_tokens = len(tokens)
         performance_data = []
         try:
-            self.logger.info("Start converting origin perf data ...")
+            self.logger.info("Start converting origin data to detailed data ...")
             performance_data = [
                 cache_data.convert_to_performance_data()
                 for cache_data in self.result_cache.values()
             ]
-            self.logger.info("Finish converting origin perf data")
+            self.logger.info("Finish converting origin data to detailed data")
         except Exception as e:
-            self.logger.error(f"Error converting performance data: {e}")
+            self.logger.error(f"Error converting origin data to detailed data: {e}")
         finally:
             self.result_cache.clear()
         return performance_data

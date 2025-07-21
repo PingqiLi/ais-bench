@@ -169,23 +169,20 @@ class BaseClient(ABC):
             except json.JSONDecodeError:
                 decode_data = response_raw.data.decode(errors="replace")
                 raise_error(f"Failed to decode JSON response. Raw data: {decode_data}", self.lock, self.request_counter)
-            response = [self.update_middle_data(res_, inputs)]
+            self.update_middle_data(res_, inputs)
         else:
-            response = []
             try:
                 for res_ in self.process_response(response_raw, start_time):
-                    response.append(self.update_middle_data(res_, inputs))
+                    self.update_middle_data(res_, inputs)
             except ValueError as e:
                 raise_error(f"Error processing stream response: {e}", self.lock, self.request_counter)
             except HTTPError as e:
                 raise_error(f"HTTP error during stream response processing: {e}.", self.lock, self.request_counter)
             except Exception as e:
                 raise_error(f"Other error during stream response processing: {e}.", self.lock, self.request_counter)
-
         self.rev_count()
         self.update_request_time(inputs, start_time)
-        return "".join(response)
-
+        return inputs.get_output()
 
 def iter_lines(stream):
     """

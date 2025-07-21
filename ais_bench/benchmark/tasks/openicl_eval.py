@@ -153,7 +153,16 @@ class OpenICLEvalTask(BaseTask):
                                           role.get('end', None))
                         for pred in pred_strs
                     ]
-
+            if 'pred_postprocessor' in self.model_cfg:
+                kwargs = copy.deepcopy(self.model_cfg['pred_postprocessor'])
+                proc = kwargs.pop('type')
+                if isinstance(proc, str):
+                    proc = TEXT_POSTPROCESSORS.get(proc)
+                if pred_list_flag:
+                    pred_strs = [[proc(s, **kwargs) for s in preds]
+                                for preds in pred_strs]
+                else:
+                    pred_strs = [proc(s, **kwargs) for s in pred_strs]
             # Postprocess predictions if necessary
             if 'pred_postprocessor' in self.eval_cfg:
                 kwargs = self.eval_cfg['pred_postprocessor']

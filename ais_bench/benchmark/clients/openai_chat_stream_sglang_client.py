@@ -53,9 +53,11 @@ class OpenAIChatStreamSglangClient(BaseStreamClient, ABC):
     def process_stream_line(self, json_content: dict) -> dict:
         response = {}
         generated_text = ""
-        for item in json_content["choices"]:
-            if item["delta"]["content"]:  # content maybe null in sglang service
+        for item in json_content.get("choices", []):
+            if item["delta"].get("content"):  # content maybe null in sglang service
                 generated_text += item["delta"]["content"]
+            elif item["delta"].get("reasoning_content"):
+                generated_text += item["delta"]["reasoning_content"]
         if generated_text:
             response.update({"generated_text": generated_text})
         if self.do_performance:
@@ -80,7 +82,6 @@ class OpenAIChatStreamSglangClient(BaseStreamClient, ABC):
             inputs.chunk_time_point_list.append(chunk_time_point)
         if res.get("completion_tokens"):
             inputs.num_generated_tokens = res.get("completion_tokens")
-        return generated_text
     
     def process_response(self, response, last_time_point):
         time_name = "prefill_time"

@@ -25,7 +25,9 @@ class OpenAIStreamClient(BaseStreamClient, ABC):
 
     def process_stream_line(self, json_content: dict) -> dict:
         response = {}
-        generated_text = json_content['choices'][0]['text']
+        generated_text = ""
+        if len(json_content.get('choices', [])) > 0:
+            generated_text = json_content['choices'][0]['text']
         if generated_text:
             response.update({"generated_text": generated_text})
         if self.do_performance:
@@ -50,4 +52,3 @@ class OpenAIStreamClient(BaseStreamClient, ABC):
             inputs.chunk_time_point_list.append(chunk_time_point)
         if res.get("completion_tokens"):
             inputs.num_generated_tokens = res.get("completion_tokens")
-        return generated_text

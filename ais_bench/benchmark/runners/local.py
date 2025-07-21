@@ -135,15 +135,7 @@ class LocalRunner(BaseRunner):
                         else:
                             task.run()
                     else:
-                        tmp_logs = f'tmp/{os.getpid()}_debug.log'
-                        get_logger().warning(
-                            f'Debug mode, log will be saved to {tmp_logs}')
-                        with open(tmp_logs, 'a') as log_file:
-                            subprocess.run(cmd,
-                                           shell=True,
-                                           text=True,
-                                           stdout=log_file,
-                                           stderr=subprocess.STDOUT)
+                        subprocess.run(cmd, shell=True, text=True)
                 finally:
                     if not self.keep_tmp_file:
                         os.remove(param_file)

@@ -1,3 +1,4 @@
+import re
 from functools import partial
 from multiprocessing import Pool
 from typing import Union
@@ -133,3 +134,44 @@ def xfinder_postprocess(preds: list, question_type: str, model_name: str,
                             extractor=extractor)
     extracted_answers = calc_acc_func(format_data)
     return extracted_answers
+
+
+@TEXT_POSTPROCESSORS.register_module('extract-non-reasoning-content')
+def extract_non_reasoning_content(
+    text: str,
+    think_start_token: str = '<think>',
+    think_end_token: str = '</think>',
+) -> str:
+    """Extract content after the last reasoning tag from text.
+
+    When only end token is present, returns content after the end token.
+    When both tokens are present, removes all content between start and end tokens.
+
+    Args:
+        text (str): Input text containing reasoning tags.
+        think_start_token (str, optional): Start token for reasoning section. Defaults to '<think>'.
+        think_end_token (str, optional): End token for reasoning section. Defaults to '</think>'.
+
+    Returns:
+        str: Processed text after removing reasoning sections.
+
+    Examples:
+        >>> # When only end token exists
+        >>> text = "This is a test.</think> How are you?"
+        >>> extract_non_reasoning_content(text)
+        'How are you?'
+
+        >>> # When both tokens exist
+        >>> text = "Start<think>reasoning here</think> End"
+        >>> extract_non_reasoning_content(text)
+        'Start End'
+    """
+    # If text contains only end token, split by end token and take the last part
+    if think_start_token not in text and think_end_token in text:
+        return text.split(think_end_token)[-1].strip()
+
+    # Original behavior for complete tag pairs
+    reasoning_regex = re.compile(rf'{think_start_token}(.*?){think_end_token}',
+                                 re.DOTALL)
+    non_reasoning_content = reasoning_regex.sub('', text).strip()
+    return non_reasoning_content

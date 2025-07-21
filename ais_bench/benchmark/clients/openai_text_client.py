@@ -26,4 +26,3 @@ class OpenAITextClient(BaseClient, ABC):
         if generated_text:
             inputs.output = generated_text
             inputs.num_generated_chars = len(generated_text)
-        return generated_text

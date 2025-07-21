@@ -41,6 +41,7 @@ class MiddleData:
     queue_wait_time: list[float] = field(default_factory=list)
     data_option: list = field(default_factory=list)
     output: str = ""
+    output_reasoning: str = ""
     output_token_id: list[int] = field(default_factory=list)
     start_time: float = 0.0
     end_time: float = 0.0
@@ -62,12 +63,23 @@ class MiddleData:
             ]
         )
 
+
+    def get_output(self) -> str:
+        if self.output_reasoning:
+            if self.output:
+                return self.output_reasoning + '</think>' + self.output
+            else:
+                return self.output_reasoning
+        else:
+            return self.output
+    
+    
     def convert_to_performance_data(self) -> dict:
         return {
             "id": self.data_id,
             "input_data": self.input_data,
             "input_token_id": self.input_token_id,
-            "output": self.output,
+            "output": self.get_output(),
             "output_token_id": self.output_token_id,
             "prefill_latency": self.prefill_latency,
             "prefill_throughput": round(len(self.input_token_id) / self.prefill_latency * 1000, 4) if self.prefill_latency > 0 else 0,
