@@ -13,11 +13,11 @@ cd ais_bench/datasets
 git lfs install
 git clone https://huggingface.co/datasets/maoxx241/audio_vocalsound_16k_subset
 mv audio_vocalsound_16k_subset vocalsound
-mv vocalsound/subsets1/* vocalsound/
-mv vocalsound/subsets2/* vocalsound/
-mv vocalsound/subsets3/* vocalsound/
-mv vocalsound/subsets4/* vocalsound/
-mv vocalsound/subsets5/* vocalsound/
+mv vocalsound/subset1/* vocalsound/
+mv vocalsound/subset2/* vocalsound/
+mv vocalsound/subset3/* vocalsound/
+mv vocalsound/subset4/* vocalsound/
+mv vocalsound/subset5/* vocalsound/
 ```
 - 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree vocalsound/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
