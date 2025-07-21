@@ -187,6 +187,24 @@ class BaseClient(ABC):
         return "".join(response)
 
 
+def iter_lines(stream):
+    """
+    Split the input stream into lines based on "\n\n". 
+    If the received packet does not encounter the end or \n\n, 
+    cache it and concatenate it with the subsequent stream.
+    """
+    pending = None
+    for chunk in stream:
+        if pending is not None:
+            chunk = pending + chunk
+        lines = [d for d in chunk.split(b'\n\n') if d]
+        if lines and lines[-1] and chunk and lines[-1][-1] == chunk[-1]:
+            pending = lines.pop()
+        else:
+            pending = None
+        yield from lines
+    if pending is not None:
+        yield pending
 
 class BaseStreamClient(BaseClient, ABC):
     def __init__(self, url, retry):
@@ -202,7 +220,7 @@ class BaseStreamClient(BaseClient, ABC):
 
     def process_response(self, response, last_time_point):
         time_name = "prefill_time"
-        for byte_line in response.stream(amt=valid_max_chunk_size()):
+        for byte_line in iter_lines(response.stream(amt=valid_max_chunk_size())):
             if byte_line == b"\n":
                 continue
             cur_line = self.preprocess_cur_line(byte_line.decode())
