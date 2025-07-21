@@ -31,7 +31,7 @@ videobench_datasets = [
     dict(
         abbr='videobench',
         type=VideoBenchDataset,
-        path='ais_bench/datasets/videobench/video/EVAL_QA_5000', # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
+        path='ais_bench/datasets/videobench', # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
         reader_cfg=videobench_reader_cfg,
         infer_cfg=videobench_infer_cfg,
         eval_cfg=videobench_eval_cfg

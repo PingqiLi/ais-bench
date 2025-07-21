@@ -30,7 +30,7 @@ vocalsound_datasets = [
     dict(
         abbr='vocalsound',
         type=VocalSoundDataset,
-        path='ais_bench/datasets/vocalsound/audio_vocalsound_16k_subset', # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
+        path='ais_bench/datasets/vocalsound', # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
         reader_cfg=vocalsound_reader_cfg,
         infer_cfg=vocalsound_infer_cfg,
         eval_cfg=vocalsound_eval_cfg
