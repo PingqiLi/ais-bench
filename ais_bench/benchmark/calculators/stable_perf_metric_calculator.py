@@ -1,5 +1,4 @@
 import csv
-import heapq
 from tqdm import tqdm
 import collections
 import math
@@ -41,45 +40,47 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         for stage_name, _ in self.stage_dict.items():
             self._process_result(perf_details.get("requests"), stage_name)
 
-
     def _get_requests_id(self, perf_details):
+        time_point_concurrency = [0] * 2 * len(perf_details["requests"]["id"])
         request_time_sections = []
         for id in range(len(perf_details["requests"]["id"])):
             request_time_sections.append({
                 "id": id,
-                "start_time": perf_details["requests"]["start_time"][id],
-                "end_time": perf_details["requests"]["end_time"][id],
+                "attr": "start",
+                "time": perf_details["requests"]["start_time"][id],
             })
-
-        sorted_time_sections = sorted(request_time_sections, key=lambda x: x["start_time"])
+            request_time_sections.append({
+                "id": id,
+                "attr": "end",
+                "time": perf_details["requests"]["end_time"][id],
+            })
+        sorted_time_sections = sorted(request_time_sections, key=lambda x: x["time"])
         id_lists = []
-        working_reqs = {}
-        self.logger.info("Calculating stable stage ...")
+        self.logger.info("Start calculating stable stage ...")
+        requested = 0
         for i, section in enumerate(tqdm(sorted_time_sections)):
-            poped_ids = []
-            for k in list(working_reqs.keys()):
-                if working_reqs[k][1] < section["start_time"]:
-                    poped_ids.append(k)
-                    working_reqs.pop(k, None)
-            working_reqs[section["id"]] = [section["start_time"], section["end_time"]]
-            if len(working_reqs) == self.max_concurrency:
-                id_lists.append(section["id"])
-                if len(id_lists) == 1:
-                   self.stage_section[0] = min([perf_details["requests"]["end_time"][id] for id in list(working_reqs.keys())])  # total start time
-            elif len(working_reqs) >= int(self.max_concurrency * (1 - WAVE_OFFSET)) and len(id_lists) > 0:
-                id_lists.append(section["id"])
+            if section["attr"] == "start":
+                time_point_concurrency[i] = time_point_concurrency[i - 1] + 1
+                requested += 1
             else:
-                if len(id_lists) > 0: # start to leave stable
-                    self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in poped_ids])
-                    break
-
+                time_point_concurrency[i] = time_point_concurrency[i - 1] - 1
+            if section["attr"] == "start" and time_point_concurrency[i] == self.max_concurrency:
+                id_lists.append(section["id"])
+                if len(id_lists) == 2:
+                   self.stage_section[0] = section["time"] # total start time
+            elif section["attr"] == "start" and time_point_concurrency[i] >= int(self.max_concurrency * (1 - WAVE_OFFSET)) and len(id_lists) > 2:
+                id_lists.append(section["id"])
+            elif requested == len(perf_details["requests"]["id"]) and section["attr"] == "end":
+                self.stage_section[1] = section["time"]
+                break
+            elif len(id_lists) > 1 and section["attr"] == "end" and time_point_concurrency[i] < int(self.max_concurrency * (1 - WAVE_OFFSET)):
+                self.stage_section[1] = section["time"]
+                break
         if len(id_lists) > 0:
             id_lists.pop(0) # ignore first request that reached max concurrency
         if len(id_lists) == 0:
             raise RuntimeError("Can not find a stable stage!")
-
-        if self.stage_section[1] == 0:
-            self.stage_section[1] = min([perf_details["requests"]["end_time"][id] for id in list(working_reqs.keys())]) # total end time
+        self.logger.info("Finish calculating stable stage.")
         return id_lists
 
     def _get_legal_stats_list(self, stats_list):
@@ -301,9 +302,9 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
             if self.common_metrics["Failed Requests"][stage_name] > 0:
                 self.logger.warning("Some requests failed, please check the ERROR log from responses!")
             self.common_metrics["Success Requests"][stage_name] = self.success_count[stage_name]
-            self.common_metrics["Concurrency"][stage_name] = round(
+            self.common_metrics["Concurrency"][stage_name] = min(round(
                 sum(self.result[stage_name]["E2EL"]) / self.infer_time[stage_name] / 1000, 4
-            )
+            ), self.max_concurrency)
             self.common_metrics["Max Concurrency"][stage_name] = self.max_concurrency
 
             try:
