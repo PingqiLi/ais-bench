@@ -52,7 +52,7 @@ class OpenAIChatStreamClient(BaseStreamClient, ABC):
         for item in json_content.get("choices", []):
             if item["delta"].get("content"):
                 generated_text += item["delta"]["content"]
-            elif item["delta"].get("reasoning_content"):
+            if item["delta"].get("reasoning_content"):
                 reasoning_content += item["delta"]["reasoning_content"]
         if generated_text:
             response.update({"generated_text": generated_text})

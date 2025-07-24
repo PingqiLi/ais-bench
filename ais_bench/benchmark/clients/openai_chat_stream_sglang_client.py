@@ -53,13 +53,16 @@ class OpenAIChatStreamSglangClient(BaseStreamClient, ABC):
     def process_stream_line(self, json_content: dict) -> dict:
         response = {}
         generated_text = ""
+        reasoning_content = ""
         for item in json_content.get("choices", []):
             if item["delta"].get("content"):  # content maybe null in sglang service
                 generated_text += item["delta"]["content"]
-            elif item["delta"].get("reasoning_content"):
-                generated_text += item["delta"]["reasoning_content"]
+            if item["delta"].get("reasoning_content"):
+                reasoning_content += item["delta"]["reasoning_content"]
         if generated_text:
             response.update({"generated_text": generated_text})
+        if reasoning_content:
+            response.update({"reasoning_content": reasoning_content})
         if self.do_performance:
             response.update({"token_str": generated_text})
         if json_content.get("usage"):
@@ -68,9 +71,13 @@ class OpenAIChatStreamSglangClient(BaseStreamClient, ABC):
 
     def update_middle_data(self, res: dict, inputs: MiddleData):
         generated_text = res.get("generated_text", "")
+        reasoning_content = res.get("reasoning_content", "")
         if generated_text:
             inputs.output += generated_text
             inputs.num_generated_chars = len(inputs.output)
+        if reasoning_content:
+            inputs.output_reasoning += reasoning_content
+            inputs.num_generated_chars += len(reasoning_content)
         prefill_time = res.get("prefill_time")
         if prefill_time:
             inputs.prefill_latency = prefill_time
