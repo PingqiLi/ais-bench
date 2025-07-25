@@ -4,7 +4,6 @@ import json
 import time
 from typing import Optional
 from ais_bench.benchmark.clients.base_client import (
-    _stream_data_split,
     AisBenchClientException,
     raise_error,
     BaseClient,

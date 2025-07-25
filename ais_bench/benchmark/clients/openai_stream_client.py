@@ -6,9 +6,6 @@ from ais_bench.benchmark.utils import MiddleData
 
 
 class OpenAIStreamClient(BaseStreamClient, ABC):
-    def preprocess_cur_line(self, cur_line: str) -> str:
-        end_ix = cur_line.find("data: [DONE]")
-        return cur_line if end_ix < 0 else cur_line[:end_ix]
 
     def construct_request_body(
         self,

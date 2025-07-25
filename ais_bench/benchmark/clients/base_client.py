@@ -16,15 +16,6 @@ from ais_bench.benchmark.utils.valid_global_consts import valid_max_chunk_size, 
 
 RETRY_ERROR_LIST = [104]
 
-def _stream_data_split(stream_data_line):
-    stream_data_line = stream_data_line.lstrip("data:").rstrip("\n\0")
-    stream_data_line = stream_data_line.replace("}\x00{", "}{")
-    stream_data_line = re.sub(r"\}\s*data:\s*{", "} ,{", stream_data_line)
-    stream_data_line = "[" + stream_data_line + "]"
-    json_obj_arr = json.loads(stream_data_line)
-    return json_obj_arr
-
-
 class AisBenchClientException(Exception):
     def __init__(self, message):
         super().__init__()
@@ -184,52 +175,56 @@ class BaseClient(ABC):
         self.update_request_time(inputs, start_time)
         return inputs.get_output()
 
-def iter_lines(stream):
-    """
-    Split the input stream into lines based on "\n\n". 
-    If the received packet does not encounter the end or \n\n, 
-    cache it and concatenate it with the subsequent stream.
-    """
-    pending = None
-    for chunk in stream:
-        if pending is not None:
-            chunk = pending + chunk
-        lines = [d for d in chunk.split(b'\n\n') if d]
-        if lines and lines[-1] and chunk and lines[-1][-1] == chunk[-1]:
-            pending = lines.pop()
-        else:
-            pending = None
-        yield from lines
-    if pending is not None:
-        yield pending
 
 class BaseStreamClient(BaseClient, ABC):
     def __init__(self, url, retry):
         super().__init__(url, retry)
         self._is_stream = True
 
-    def preprocess_cur_line(self, cur_line: str) -> str:
-        return cur_line
-
     @abstractmethod
     def process_stream_line(self, json_content: dict) -> dict:
         pass
 
+    def iter_lines(self, stream):
+        """
+        Split the input stream into lines based on "\n\n". 
+        If the received packet does not encounter the end or \n\n, 
+        cache it and concatenate it with the subsequent stream.
+        """
+        pending = None
+        for chunk in stream:
+            if pending is not None:
+                chunk = pending + chunk
+            lines = [d for d in chunk.split(b'\n\n') if d]
+            # If there are no lines or the chunk is empty, clear pending
+            if not lines or not chunk:
+                pending = None
+            # If the last line's last byte matches the chunk's last byte,
+            # it means the chunk did not end with '\n\n', so the last segment is incomplete
+            elif lines[-1][-1] == chunk[-1]:
+                pending = lines.pop()
+            else:
+                pending = None
+            yield from lines
+        # After the stream ends, yield any remaining incomplete data
+        if pending is not None:
+            yield pending
+            
     def process_response(self, response, last_time_point):
         time_name = "prefill_time"
-        for byte_line in iter_lines(response.stream(amt=valid_max_chunk_size())):
-            if byte_line == b"\n":
-                continue
-            cur_line = self.preprocess_cur_line(byte_line.decode())
+        for raw_chunk in self.iter_lines(response.stream(amt=valid_max_chunk_size())):
             try:
-                for json_content in _stream_data_split(cur_line):
-                    cur_time_point = time.perf_counter()
-                    response_dict = self.process_stream_line(json_content)
-                    if time_name not in response_dict.keys():
-                        response_dict[time_name] = round((cur_time_point - last_time_point) * 1000, 4)
-                        response_dict["chunk_time_point"] = cur_time_point * 1000
-                    yield response_dict
-                    time_name = "decode_time"
-                    last_time_point = time.perf_counter()
+                chunk = raw_chunk.decode().lstrip("data:").rstrip("\n\0").strip()
+                if chunk == "[DONE]":
+                    break
+                chunk = json.loads(chunk)
+                cur_time_point = time.perf_counter()
+                response_dict = self.process_stream_line(chunk)
+                if time_name not in response_dict.keys():
+                    response_dict[time_name] = round((cur_time_point - last_time_point) * 1000, 4)
+                    response_dict["chunk_time_point"] = cur_time_point * 1000
+                yield response_dict
+                time_name = "decode_time"
+                last_time_point = time.perf_counter()
             except Exception as error:
-                raise ValueError(f"[StreamResponseError] {error}! Raw server response: {cur_line}")
+                raise ValueError(f"[StreamResponseError] {error}! Raw server response: {raw_chunk}")
