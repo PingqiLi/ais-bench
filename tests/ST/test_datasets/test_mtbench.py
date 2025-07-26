@@ -40,7 +40,7 @@ class TestClass:
                                   'Median', 'P75', 'P90', 'P99', 'N']
         self.perf_csv_params = ['E2EL', 'TTFT', 'TPOT', 'InputTokens', 'OutputTokens','OutputTokenThroughput']
         
-    def test_vllm_api_stream_chat_multiturn_perf_sharegpt(self, monkeypatch):
+    def test_vllm_api_stream_chat_multiturn_perf_mtbench(self, monkeypatch):
         fake_prediction = [{'id': 0, 'input_data': 'A A', 'input_token_id': [32, 362, 362],
                             'output': ' A A A', 'output_token_id': [362, 362, 362],
                             'prefill_latency': 56.9, "chunk_time_point_list": [1, 1, 1],
@@ -53,9 +53,9 @@ class TestClass:
                             'request_id': '591c69416c694a6ab3194a06d6e1ed17',
                             'start_time': 1742952029.5993671, 'end_time': 1742952032.299417,
                             'is_success': True, 'is_empty': False}]
-        fake_time_str = "sharegpt_fake_time"
-        datasets_abbr_name = "sharegptdataset"
-        datasets_script_name = "sharegpt_gen"
+        fake_time_str = "mtbench_fake_time"
+        datasets_abbr_name = "mtbenchdataset"
+        datasets_script_name = "mtbench_gen"
 
         monkeypatch.setattr('sys.argv',
             ["ais_bench", "--models", "vllm_api_stream_chat_multiturn", "--datasets", datasets_script_name,
