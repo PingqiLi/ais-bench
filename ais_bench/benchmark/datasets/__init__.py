@@ -34,3 +34,4 @@ from ais_bench.benchmark.datasets.lcsts import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.siqa import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.xsum import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.sharegpt import *
+from ais_bench.benchmark.datasets.mtbench import *

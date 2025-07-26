@@ -50,6 +50,7 @@ AISBench Benchmark当前支持的数据集类型如下：
 | 数据集名称| 分类 | 详细介绍&获取方式 |
 |---------------|----------------------|-------------------|
 | sharegpt         | 多轮对话            | [详细介绍](../../ais_bench/benchmark/configs/datasets/sharegpt/README.md) |
+| mtbench          | 多轮对话            | [详细介绍](../../ais_bench/benchmark/configs/datasets/mtbench/README.md) |
 
  **提示：** 用户可以将获取的数据集文件夹统一放置在`ais_bench/datasets/`目录下，AISBench Benchmark 会根据数据集配置文件自动检索改目录下的数据集文件进行测试
 ### 配置开源数据集

@@ -14,7 +14,7 @@
 
 数据集支持列表：
 + ✅ShareGPT
-+ 🔜MTBench
++ ✅MTBench
 
 ## 快速入门
 ### 使用说明
