@@ -3,7 +3,7 @@ import time
 import re
 from abc import abstractmethod, ABC
 
-from ais_bench.benchmark.clients.base_client import BaseStreamClient, _stream_data_split
+from ais_bench.benchmark.clients.base_client import BaseStreamClient
 from ais_bench.benchmark.utils import MiddleData
 from ais_bench.benchmark.registry import CLIENTS
 from ais_bench.benchmark.utils.valid_global_consts import valid_max_chunk_size
@@ -11,31 +11,6 @@ from ais_bench.benchmark.utils.valid_global_consts import valid_max_chunk_size
 
 @CLIENTS.register_module()
 class OpenAIChatStreamSglangClient(BaseStreamClient, ABC):
-    def preprocess_cur_line(self, cur_line: str) -> str:
-        if "\ndata" in cur_line:
-            end_ix = cur_line.find("data: [DONE]")
-            cur_line = cur_line if end_ix < 0 else cur_line[:end_ix]
-            data_blocks = cur_line.strip().split('\n\n')
-            print(f"{data_blocks=}")
-            merged_data = None
-            for block in data_blocks:
-                # 去掉 "data: " 前缀并解析 JSON
-                json_str = block.replace('data: ', '')
-                data = json.loads(json_str)
-
-                # 如果是第一条数据，初始化 merged_data
-                if merged_data is None:
-                    merged_data = data
-                else:
-                    # 合并 choices
-                    merged_data['choices'].extend(data['choices'])
-                if data.get("usage"):
-                    merged_data["usage"] = data["usage"]
-            print(f"{merged_data=}")
-            return json.dumps(merged_data)
-        else:
-            end_ix = cur_line.find("data: [DONE]")
-            return cur_line if end_ix < 0 else cur_line[:end_ix]
 
     def construct_request_body(
         self,
@@ -92,25 +67,23 @@ class OpenAIChatStreamSglangClient(BaseStreamClient, ABC):
     
     def process_response(self, response, last_time_point):
         time_name = "prefill_time"
-        for byte_line in response.stream(amt=valid_max_chunk_size()):
-            
-            if byte_line == b"\n":
-                print(f"{byte_line=}")
-                continue
-            cur_line = self.preprocess_cur_line(byte_line.decode())
+        for raw_chunk in self.iter_lines(response.stream(amt=valid_max_chunk_size())):
+            chunk = raw_chunk.decode().lstrip("data:").rstrip("\n\0").strip()
+            if chunk == "[DONE]":
+                break
+            chunk = json.loads(chunk)
             try:
-                for json_content in _stream_data_split(cur_line):
-                    cur_time_point = time.perf_counter()
-                    response_dict = self.process_stream_line(json_content)
-                    if not response_dict.get("generated_text") and not response_dict.get("completion_tokens"):  #first return chunk: None, reset start time
-                        continue 
-                    if time_name not in response_dict.keys():
-                        response_dict[time_name] = (
-                            cur_time_point - last_time_point
-                        ) * 1000
-                        response_dict["chunk_time_point"] = cur_time_point * 1000
-                    yield response_dict
-                    time_name = "decode_time"
-                    last_time_point = time.perf_counter()
+                cur_time_point = time.perf_counter()
+                response_dict = self.process_stream_line(chunk)
+                if not response_dict.get("generated_text") and not response_dict.get("completion_tokens"):  #first return chunk: None, reset start time
+                    continue 
+                if time_name not in response_dict.keys():
+                    response_dict[time_name] = (
+                        cur_time_point - last_time_point
+                    ) * 1000
+                    response_dict["chunk_time_point"] = cur_time_point * 1000
+                yield response_dict
+                time_name = "decode_time"
+                last_time_point = time.perf_counter()
             except Exception as error:
-                raise ValueError(f"[StreamResponseError] {error}! Raw server response: {cur_line}")
+                raise ValueError(f"[StreamResponseError] {error}! Raw server response: {raw_chunk}")

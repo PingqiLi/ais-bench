@@ -80,7 +80,7 @@ class PerformanceAPIModel(BaseAPIModel):
 
     def set_result(self, data: MiddleData) -> None:
         """Update decoding information for a given request."""
-        if not data.output:
+        if not data.output and not data.output_reasoning:
             self.logger.warning(
                 f"Request {data.request_id} has no output. Please check the server response."
             )
