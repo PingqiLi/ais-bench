@@ -107,13 +107,14 @@ class VllmMultiturnAPIChatStream(PerformanceAPIModel):
             return []
         return self.tokenizer.decode(tokens)
 
-    def prepare_input_data(self, inputs: list, data_id: int = -1) -> MiddleData:
+    def prepare_input_data(self, inputs: list, data_id: int = -1, multiturn_group_id: str = "") -> MiddleData:
         """Prepare input data, tokenize if performance mode is enabled."""
         rrid = uuid.uuid4().hex
         cache_data = self.result_cache[rrid]
         cache_data.data_id = data_id
         cache_data.request_id = rrid
         cache_data.input_data = inputs
+        cache_data.multiturn_group_id = multiturn_group_id
         return cache_data
 
     def generate(self,
@@ -163,6 +164,7 @@ class VllmMultiturnAPIChatStream(PerformanceAPIModel):
         if max_out_len <= 0:
             return ''
         history = []
+        multiturn_group_id = uuid.uuid4().hex
         for i in range(len(input)):
             # if history:    # request rate during multiturns
             #     self.acquire()
@@ -175,7 +177,7 @@ class VllmMultiturnAPIChatStream(PerformanceAPIModel):
             else:
                 self.generation_kwargs.update({"max_tokens": max_out_len})
             self.generation_kwargs.update({"model": self.model})
-            cache_data = self.prepare_input_data(messages, data_id)
+            cache_data = self.prepare_input_data(messages, data_id, multiturn_group_id)
             response = self.client.request(cache_data, self.generation_kwargs)
             history.append({'role': 'assistant', 'content': response})
             self.set_result(cache_data)

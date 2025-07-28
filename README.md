@@ -23,7 +23,7 @@
 
 ## 🔥 最新进展
 - **\[2025.7.15\]** 
-  - 支持[sharegpt](ais_bench/benchmark/configs/datasets/sharegpt/README.md)和[mtbench](ais_bench/benchmark/configs/datasets/mtbench/README.md)多轮对话数据集服务化性能测评，测评方式见📚[多轮对话测评指南](doc/users_guide/multiturn_benchmark.md)！🔥🔥🔥
+  - 支持[sharegpt](ais_bench/benchmark/configs/datasets/sharegpt/README.md)和[mtbench](ais_bench/benchmark/configs/datasets/mtbench/README.md)多轮对话数据集服务化性能测评和可视化，测评方式见📚[多轮对话测评指南](doc/users_guide/multiturn_benchmark.md)！🔥🔥🔥
   - 性能评测场景使用[自定义数据集](doc/users_guide/custom_dataset.md)，支持定义每条数据对应的最大输出长度限制！🔥🔥🔥
 
 - **\[2025.6.19\]** 支持📚[性能评测结果可视化](doc/users_guide/performance_visualize.md)，辅助定位推理服务性能瓶颈！🔥🔥🔥

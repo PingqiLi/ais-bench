@@ -102,13 +102,27 @@ def generate_timeline_traces(
     adjusted_starts: np.ndarray,
     adjusted_ends: np.ndarray,
     adjusted_first_tokens: np.ndarray,
+    multiturn_group_id_list: list,
     unit: str
 ) -> List[go.Scattergl]:
     """生成请求时间线图的轨迹"""
     n_requests = len(adjusted_starts)
     if n_requests == 0:
         return []
-
+    unique_ids = []  #without sorted group id
+    first_index_lookup = {}  #key: without sorted group id; value: index
+    index_map = [] # idex
+    for idx, val in enumerate(multiturn_group_id_list):
+        if val not in first_index_lookup:
+            first_index_lookup[val] = len(unique_ids)
+            unique_ids.append(val)
+        index_map.append(first_index_lookup[val])
+    
+    # unique_ids, index_map = np.unique(multiturn_group_id_list, return_inverse=True)
+    is_multiturn = True if unique_ids[0] else False
+    if is_multiturn:
+        get_logger().info("Visualization in multi-turn conversations")
+    y_values = np.array(index_map) + 1
     # 预分配内存
     red_x = np.full(TIMELINE_POINTS_PER_REQUEST * n_requests, np.nan, dtype=np.float32)
     red_y = np.full_like(red_x, np.nan)
@@ -122,6 +136,7 @@ def generate_timeline_traces(
         start_t = adjusted_starts[orig_idx]
         first_token_t = adjusted_first_tokens[orig_idx]
         end_t = adjusted_ends[orig_idx]
+        y = y_values[orig_idx]
 
         # 计算数组中的位置
         arr_idx = sorted_pos * 3
@@ -129,7 +144,7 @@ def generate_timeline_traces(
         # 红线段（TTFT）：从开始到第一个token
         red_x[arr_idx] = start_t
         red_x[arr_idx + 1] = first_token_t
-        red_y[arr_idx:arr_idx + 2] = sorted_pos + 1
+        red_y[arr_idx:arr_idx + 2] = y if is_multiturn else sorted_pos + 1
 
         blue_content_data = "NaN"
 
@@ -137,7 +152,7 @@ def generate_timeline_traces(
         if end_t > first_token_t:
             blue_x[arr_idx] = first_token_t
             blue_x[arr_idx + 1] = end_t
-            blue_y[arr_idx:arr_idx + 2] = sorted_pos + 1
+            blue_y[arr_idx:arr_idx + 2] = y if is_multiturn else sorted_pos + 1
             decode_time = end_t - first_token_t
             blue_content_data = f"{first_token_t:.2f}→{end_t:.2f}={decode_time:.2f}"
 
@@ -338,6 +353,7 @@ def plot_sorted_request_timelines(
     prefill_latency_list: List[float],
     end_time_list: List[float],
     decode_token_latencies_list: List[List[float]],
+    multiturn_group_id_list: List[str],
     output_file: str = "timeline.html",
     unit: str = "s"
 ) -> None:
@@ -373,7 +389,7 @@ def plot_sorted_request_timelines(
         logger.info(f"Generating timeline traces for {n_requests} requests...")
         timeline_start = time.perf_counter()
         timeline_traces = generate_timeline_traces(
-            adjusted_starts, adjusted_ends, adjusted_first_token_times, unit
+            adjusted_starts, adjusted_ends, adjusted_first_token_times, multiturn_group_id_list, unit
         )
         logger.info(f"Generated timeline trace chunks in {time.perf_counter() - timeline_start:.4f}s")
 
