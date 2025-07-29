@@ -149,3 +149,27 @@ ais_bench --models vllm_api_stream_chat_multiturn --datasets sharegpt_gen -m per
 
 ```
 💡 具体性能参数的含义请参考📚 [性能测评结果说明](./performance_metric.md)
+
+### 性能细节查看
+执行AISBench命令后，任务执行更多细节最终会落盘在默认的输出路径，这个输出路径在运行中的打屏日志中有提示，例如：
+```shell
+06/28 15:13:26 - AISBench - INFO - Current exp folder: outputs/default/20250628_151326
+```
+这段日志说明任务执行的细节落盘在执行命令的路径下的`outputs/default/20250628_151326`中。
+命令执行结束后`outputs/default/20250628_151326`中的任务执行的细节如下所示：
+```shell
+20250628_151326           # 每次实验基于时间戳生成的唯一目录
+├── configs               # 自动存储的所有已转储配置文件
+├── logs                  # 执行过程中日志，命令中如果加--debug，不会有过程日志落盘（都直接打印出来了）
+│   └── performance/      # 推理阶段的日志文件
+└── performance           # 性能测评结果
+│    └── vllm-multiturn-api-chat-stream/          # “服务化模型配置”名称，对应模型任务配置文件中models的 abbr参数
+│         ├── sharegptdataset.csv          # 单次请求性能输出（CSV），与性能结果打屏中的Performance Parameters表格一致
+│         ├── sharegptdataset.json         # 端到端性能输出（JSON），与性能结果打屏中的Common Metric表格一致
+│         ├── sharegptdataset_details.json # 全量打点日志（JSON）
+│         └── sharegptdataset_plot.html    # 请求并发可视化报告（HTML）
+```
+💡其中 `sharegptdataset_plot.html`这个请求并发可视化报告建议使用Chrome或者Edge等浏览器打开，可以看到每个请求的时延以及每个时刻client端感知的服务时间并发数：
+> ⚠️ **注意**： 多轮对话场景下，上半图中会将每组对话中的多轮请求拼成一条线，因此纵坐标的实际含义为多轮对话数据组的索引。
+  ![full_plot_example.img](../../img/请求并发图/full_plot_example.png)
+具体html中的图标如何查看请参考📚 [性能测试可视化并发图使用说明](性能测试可视化并发图使用说明.md)

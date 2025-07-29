@@ -84,6 +84,7 @@ class DefaultPerfSummarizer:
                     details_data["requests"]["prefill_latency"],
                     details_data["requests"]["end_time"],
                     details_data["requests"]["decode_token_latencies"],
+                    details_data["requests"]["multiturn_group_id"],
                     output_file=plot_file_path, unit="s"
                 )
                 if has_plot:

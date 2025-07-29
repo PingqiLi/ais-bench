@@ -50,6 +50,7 @@ class MiddleData:
     is_success: bool = False
     is_empty: bool = False
     chunk_time_point_list: list[int] = field(default_factory=list)
+    multiturn_group_id: str = ""
 
     def is_valid(self):
         """To ensure valid results"""
@@ -107,5 +108,6 @@ class MiddleData:
             "end_time": self.end_time,
             "is_success": self.is_success,
             "is_empty": self.is_empty,
-            "chunk_time_point_list": self.chunk_time_point_list
+            "chunk_time_point_list": self.chunk_time_point_list,
+            "multiturn_group_id": self.multiturn_group_id
         }
