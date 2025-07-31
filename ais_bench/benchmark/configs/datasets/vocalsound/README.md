@@ -19,7 +19,7 @@ mv vocalsound/subset3/* vocalsound/
 mv vocalsound/subset4/* vocalsound/
 mv vocalsound/subset5/* vocalsound/
 ```
-- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree vocalsound/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 在`{工具根路径}/ais_bench/datasets`目录下执行`tree vocalsound/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
     vocalsound
     ├── f0003_0_cough.wav

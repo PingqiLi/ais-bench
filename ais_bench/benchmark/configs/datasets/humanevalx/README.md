@@ -20,7 +20,7 @@ wget http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/humanevalx.zi
 unzip humanevalx.zip
 rm humanevalx.zip
 ```
-- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree humanevalx/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 在`{工具根路径}/ais_bench/datasets`目录下执行`tree humanevalx/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
     humanevalx
     └── humanevalx_cpp.jsonl

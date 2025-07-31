@@ -20,7 +20,7 @@ wget http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/humaneval.zip
 unzip humaneval.zip
 rm humaneval.zip
 ```
-- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree humaneval/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 在`{工具根路径}/ais_bench/datasets`目录下执行`tree humaneval/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
     humaneval
     └── human-eval-v2-20210705.jsonl

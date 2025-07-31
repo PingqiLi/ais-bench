@@ -17,7 +17,7 @@ cd ais_bench/datasets
 git lfs install
 git clone https://huggingface.co/datasets/livecodebench/code_generation_lite
 ```
-- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree code_generation_lite/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 在`{工具根路径}/ais_bench/datasets`目录下执行`tree code_generation_lite/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
     code_generatation_lite
     ├── test5.jsonl
