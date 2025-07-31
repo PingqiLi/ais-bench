@@ -21,7 +21,7 @@ mkdir mtbench/
 cd mtbench/
 wget https://huggingface.co/datasets/HuggingFaceH4/mt_bench_prompts/blob/main/raw/question.jsonl
 ```
-- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree mtbench/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 在`{工具根路径}/ais_bench/datasets`目录下执行`tree mtbench/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
     mtbench
     └── question.jsonl

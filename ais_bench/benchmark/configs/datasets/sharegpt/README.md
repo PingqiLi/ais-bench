@@ -46,7 +46,7 @@ mkdir sharegpt/
 cd sharegpt/
 wget https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/blob/main/ShareGPT_V3_unfiltered_cleaned_split.json
 ```
-- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree sharegpt/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 在`{工具根路径}/ais_bench/datasets`目录下执行`tree sharegpt/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
     sharegpt
     └── ShareGPT_V3_unfiltered_cleaned_split.json

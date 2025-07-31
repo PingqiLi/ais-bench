@@ -14,7 +14,7 @@ git lfs install
 git clone https://huggingface.co/datasets/maoxx241/videobench_subset
 mv videobench_subset/ videobench/
 ```
-- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree videobench/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 在`{工具根路径}/ais_bench/datasets`目录下执行`tree videobench/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
     videobench
     ├── answer

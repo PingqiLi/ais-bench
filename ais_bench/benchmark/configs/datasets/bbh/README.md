@@ -14,7 +14,7 @@ wget http://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/BBH.zip
 unzip BBH.zip
 rm BBH.zip
 ```
-- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree BBH/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 在`{工具根路径}/ais_bench/datasets`目录下执行`tree BBH/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
     BBH
     ├── data

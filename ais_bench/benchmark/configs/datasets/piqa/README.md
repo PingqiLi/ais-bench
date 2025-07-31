@@ -16,7 +16,7 @@ wget https://storage.googleapis.com/ai2-mosaic/public/physicaliqa/physicaliqa-tr
 unzip physicaliqa-train-dev.zip
 rm physicaliqa-train-dev.zip
 ```
-- 在`{工具根路径}/ais_bench/benchmark`目录下执行`tree physicaliqa-train-dev/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 在`{工具根路径}/ais_bench/datasets`目录下执行`tree physicaliqa-train-dev/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
     physicaliqa-train-dev
     ├── dev.jsonl
