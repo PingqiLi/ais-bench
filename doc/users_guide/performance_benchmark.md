@@ -456,4 +456,14 @@ ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_cha
 ```
 > ⚠️  `20250628_151326/performance/`下`gsm8kdataset.csv`，`gsm8kdataset_details.json`和`gsm8kdataset_plot.html`会重新生成（覆盖原有的）。
 
+## 服务化性能测试规格说明
+服务化性能测试的规模决定了AISBench评测工具的资源占用。以[自定义序列长度测评](#自定义序列长度测评)为例，测试规模主要由总请求条数（`RequestCount`）、数据集输入tokens长度（`Input`）,输出tokens长度（`Output`）决定。在`Intel(R) Xeon(R) Platinum 8480P`型号cpu上测试，典型测试规模下资源的占用大致如下：
+|总请求条数（`RequestCount`）|数据集输入tokens长度（`Input`）|tokens长度（`Output`）|最大内存占用(GB)|最大磁盘占用(GB)|性能数据计算时间(s)|
+| ---------- | --------- | ----------- | ---------- | ----------- | ------------|
+|10000|1024|1024|5.5|0.12|7|
+|10000|1024|4096|9.3|0.35|18|
+|10000|4096|4096|12.0|0.46|21|
+|50000|4096|4096|51|1.60|115|
+|250000|4096|4096|185|11.00|670|
+
 # FAQ
