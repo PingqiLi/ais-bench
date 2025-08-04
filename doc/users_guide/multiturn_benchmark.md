@@ -54,7 +54,7 @@ ais_bench --models vllm_api_stream_chat_multiturn --datasets sharegpt_gen --mode
 
 ```
 
-- 快速入门中数据集任务配置文件`sharegpt_gen.py`不需要做额外修改，数据集任务配置文件内容介绍可参考📚 [配置开源数据集](doc/users_guide/datasets.md#配置开源数据集)
+- 快速入门中数据集任务配置文件`sharegpt_gen.py`不需要做额外修改，数据集任务配置文件内容介绍可参考📚 [配置开源数据集](datasets.md#配置开源数据集)
 
 模型配置文件`vllm_api_stream_chat_multiturn.py`中包含了模型运行相关的配置内容，是需要依据实际情况修改的。快速入门中需要修改的内容用注释标明。
 ```python
