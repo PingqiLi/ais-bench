@@ -158,6 +158,34 @@ synthetic_config = {
 
 ------
 
+#### 4. 混合分布配置
+
+```python
+synthetic_config = {
+    "Type": "string",
+    "RequestCount": 1500,
+    "StringConfig": {
+        "Input": {
+            "Method": "zipf",    # 输入长尾分布
+            "Params": {
+                "Alpha": 1.2,
+                "MinValue": 10,
+                "MaxValue": 2000
+            }
+        },
+        "Output": {
+            "Method": "uniform",  # 输出均匀分布
+            "Params": {
+                "MinValue": 50,
+                "MaxValue": 300
+            }
+        }
+    }
+}
+```
+
+------
+
 ### 3.2 TokenId类型示例
 
 #### 长文本压力测试
@@ -180,34 +208,6 @@ synthetic_config = {
     "RequestCount": 5000,
     "TokenIdConfig": {
         "RequestSize": 128    # 短文本处理场景
-    }
-}
-```
-
-------
-
-### 3.3、混合分布配置
-
-```python
-synthetic_config = {
-    "Type": "string",
-    "RequestCount": 1500,
-    "StringConfig": {
-        "Input": {
-            "Method": "zipf",    # 输入长尾分布
-            "Params": {
-                "Alpha": 1.2,
-                "MinValue": 10,
-                "MaxValue": 2000
-            }
-        },
-        "Output": {
-            "Method": "uniform",  # 输出均匀分布
-            "Params": {
-                "MinValue": 50,
-                "MaxValue": 300
-            }
-        }
     }
 }
 ```

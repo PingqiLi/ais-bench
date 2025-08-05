@@ -1,10 +1,9 @@
 import importlib
+import pkg_resources
 from typing import Callable, List, Optional, Type, Union
 
 from mmengine.registry import METRICS as MMENGINE_METRICS
 from mmengine.registry import Registry as OriginalRegistry
-from ais_bench.benchmark.global_consts import CUSTOM_PACKAGE_DIR
-
 
 
 def load_class(class_path):
@@ -22,14 +21,18 @@ def load_class(class_path):
 
 def get_locations(module_dir):
     locations = [f'ais_bench.benchmark.{module_dir}']
-    if isinstance(CUSTOM_PACKAGE_DIR, List) and len(CUSTOM_PACKAGE_DIR) > 0:
-        for pkg_dir in CUSTOM_PACKAGE_DIR:
+    for entry_point in pkg_resources.iter_entry_points('ais_bench.benchmark_plugins'):
+        try:
+            pkg = entry_point.load()
+            pkg_dir = pkg.__name__
             custom_loc = f'{pkg_dir}.{module_dir}'
             try:
                 _ = __import__(custom_loc, fromlist=["*"])
                 locations.append(custom_loc)
             except ImportError:
                 continue
+        except Exception:
+            continue
     return locations
 
 
