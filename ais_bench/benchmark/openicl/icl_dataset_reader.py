@@ -10,7 +10,7 @@ from transformers import AutoTokenizer
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.registry import ICL_DATASET_READERS
 from ais_bench.benchmark.utils.types import (_check_dataset, _check_str,
-                                     _check_type_list)
+                                     _check_type_list, _check_meta_json_dict)
 
 
 @ICL_DATASET_READERS.register_module()
@@ -25,6 +25,8 @@ class DatasetReader:
             input field.
         output_column (:obj:`str`): A column name in the dataset that
             represents the prediction field.
+        meta_json_conf (:obj:`dict`): A config json combine with the instance of the
+            :obj:`CustomDataset` class, used to format the data output_config.
         input_template (:obj:`PromptTemplate`, optional): An instance of the
             :obj:`PromptTemplate` class, used to format the input field
             content during the retrieval process. (in some retrieval methods)
@@ -60,6 +62,7 @@ class DatasetReader:
                  input_columns: Union[List[str], str],
                  output_column: Optional[str],
                  max_tokens_column: Optional[str] = None,
+                 meta_json_conf: Optional[dict] = None,
                  input_template: Optional[PromptTemplate] = None,
                  output_template: Optional[PromptTemplate] = None,
                  train_split: str = 'train',
@@ -75,7 +78,8 @@ class DatasetReader:
         self.max_tokens_column = None
         if max_tokens_column:
             self.max_tokens_column = _check_str(max_tokens_column)
-        
+        if meta_json_conf:
+            self.meta_json_conf = _check_meta_json_dict(meta_json_conf)
         train_range = _check_type_list(train_range, [None, int, float, str])
         test_range = _check_type_list(test_range, [None, int, float, str])
 

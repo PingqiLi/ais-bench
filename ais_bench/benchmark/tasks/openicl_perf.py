@@ -147,6 +147,8 @@ class OpenICLPerfTask(BaseTask):
         self._set_default_value(inferencer_cfg, "batch_size", self.batch_size)
         self._set_default_value(inferencer_cfg, "num_prompts", self.num_prompts)
         inferencer_cfg["max_seq_len"] = self.model_cfg.get("max_seq_len")
+        if "meta_json_conf" in self.dataset_cfg['reader_cfg']:
+            inferencer_cfg["meta_json_conf"] = self.dataset_cfg['reader_cfg']["meta_json_conf"]
         self.inferencer = ICL_INFERENCERS.build(inferencer_cfg)
 
     def get_data_list(self):
