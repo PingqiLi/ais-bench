@@ -1,5 +1,6 @@
 # Copyright (c) 2024, LiveCodeBench and its contributors.
 # Copyright (c) 2023, OpenCompass and its contributors.
+# Copyright (c) 2025, AISBench and its contributors.
 
 import base64
 import json
@@ -114,7 +115,7 @@ class LCBCodeExecutionDataset(BaseDataset):
 
     @staticmethod
     def load(
-        path: str = 'opencompass/execution-v2',
+        path: str = 'ais_bench/datasets/execution-v2',
         local_mode: bool = False,
         cot: bool = False,
         # release_version: str = "release_v1"
@@ -148,7 +149,7 @@ class LCBTestOutputPredictionDataset(BaseDataset):
 
     @staticmethod
     def load(
-        path: str = 'opencompass/test_generation',
+        path: str = 'ais_bench/datasets/test_generation',
         local_mode: bool = False,
         # release_version: str = "release_v1"
     ):
@@ -221,7 +222,7 @@ class CompassBenchCodeExecutionDataset(BaseDataset):
 
     @staticmethod
     def load(
-        path: str = 'opencompass/execution-v2',
+        path: str = 'ais_bench/datasets/execution-v2',
         local_mode: bool = False,
         cot: bool = False,
         # release_version: str = "release_v1"
