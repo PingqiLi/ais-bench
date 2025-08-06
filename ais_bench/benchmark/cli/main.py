@@ -127,6 +127,7 @@ def parse_args():
 def parse_custom_dataset_args(custom_dataset_parser):
     """These args are all for the quick construction of custom datasets."""
     custom_dataset_parser.add_argument('--custom-dataset-path', type=str)
+    custom_dataset_parser.add_argument('--custom-dataset-meta-path', type=str)
     custom_dataset_parser.add_argument('--custom-dataset-data-type',
                                        type=str,
                                        choices=['mcq', 'qa'])

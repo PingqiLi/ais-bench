@@ -77,6 +77,8 @@ def get_config_from_arg(args) -> Config:
             dataset['infer_method'] = args.custom_dataset_infer_method
         if args.custom_dataset_data_type is not None:
             dataset['data_type'] = args.custom_dataset_data_type
+        if args.custom_dataset_meta_path is not None:
+            dataset['meta_path'] = args.custom_dataset_meta_path
         dataset = make_custom_dataset_config(dataset)
         datasets.append(dataset)
 

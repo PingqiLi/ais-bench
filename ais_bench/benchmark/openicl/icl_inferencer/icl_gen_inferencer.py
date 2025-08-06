@@ -11,12 +11,14 @@ from multiprocessing import RLock, freeze_support
 from typing import List, Optional, Tuple, Any
 import torch
 import shutil
+import numpy as np
 from tqdm import tqdm
 import itertools
 
 from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched, build_model_from_cfg
+from ais_bench.benchmark.utils.datasets import get_sample_data
 from ais_bench.benchmark.global_consts import WORKERS_NUM
 from ais_bench.benchmark.utils.types import convert_positive_integers
 
@@ -98,6 +100,7 @@ class GenInferencer(BaseInferencer):
         self.stopping_criteria = stopping_criteria
         self.dump_timer = kwargs.get('dump_timer', False)
         self.disable_cb = kwargs.get("disable_cb", False)
+        self.meta_json_conf = kwargs.get("meta_json_conf", {})
 
         if self.model.is_api and save_every is None:
             save_every = 1
@@ -426,7 +429,26 @@ class GenInferencer(BaseInferencer):
                     prompt_token_num = self.model.get_token_len_from_template(
                         prompt, mode='gen')
             prompt_list.append(prompt)
-        return prompt_list
+        sample_mode = self.meta_json_conf.get("sampling_mode", "default")
+        request_count = self.meta_json_conf.get("request_count", None)
+        sample_prompt_list = get_sample_data(prompt_list, sample_mode, request_count)
+        return sample_prompt_list
+
+    def get_max_token_list_from_meta_json_file(self, output_config: dict, prompt_length):
+        method = output_config["method"]
+        params = output_config["params"]
+        if method == "uniform":
+            return np.random.uniform(params["min_value"], params["max_value"], prompt_length)
+        elif method == "percentage":
+            max_token_list = []
+            for max_tokens, rate in params["percentage_distribute"]:
+                max_token_list.extend([max_tokens] * round(rate * prompt_length))
+            # TODO Fix the situation where the product is not rounded
+            if len(max_token_list) < prompt_length:
+                max_token_list.extend([params["percentage_distribute"][-1][0]] * (prompt_length - len(max_token_list)))
+            return max_token_list
+        else:
+            raise ValueError(f"Unsupport data distribution types: {method}")
 
 
 @ICL_INFERENCERS.register_module()

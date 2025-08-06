@@ -132,6 +132,8 @@ def make_mcq_gen_config(meta):
         reader_cfg.update({'max_tokens_column':max_tokens_column})
     if 'test_range' in meta:
         reader_cfg['test_range'] = meta['test_range']
+    if 'meta_path' in meta:
+        reader_cfg['meta_json_conf'] = meta['meta_json_conf']
     infer_cfg = dict(
         prompt_template=dict(
             type=PromptTemplate,
@@ -177,6 +179,9 @@ def make_qa_gen_config(meta):
         reader_cfg.update({'max_tokens_column':max_tokens_column})
     if 'test_range' in meta:
         reader_cfg['test_range'] = meta['test_range']
+    # custom meta.json configurations will be loaded only after the user has configured 'custom-dataset-meta-path' param
+    if 'meta_path' in meta:
+        reader_cfg['meta_json_conf'] = meta['meta_json_conf']
     infer_cfg = dict(
         prompt_template=dict(
             type=PromptTemplate,
@@ -244,6 +249,18 @@ def parse_example_dataset(config):
     parsed_meta['abbr'] = abbr
     parsed_meta['data_type'] = 'mcq' if len(options) > 1 else 'qa'
     parsed_meta['infer_method'] = 'gen'
+
+    # try to read meta json
+    meta_path = config.get('meta_path', path + '.meta.json')
+    if os.path.exists(meta_path):
+        with open(meta_path, 'r', encoding='utf-8') as f:
+            read_from_file_meta = json.load(f)
+    else:
+        if "meta_path" in config: 
+            # user set custom-dataset-meta-path does not exists
+            raise ValueError(f'The file path specified by parameter "custom-dataset-meta-path" does not exist: {meta_path}')
+        read_from_file_meta = {}
+    parsed_meta['meta_json_conf'] = read_from_file_meta
 
     # get config meta
     config_meta = copy.deepcopy(config)

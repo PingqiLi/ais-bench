@@ -1,9 +1,11 @@
 from typing import Any, Dict, List, Union
-
+from decimal import Decimal
 from datasets import Dataset, DatasetDict
 from mmengine.config import Config
 
 from ais_bench.benchmark.registry import TASKS
+from ais_bench.benchmark.utils import get_logger
+logger = get_logger()
 
 
 def get_type_from_cfg(cfg: Union[Config, Dict]) -> Any:
@@ -59,6 +61,114 @@ def _check_dict(obj) -> Dict:
         return obj
     else:
         raise TypeError(f'Expected a Dict object, but got {obj}')
+
+
+def _check_max_token_value(obj) -> bool:
+    if isinstance(obj, int):
+        return True
+    elif isinstance(obj, str) and obj.isdigit():
+        return True if int(obj) > 0 else False
+    else:
+        return False
+
+
+def _check_percentage_float(obj) -> bool:
+    if isinstance(obj, str):
+        try:
+            float(obj)
+        except ValueError:
+            return False
+    elif float(obj) > 0 and float(obj) <= 1:
+        return True
+    else:
+        return False
+
+
+def _check_meta_json_dict(obj) -> Dict:
+    VALID_KEY_VALUE_TYPES = {
+        "output_config": {
+            "method": str,
+            "params": {
+                "min_value": Union[int, str],
+                "max_value": Union[int, str],
+                "percentage_distribute": list,
+            }
+        },
+        "request_count": Union[int, str],
+        "sampling_mode": str
+    }
+
+    def validate_recursive(data, valid_key_value_types):
+        data = _check_dict(data)
+        extra_keys = set(data.keys()) - set(valid_key_value_types.keys())
+        if extra_keys:
+            raise ValueError(f"There are illegal keys: {', '.join(extra_keys)}")
+        for key, value in data.items():
+            expected_type = valid_key_value_types[key]
+
+            if isinstance(expected_type, dict):
+                # deal with nested condition
+                validate_recursive(value, expected_type)
+            elif hasattr(expected_type, '__origin__') and expected_type.__origin__ is Union:
+                if not isinstance(value, expected_type.__args__):
+                    raise TypeError(f"Expected type: {expected_type}, but got {type(value)}")
+            elif not isinstance(value, expected_type):
+                raise TypeError(f"Expected type: {expected_type}, but got {type(value)}")
+            else:
+                continue
+    validate_recursive(obj, VALID_KEY_VALUE_TYPES)
+    return obj
+
+
+def _check_percentage_distribute(obj) -> bool:
+    if not isinstance(obj, list):
+        return False
+    is_shape_valid = True
+    percentage_sum = Decimal('0.0')
+    is_value_valid = True
+    for i in obj:
+        if not isinstance(i, list) or len(i) != 2:
+            is_shape_valid = False
+            break
+        if (not _check_max_token_value(i[0])) or (not _check_percentage_float(i[1])):
+            is_value_valid = False
+        percentage_sum += Decimal(str(i[1]))
+    if is_shape_valid and is_value_valid and percentage_sum == 1:
+        return True
+    return False
+
+
+def _check_output_config_from_meta_json(obj) -> bool:
+    if obj == {} or "output_config" not in obj:
+        return False
+    output_config = obj["output_config"]
+    method = output_config.get("method", None)
+    param = output_config.get("params", None)
+    if not param:
+        raise ValueError("Make sure to set the 'params' parameter in the 'output_config'.")
+    if method == "uniform":
+        if "min_value" in param and "max_value" in param:
+            if _check_max_token_value(param["min_value"]) and _check_max_token_value(param["max_value"]):
+                return True
+            raise ValueError("Please make sure that the value of parameter 'min_value' and 'max_value' can be converted to int.")
+        else:
+            raise ValueError("When the uniform distribution is set, parameter 'min_value' and 'max_value' must be provided.")
+    elif method == "percentage":
+        if "percentage_distribute" not in param:
+            raise ValueError("When the percentage distribution is set, parameter 'percentage_distribute' must be provided.")
+        if not _check_percentage_distribute(param["percentage_distribute"]):
+            err_msg = '''
+            Ensure the configuration data follows the format [max_tokens, percentage], where:
+            - 'max_tokens' must be a positive number (greater than 0).
+            - 'percentage' must be a float between 0 and 1 (greater than 0 and inclusive 1).
+            - The sum of all 'percentage' values must equal exactly 1.
+            Example valid format: [[1000, 0.5],[500,0.5]] or [[2000, 1.0]]
+            Example invalid formats: [[0, 0.5]] (max_tokens <= 0), [[1000, 1.5]] (percentage > 1), [[1000, 0.3], [500,0.2]] (sum not 1)
+            '''
+            raise ValueError(err_msg)
+        return True
+    else:
+        raise ValueError(f"Type of data distribution: {method} Not supported.")
 
 
 def convert_positive_integers(str_list:List[str], list_name:str = "") -> List[int]:
