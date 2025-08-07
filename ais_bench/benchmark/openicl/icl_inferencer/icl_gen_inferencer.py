@@ -5,6 +5,7 @@ import json
 import os
 import os.path as osp
 import time
+import math
 import multiprocessing
 from pathlib import Path
 from multiprocessing import RLock, freeze_support
@@ -20,7 +21,7 @@ from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched, build_model_from_cfg
 from ais_bench.benchmark.utils.datasets import get_sample_data
 from ais_bench.benchmark.global_consts import WORKERS_NUM
-from ais_bench.benchmark.utils.types import convert_positive_integers
+from ais_bench.benchmark.utils.types import convert_positive_integers, _check_output_config_from_meta_json
 
 from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
@@ -283,11 +284,19 @@ class GenInferencer(BaseInferencer):
         ds_reader = retriever.dataset_reader
         if ds_reader.output_column:
             gold_ans = ds_reader.dataset['test'][ds_reader.output_column]
-            prompt_list = list(zip(prompt_list, gold_ans))
+            if len(prompt_list) != len(gold_ans):
+                # FIXME appears only in performance testing scenarios for custom datasets
+                prompt_list = list(zip(prompt_list, ["" for _ in range(len(prompt_list))]))
+            else:
+                prompt_list = list(zip(prompt_list, gold_ans))
         if ds_reader.max_tokens_column:
             self.max_out_lens:List[int] = convert_positive_integers(ds_reader.dataset['test'][ds_reader.max_tokens_column],
                                                                     ds_reader.max_tokens_column)
-
+        elif _check_output_config_from_meta_json(self.meta_json_conf):
+            self.max_out_lens = self.get_max_token_list_from_meta_json_file(self.meta_json_conf["output_config"],
+                                                                            len(prompt_list))
+        else:
+            logger.info("Use model defined 'max_out_len' to control model max_out_tokens.")
         extra_gen_kwargs = self._build_extra_gen_kwargs()
         num_return_sequences = getattr(self.model, 'generation_kwargs', {}).get('num_return_sequences', 1)
         all_success = True
@@ -430,22 +439,30 @@ class GenInferencer(BaseInferencer):
                         prompt, mode='gen')
             prompt_list.append(prompt)
         sample_mode = self.meta_json_conf.get("sampling_mode", "default")
-        request_count = self.meta_json_conf.get("request_count", None)
-        sample_prompt_list = get_sample_data(prompt_list, sample_mode, request_count)
+        request_count = self.meta_json_conf.get("request_count", 0)
+        sample_prompt_list = get_sample_data(prompt_list, sample_mode, int(request_count))
         return sample_prompt_list
 
     def get_max_token_list_from_meta_json_file(self, output_config: dict, prompt_length):
         method = output_config["method"]
         params = output_config["params"]
+        logger.info("Distribution Summary: ")
         if method == "uniform":
-            return np.random.uniform(params["min_value"], params["max_value"], prompt_length)
+            logger.info(f"--uniform distribution with min_value: {params['min_value']}, max_value: {params['max_value']}")
+            max_token_list = np.random.uniform(params["min_value"], params["max_value"], prompt_length)
+            return [round(token) for token in max_token_list]
         elif method == "percentage":
             max_token_list = []
+            show_log_info = []
             for max_tokens, rate in params["percentage_distribute"]:
-                max_token_list.extend([max_tokens] * round(rate * prompt_length))
-            # TODO Fix the situation where the product is not rounded
+                max_token_list.extend([max_tokens] * math.floor(rate * prompt_length))
+                show_log_info.append([max_tokens, rate*100, math.floor(rate * prompt_length)])
+            # TODO Fix the situation where the product is not integer
             if len(max_token_list) < prompt_length:
                 max_token_list.extend([params["percentage_distribute"][-1][0]] * (prompt_length - len(max_token_list)))
+                show_log_info[-1][2] += prompt_length - len(max_token_list)
+            for out_token_len, rate, request_num in show_log_info:
+                logger.info("--max_out_token: {},  ratio: {:.1f}%,  request_num: {}".format(out_token_len, rate, request_num))
             return max_token_list
         else:
             raise ValueError(f"Unsupport data distribution types: {method}")

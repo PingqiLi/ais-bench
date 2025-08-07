@@ -81,7 +81,11 @@ class GenMergedInferencer(GenInferencer):
         ds_reader = retriever.dataset_reader
         if ds_reader.output_column:
             gold_ans = ds_reader.dataset["test"][ds_reader.output_column]
-            prompt_list = list(zip(prompt_list, gold_ans))
+            if len(prompt_list) != len(gold_ans):
+                # FIXME appears only in performance testing scenarios for custom datasets
+                prompt_list = list(zip(prompt_list, ["" for _ in range(len(prompt_list))]))
+            else:
+                prompt_list = list(zip(prompt_list, gold_ans))
         if ds_reader.max_tokens_column:
             self.max_out_lens:List[int] = convert_positive_integers(ds_reader.dataset['test'][ds_reader.max_tokens_column],
                                                                     ds_reader.max_tokens_column)

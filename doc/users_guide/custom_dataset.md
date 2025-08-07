@@ -70,6 +70,7 @@ question,answer
 | ----- | ----- | ---- |
 |--models|和普通数据集使用方式一致，指定模型推理后端任务名称（对应ais_bench/benchmark/configs/models路径下一个已经实现的默认模型配置文件），支持传入多个任务名称，支持的任务范围请参考父级目录的README中使用普通数据集为例的方式，"命令行指定模型和数据集" ("[AISBench benchmark评测工具](../README.md)"中的"命令行指定模型和数据集"章节) 方式的必选配置，与"配置文件指定模型和数据集" ("[AISBench benchmark评测工具](../README.md)"中的"配置文件指定模型和数据集"章节) 方式的"config"参数二选一|--models vllm_api_general|
 |--custom-dataset-path|指定自定义数据集路径（支持绝对/相对路径），当`--datasets`配置时，该参数无效，默认未配置|--custom-dataset-path xxx/test_mcq.csv|
+|--custom-dataset-meta-path|指定数据集补充信息.meta.json文件路径（支持绝对/相对路径）|--custom-dataset-meta-path xxx/test_mcq.csv.meta.json|
 |--custom-dataset-data-type|指定自定义数据集的任务类型，目前支持选项[`mcq`,`qa`]，表示选择题类型(`mcq`) 和问答题类型 (`qa`) 两种，未配置时会根据数据集格式自动识别类型，配置时则根据填入参数进行对应格式的解析|--custom-dataset-data-type mcq|
 |--custom-dataset-infer-method|指定自定义数据集的推理类型，目前仅支持选项[`gen`]，未配置时默认为`gen`|--custom-dataset-infer-method gen|
 
@@ -120,6 +121,44 @@ datasets = [
 ]
 ```
 
+## 数据集补充信息`.meta.json`使用指南
+目前仅支持性能测评场景。ais_bench 会默认尝试对输入的数据集文件进行解析，因此在绝大多数情况下，`.meta.json` 文件都是 **不需要** 的。但是，如果原生数据集中没有指定max_tokens，或者需要通过配置进行数据采样等，则需要在 `.meta.json` 文件中进行指定。
+
+我们会在数据集同级目录下，以文件名+`.meta.json` 的形式放置一个表征数据集使用方法的文件，样例文件结构如下：
+```tree
+.
+├── test_mcq.csv
+├── test_mcq.csv.meta.json
+├── test_qa.jsonl
+└── test_qa.jsonl.meta.json
+```
+当前支持字段如下：
+- `request_count` (str or int): 最终数据集生成request_count条case，数量不足则循环填充，数量超过则截取前request_count条，不设置默认原始数据集的长度。
+- `sampling_mode` (str): 采样数据集的模式，可选值为 `shuffle`、`random`、`default`.
+- `output_config` : 控制每条请求中模型输出等相关选项。
+- `method` (str): 数据分布的类型，可选值为 `uniform`(均匀分布)、`percentage`（百分比分布）。
+- `params` (str): 数据分布设置的参数。
+- `min_value` (str or int): 生成数据最小长度，当method: uniform有效。
+- `max_value` (str or int): 生成数据最大长度，当method: uniform有效。
+- `percentage_distribute` (list): 生成输出长度的百分比分布，当method: percentage有效，格式为二维数组，其中第一个元素表示输出长度，第二个元素表示百分比。
+
+样例如下：
+```json
+{
+    "output_config": {
+        "method": "percentage",
+        "params": {
+            "percentage_distribute": [
+                [100, 0.5],
+                [200, 0.3],
+                [400, 0.2]
+            ]
+        }
+    },
+    "request_count": "10",
+    "sampling_mode": "shuffle"
+}
+```
 ## 特殊字段
 
 ### 最大输出长度：`max_tokens`
