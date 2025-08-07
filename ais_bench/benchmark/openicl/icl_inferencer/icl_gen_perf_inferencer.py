@@ -91,7 +91,11 @@ class GenPerfInferencer(GenInferencer):
             logger.info("Use model defined 'max_out_len' to control model max_out_tokens.")
         if ds_reader.output_column:
             gold_ans = ds_reader.dataset["test"][ds_reader.output_column]
-            prompt_list = list(zip(prompt_list, gold_ans))
+            if len(prompt_list) != len(gold_ans):
+                # FIXME appears only in performance testing scenarios for custom datasets
+                prompt_list = list(zip(prompt_list, ["" for _ in range(len(prompt_list))]))
+            else:
+                prompt_list = list(zip(prompt_list, gold_ans))
         entry = [p[0] for p in prompt_list] if ds_reader.output_column else prompt_list
         golds = (
             [p[1] for p in prompt_list]

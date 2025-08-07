@@ -45,7 +45,7 @@ def get_data_path(dataset_path: str, local_mode: bool = True):
         raise TypeError('Customized dataset path type is not a absolute path!')
 
 
-def get_sample_data(prompt_list: list, sample_mode: str = "default", request_count: int = None):
+def get_sample_data(prompt_list: list, sample_mode: str = "default", request_count: int = 0):
     if not request_count:
         logger.info("If u do not provide 'request_count' when using custom-dataset sampling feature, "
                        "we will sample all available data by default.")

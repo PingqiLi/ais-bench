@@ -63,11 +63,11 @@ def _check_dict(obj) -> Dict:
         raise TypeError(f'Expected a Dict object, but got {obj}')
 
 
-def _check_max_token_value(obj) -> bool:
-    if isinstance(obj, int):
+def _check_positive_int_value(obj) -> bool:
+    if isinstance(obj, str) and not obj.isdigit():
+        return False
+    if int(obj) > 0:
         return True
-    elif isinstance(obj, str) and obj.isdigit():
-        return True if int(obj) > 0 else False
     else:
         return False
 
@@ -117,6 +117,9 @@ def _check_meta_json_dict(obj) -> Dict:
             else:
                 continue
     validate_recursive(obj, VALID_KEY_VALUE_TYPES)
+    if "request_count" in obj:
+        if not _check_positive_int_value(obj["request_count"]):
+            raise ValueError("Please make sure that the value of parameter 'request_count' can be converted to int(greater than 0).")
     return obj
 
 
@@ -130,7 +133,7 @@ def _check_percentage_distribute(obj) -> bool:
         if not isinstance(i, list) or len(i) != 2:
             is_shape_valid = False
             break
-        if (not _check_max_token_value(i[0])) or (not _check_percentage_float(i[1])):
+        if (not _check_positive_int_value(i[0])) or (not _check_percentage_float(i[1])):
             is_value_valid = False
         percentage_sum += Decimal(str(i[1]))
     if is_shape_valid and is_value_valid and percentage_sum == 1:
@@ -148,9 +151,9 @@ def _check_output_config_from_meta_json(obj) -> bool:
         raise ValueError("Make sure to set the 'params' parameter in the 'output_config'.")
     if method == "uniform":
         if "min_value" in param and "max_value" in param:
-            if _check_max_token_value(param["min_value"]) and _check_max_token_value(param["max_value"]):
+            if _check_positive_int_value(param["min_value"]) and _check_positive_int_value(param["max_value"]):
                 return True
-            raise ValueError("Please make sure that the value of parameter 'min_value' and 'max_value' can be converted to int.")
+            raise ValueError("Please make sure that the value of parameter 'min_value' and 'max_value' can be converted to int(greater than 0).")
         else:
             raise ValueError("When the uniform distribution is set, parameter 'min_value' and 'max_value' must be provided.")
     elif method == "percentage":
