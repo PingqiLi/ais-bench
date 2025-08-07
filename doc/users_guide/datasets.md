@@ -30,11 +30,14 @@ AISBench Benchmark当前支持的数据集类型如下：
 | lambada          | 长文本完形填空         | [详细介绍](../../ais_bench/benchmark/configs/datasets/lambada/README.md) |
 | lcsts            | 中文文本摘要          | [详细介绍](../../ais_bench/benchmark/configs/datasets/lcsts/README.md) |
 | livecodebench    | 编程（实时代码）       | [详细介绍](../../ais_bench/benchmark/configs/datasets/livecodebench/README.md) |
+| longbench        | 长序列                | [详细介绍](../../ais_bench/benchmark/configs/datasets/longbench/README.md) |
+| longbenchv2        | 长序列                | [详细介绍](../../ais_bench/benchmark/configs/datasets/longbenchv2/README.md) |
 | math             | 高级数学推理          | [详细介绍](../../ais_bench/benchmark/configs/datasets/math/README.md) |
 | mbpp             | 编程（Python）         | [详细介绍](../../ais_bench/benchmark/configs/datasets/mbpp/README.md) |
 | mgsm             | 多语言数学推理        | [详细介绍](../../ais_bench/benchmark/configs/datasets/mgsm/README.md) |
 | mmlu             | 多学科理解（英文）     | [详细介绍](../../ais_bench/benchmark/configs/datasets/mmlu/README.md) |
 | mmlu_pro         | 多学科理解（专业版）   | [详细介绍](../../ais_bench/benchmark/configs/datasets/mmlu_pro/README.md) |
+| needlebench_v2      | 长序列                | [详细介绍](../../ais_bench/benchmark/configs/datasets/needlebench_v2/README.md) |
 | piqa             | 物理常识推理          | [详细介绍](../../ais_bench/benchmark/configs/datasets/piqa/README.md) |
 | siqa             | 社会常识推理          | [详细介绍](../../ais_bench/benchmark/configs/datasets/siqa/README.md) |
 | triviaqa         | 知识问答              | [详细介绍](../../ais_bench/benchmark/configs/datasets/triviaqa/README.md) |
