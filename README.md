@@ -106,7 +106,7 @@ ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_ch
 
 - `--datasets`: 📚 [开源数据集](doc/users_guide/datasets.md#开源数据集) → 📚 [详细介绍](ais_bench/benchmark/configs/datasets/demo/README.md)
 
-- `--summarizer`: 📚 [结果汇总任务](doc/users_guide/#支持的结果汇总任务)
+- `--summarizer`: 📚 [结果汇总任务](doc/users_guide/summarizer.md#支持的结果汇总任务)
 
 ### 运行命令前置准备
 - `--models`: 使用`vllm_api_general_chat`模型任务，需要准备支持`v1/chat/completions`子服务的推理服务，可以参考🔗 [VLLM启动OpenAI 兼容服务器](https://docs.vllm.com.cn/en/latest/getting_started/quickstart.html#openai-compatible-server)启动推理服务
