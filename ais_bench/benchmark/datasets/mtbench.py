@@ -27,9 +27,9 @@ class MTBenchDataset(BaseDataset):
                 data = json.loads(line.strip())
                 chat = {"human":[], "gpt":[]}
                 chat['id'] = data['question_id']
-                total_len = len(data["turns"])
+                total_len = len(data["prompt"])
                 cnt_turn += total_len
-                for turn in data["turns"]:
+                for turn in data["prompt"]:
                     chat['human'].append(turn)
                     chat['gpt'].append({"data": "xxx"})
                 dataset.append(chat)
