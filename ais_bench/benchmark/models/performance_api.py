@@ -5,6 +5,7 @@ import multiprocessing
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 from tqdm import tqdm
+import copy
 
 from ais_bench.benchmark.utils.results import MiddleData
 from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
@@ -39,6 +40,8 @@ class PerformanceAPIModel(BaseAPIModel):
         self.client = None
         self.tokenizer: Optional[BenchmarkTokenizer] = None
         self.result_cache: Dict[str, MiddleData] = defaultdict(MiddleData)
+        self.result_backup = []
+
         self.trust_remote_code = trust_remote_code
 
     def set_performance(self) -> None:
@@ -86,6 +89,8 @@ class PerformanceAPIModel(BaseAPIModel):
             )
             data.is_empty = True
         data.is_success = True
+        if data.is_success:
+            self.result_backup.append(data)
 
     def encode(self, prompt: str) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
@@ -154,6 +159,33 @@ class PerformanceAPIModel(BaseAPIModel):
             self.logger.info("Finish converting origin data to detailed data")
         except Exception as e:
             self.logger.error(f"Error converting origin data to detailed data: {e}")
+        finally:
+            self.result_cache.clear()
+        return performance_data
+
+    def get_performance_data_backup(self) -> List[Dict[str, Any]]:
+        """Retrieve performance data from cached results."""
+        if self.do_performance:
+            if self.tqdm_pos < 0:
+                pos = None
+            else:
+                pos = 3 * self.tqdm_pos + 2
+            for cache_data in tqdm(self.result_backup, desc="Encoding output text...", position=pos, total=len(self.result_backup)):
+                self.encode_input_data(cache_data)
+                if cache_data.num_generated_tokens >= 1:
+                    continue
+                time_cost, tokens = self.encode(cache_data.output)
+                cache_data.num_generated_tokens = len(tokens)
+        performance_data = []
+        try:
+            self.logger.info("Start converting backup data to detailed data ...")
+            performance_data = [
+                cache_data.convert_to_performance_data()
+                for cache_data in self.result_cache.values()
+            ]
+            self.logger.info("Finish converting backup data to detailed data")
+        except Exception as e:
+            self.logger.error(f"Error converting backup data to detailed data: {e}")
         finally:
             self.result_cache.clear()
         return performance_data

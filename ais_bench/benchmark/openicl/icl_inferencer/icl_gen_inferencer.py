@@ -42,6 +42,8 @@ def submit_single_model(model_cfg, mp_queue, **extra_gen_kwargs):
     )
     if not hasattr(model, "set_performance"):
         raise AttributeError(f'{model} has no except outputs, please check model config')
+    if model.interrupted:
+        return model.get_performance_data_backup()
     return model.get_performance_data()
 
 
@@ -199,7 +201,26 @@ class GenInferencer(BaseInferencer):
                                         )
                 async_results.append(res)
             pool.close()
-            pool.join()
+            try:
+                pool.join()
+            except KeyboardInterrupt:
+                logger.warning(f"Request posting interrupted by User!")
+                logger.warning(f"Detect interruption, waiting for subprocess finish current task ...")
+                # Check whether process is finished
+                import time
+                start_time = time.time()
+                timeout = 300  # 5 min
+                while True:
+                    all_done = all(res.ready() for res in async_results)
+                    if all_done:
+                        break
+                    if time.time() - start_time > timeout:
+                        logger.warning(f"Timeout {timeout}s, force terminate remaining process")
+                        pool.terminate()
+                        break
+                    time.sleep(1)
+                pool.join()  # Insure that resource is released
+
             iterables = [res for res in async_results]
             results = list(itertools.chain.from_iterable(res.get() for res in iterables))
         return results
