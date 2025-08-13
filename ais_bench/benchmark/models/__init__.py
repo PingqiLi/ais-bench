@@ -8,3 +8,4 @@ from ais_bench.benchmark.models.huggingface_above_v4_33 import HuggingFaceBaseMo
 from ais_bench.benchmark.models.tgi_api import TGICustomAPI, TGICustomAPIStream
 from ais_bench.benchmark.models.triton_api import TritonCustomAPI, TritonCustomAPIStream
 from ais_bench.benchmark.models.vllm_custom_api_chat_multiturn import VllmMultiturnAPIChatStream
+from ais_bench.benchmark.models.vllm_function_call_api_chat import VLLMFunctionCallAPIChat
