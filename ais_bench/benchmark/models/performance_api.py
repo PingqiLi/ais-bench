@@ -181,7 +181,7 @@ class PerformanceAPIModel(BaseAPIModel):
             self.logger.info("Start converting backup data to detailed data ...")
             performance_data = [
                 cache_data.convert_to_performance_data()
-                for cache_data in self.result_cache.values()
+                for cache_data in self.result_backup
             ]
             self.logger.info("Finish converting backup data to detailed data")
         except Exception as e:
