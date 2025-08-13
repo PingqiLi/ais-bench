@@ -20,7 +20,7 @@ from ais_bench.benchmark.utils.build import build_model_from_cfg
 from ais_bench.benchmark.global_consts import WORKERS_NUM
 from ..utils.logging import get_logger
 from .icl_base_inferencer import GenInferencerOutputHandler
-from ais_bench.benchmark.utils.results import dump_results_dict, fast_dump_results_dict
+from ais_bench.benchmark.utils.results import dump_results_dict, fast_dump_results_dict, dump_list_as_h5
 from .icl_gen_perf_inferencer import GenPerfInferencer
 from .icl_gen_inferencer import DEFAULT_MAX_CONCURRENCY_PER_PROCESS
 
@@ -181,6 +181,11 @@ class GenPressureInferencer(GenPerfInferencer):
             }
             logger.info("Dumping detail perf data ...")
             dump_start = time.perf_counter()
+            dump_list_as_h5(
+                perf_details["requests"]["decode_token_latencies"],
+                osp.join(output_filepath, output_filename + "_details.h5")
+            )
+            del perf_details["requests"]["decode_token_latencies"]
             fast_dump_results_dict(
                 perf_details,
                 osp.join(output_filepath, output_filename + "_details.json"),

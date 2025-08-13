@@ -78,7 +78,6 @@ class PerformanceAPIModel(BaseAPIModel):
             self.logger.error(f"Error encoding input data: {e}")
             time_cost, token_id = 0.0, []
             cache_data.num_input_chars = 0
-        cache_data.input_token_id = token_id
         cache_data.num_input_tokens = len(token_id)
 
     def set_result(self, data: MiddleData) -> None:

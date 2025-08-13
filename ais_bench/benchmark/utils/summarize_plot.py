@@ -82,7 +82,7 @@ def preprocess_data(
     # 因为end_time_list因为打点位置会有误差，需用first_token_time_list的值修正
     # 仅在非流式场景修正结束时间
     if not is_non_streaming:
-        no_decode_indices = [i for i, lst in enumerate(decode_token_latencies_list) if not lst]
+        no_decode_indices = [i for i, lst in enumerate(decode_token_latencies_list) if not lst.any()]
         if no_decode_indices:
             end[no_decode_indices] = first_token_times[no_decode_indices]
             get_logger().debug(f"Adjusted {len(no_decode_indices)} requests with no decode tokens")
@@ -117,7 +117,7 @@ def generate_timeline_traces(
             first_index_lookup[val] = len(unique_ids)
             unique_ids.append(val)
         index_map.append(first_index_lookup[val])
-    
+
     # unique_ids, index_map = np.unique(multiturn_group_id_list, return_inverse=True)
     is_multiturn = True if unique_ids[0] else False
     if is_multiturn:
