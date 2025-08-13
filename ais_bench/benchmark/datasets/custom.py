@@ -12,6 +12,8 @@ from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.registry import LOAD_DATASET
 from ais_bench.benchmark.utils import get_data_path
+from ais_bench.benchmark.utils.datasets import get_sample_data
+from ais_bench.benchmark.utils.types import check_meta_json_dict
 
 from .base import BaseDataset
 
@@ -86,7 +88,7 @@ class OptionSimAccEvaluator(BaseEvaluator):
 class CustomDataset(BaseDataset):
 
     @staticmethod
-    def load(path, file_name=None, local_mode=False):
+    def load(path, file_name=None, local_mode=False, meta_json_conf=None):
         path = get_data_path(path, local_mode=True)
         if file_name is not None:
             path = os.path.join(path, file_name)
@@ -100,8 +102,12 @@ class CustomDataset(BaseDataset):
                 data = [dict(zip(header, row)) for row in reader]
         else:
             raise ValueError(f'Unsupported file format: {path}')
-
-        return Dataset.from_list(data)
+        if meta_json_conf is not None:
+            meta_json_conf = check_meta_json_dict(meta_json_conf)
+        sample_mode = meta_json_conf.get('sampling_mode', 'default')
+        request_count = meta_json_conf.get('request_count', 0)
+        sample_data = get_sample_data(data, sample_mode, int(request_count))
+        return Dataset.from_list(sample_data)
 
 
 def stringfy_types(obj):
@@ -132,8 +138,6 @@ def make_mcq_gen_config(meta):
         reader_cfg.update({'max_tokens_column':max_tokens_column})
     if 'test_range' in meta:
         reader_cfg['test_range'] = meta['test_range']
-    if 'meta_path' in meta:
-        reader_cfg['meta_json_conf'] = meta['meta_json_conf']
     infer_cfg = dict(
         prompt_template=dict(
             type=PromptTemplate,
@@ -157,6 +161,7 @@ def make_mcq_gen_config(meta):
         reader_cfg=reader_cfg,
         infer_cfg=infer_cfg,
         eval_cfg=eval_cfg,
+        meta_json_conf=meta['meta_json_conf'],
     )
     return dataset
 
@@ -179,9 +184,6 @@ def make_qa_gen_config(meta):
         reader_cfg.update({'max_tokens_column':max_tokens_column})
     if 'test_range' in meta:
         reader_cfg['test_range'] = meta['test_range']
-    # custom meta.json configurations will be loaded only after the user has configured 'custom-dataset-meta-path' param
-    if 'meta_path' in meta:
-        reader_cfg['meta_json_conf'] = meta['meta_json_conf']
     infer_cfg = dict(
         prompt_template=dict(
             type=PromptTemplate,
@@ -204,6 +206,7 @@ def make_qa_gen_config(meta):
         reader_cfg=reader_cfg,
         infer_cfg=infer_cfg,
         eval_cfg=eval_cfg,
+        meta_json_conf=meta['meta_json_conf'],
     )
     return dataset
 

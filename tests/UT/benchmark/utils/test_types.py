@@ -1,5 +1,5 @@
 import unittest
-from ais_bench.benchmark.utils.types import _check_meta_json_dict, _check_output_config_from_meta_json 
+from ais_bench.benchmark.utils.types import check_meta_json_dict, _check_output_config_from_meta_json 
 
 
 class TestCheckMetaJsonDict(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestCheckMetaJsonDict(unittest.TestCase):
             "request_count": 100,
             "sampling_mode": "default"
         }
-        result = _check_meta_json_dict(valid_input)
+        result = check_meta_json_dict(valid_input)
         self.assertEqual(result, valid_input)
 
     def test_valid_minimal_structure(self):
@@ -32,7 +32,7 @@ class TestCheckMetaJsonDict(unittest.TestCase):
             "request_count": "50",
             "sampling_mode": "random"
         }
-        result = _check_meta_json_dict(valid_input)
+        result = check_meta_json_dict(valid_input)
         self.assertEqual(result, valid_input)
 
     def test_invalid_extra_keys(self):
@@ -51,7 +51,7 @@ class TestCheckMetaJsonDict(unittest.TestCase):
             "extra_top_key": "value"
         }
         with self.assertRaises(ValueError):
-            _check_meta_json_dict(invalid_input)
+            check_meta_json_dict(invalid_input)
 
     def test_invalid_type_output_config_method(self):
         invalid_input = {
@@ -67,7 +67,7 @@ class TestCheckMetaJsonDict(unittest.TestCase):
             "sampling_mode": "default"
         }
         with self.assertRaises(TypeError):
-            _check_meta_json_dict(invalid_input)
+            check_meta_json_dict(invalid_input)
 
     def test_invalid_type_request_count(self):
         invalid_input = {
@@ -83,7 +83,7 @@ class TestCheckMetaJsonDict(unittest.TestCase):
             "sampling_mode": "default"
         }
         with self.assertRaises(TypeError):
-            _check_meta_json_dict(invalid_input)
+            check_meta_json_dict(invalid_input)
 
     def test_invalid_type_percentage_distribute(self):
         invalid_input = {
@@ -99,7 +99,7 @@ class TestCheckMetaJsonDict(unittest.TestCase):
             "sampling_mode": "default"
         }
         with self.assertRaises(TypeError):
-            _check_meta_json_dict(invalid_input)
+            check_meta_json_dict(invalid_input)
 
 
 class TestCheckOutputConfigFromMetaJson(unittest.TestCase):

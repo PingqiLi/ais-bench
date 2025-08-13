@@ -84,7 +84,7 @@ def _check_percentage_float(obj) -> bool:
         return False
 
 
-def _check_meta_json_dict(obj) -> Dict:
+def check_meta_json_dict(obj) -> Dict:
     VALID_KEY_VALUE_TYPES = {
         "output_config": {
             "method": str,

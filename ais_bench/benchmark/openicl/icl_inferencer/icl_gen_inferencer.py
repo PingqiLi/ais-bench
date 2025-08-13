@@ -19,7 +19,6 @@ import itertools
 from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched, build_model_from_cfg
-from ais_bench.benchmark.utils.datasets import get_sample_data
 from ais_bench.benchmark.global_consts import WORKERS_NUM
 from ais_bench.benchmark.utils.types import convert_positive_integers, _check_output_config_from_meta_json
 
@@ -305,11 +304,7 @@ class GenInferencer(BaseInferencer):
         ds_reader = retriever.dataset_reader
         if ds_reader.output_column:
             gold_ans = ds_reader.dataset['test'][ds_reader.output_column]
-            if len(prompt_list) != len(gold_ans):
-                # FIXME appears only in performance testing scenarios for custom datasets
-                prompt_list = list(zip(prompt_list, ["" for _ in range(len(prompt_list))]))
-            else:
-                prompt_list = list(zip(prompt_list, gold_ans))
+            prompt_list = list(zip(prompt_list, gold_ans))
         if ds_reader.max_tokens_column:
             self.max_out_lens:List[int] = convert_positive_integers(ds_reader.dataset['test'][ds_reader.max_tokens_column],
                                                                     ds_reader.max_tokens_column)
@@ -461,10 +456,7 @@ class GenInferencer(BaseInferencer):
                     prompt_token_num = self.model.get_token_len_from_template(
                         prompt, mode='gen')
             prompt_list.append(prompt)
-        sample_mode = self.meta_json_conf.get("sampling_mode", "default")
-        request_count = self.meta_json_conf.get("request_count", 0)
-        sample_prompt_list = get_sample_data(prompt_list, sample_mode, int(request_count))
-        return sample_prompt_list
+        return prompt_list
 
     def get_max_token_list_from_meta_json_file(self, output_config: dict, prompt_length):
         method = output_config["method"]
