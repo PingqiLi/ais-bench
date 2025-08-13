@@ -26,6 +26,8 @@ PromptType = Union[PromptList, str, dict]
 LOG_PER_REQUEST = 10
 
 
+
+
 class BaseAPIModel(BaseModel):
     """Base class for API model wrapper.
 
@@ -83,6 +85,7 @@ class BaseAPIModel(BaseModel):
         self.start_time = 0
         self.tmp_result_queue = Queue(-1)
         self.task_finish = False
+        self.interrupted = False
 
     @abstractmethod
     def generate(self, inputs: List[PromptType],
@@ -274,15 +277,30 @@ class BaseAPIModel(BaseModel):
         draw_thread.start()
         pool_size = concurrency
         self.start_time = time.perf_counter()
+        self.futures = []
         try:
             with ThreadPoolExecutor(max_workers=pool_size) as executor:
                 input_data = data_queue.get()
                 while input_data is not None:
-                    executor.submit(self._generate, input_data, input_data.get("max_tokens", max_out_len))
+                    future = executor.submit(self._generate, input_data, input_data.get("max_tokens", max_out_len))
+                    self.futures.append(future)
                     input_data = data_queue.get()
                 data_queue.put(None)
         except KeyboardInterrupt:
             self.logger.warning("Interrupted by user (Ctrl+C).")
+            self.interrupted = True
+            # cancel unfinished tasks
+            for future in self.futures:
+                if not future.done():
+                    future.cancel()
+            # force shutdown thread pool
+            executor.shutdown(wait=False)
+            # clear data queue
+            while not data_queue.empty():
+                try:
+                    data_queue.get_nowait()
+                except:
+                    break
         except Exception as e:
             self.logger.error(f"Infer task end because error: {e}")
         finally:

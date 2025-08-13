@@ -38,7 +38,7 @@ def monkey_run_perf(self):
             self.model_cfg = model_cfg
             self.dataset_cfg = dataset_cfg
             self.infer_cfg = self.dataset_cfg["infer_cfg"]
-            if self.dataset_cfg.get('type', None) in ["ais_bench.benchmark.datasets.SyntheticDataset", 
+            if self.dataset_cfg.get('type', None) in ["ais_bench.benchmark.datasets.SyntheticDataset",
                                                       "ais_bench.benchmark.datasets.ShareGPTDataset"]:
                 self.dataset = build_dataset_from_cfg_with_model_path(self.dataset_cfg, self.model_cfg)
             else:
@@ -277,7 +277,13 @@ class LocalAPIRunner(BaseRunner):
                     if cmd.startswith('python'):
                         task.run()
                     else:
-                        subprocess.run(cmd, shell=True, text=True)
+                        proc = subprocess.Popen(cmd, shell=True, text=True)
+                    try:
+                        proc.wait()
+                    except KeyboardInterrupt:
+                        get_logger().warning(f"Subprocess of task:{task_name} interrupted by user!")
+                        proc.wait()  # 确保子进程执行完毕
+
                 finally:
                     os.remove(param_file)
                 status.append((task_name, 0))
