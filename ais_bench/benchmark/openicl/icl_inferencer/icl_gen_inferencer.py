@@ -324,6 +324,8 @@ class GenInferencer(BaseInferencer):
                     self.model, self.model_cfg, parsed_entries, golds, **extra_gen_kwargs)
                 results.sort(key=lambda x: x['id'])
                 generated = [result['output'] for result in results]
+            if len(generated) != len(golds):
+                all_success = False
             for prediction in batched(results, num_return_sequences):
                 if num_return_sequences == 1:
                     prediction = prediction[0]
