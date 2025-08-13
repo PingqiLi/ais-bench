@@ -5,7 +5,7 @@ AISBench Benchmark 支持两类模型后端：
 
 > ⚠️ 注意： 不能同时指定两种后端。
 ## 服务化推理后端
-AISBench Benchmark 支持多种服务化推理后端，包括 vLLM、Triton、MindIE、TGI 等。这些后端通过暴露的 HTTP API 接口接收推理请求并返回结果。（目前不支持 HTTPS 接口）
+AISBench Benchmark 支持多种服务化推理后端，包括 vLLM、SGLang、Triton、MindIE、TGI 等。这些后端通过暴露的 HTTP API 接口接收推理请求并返回结果。（目前不支持 HTTPS 接口）
 
 以在 GPU 上部署的 vLLM 推理服务为例，您可以参考 [vLLM 官方文档](https://docs.vllm.ai/en/stable/getting_started/quickstart.html) 启动服务。
 
