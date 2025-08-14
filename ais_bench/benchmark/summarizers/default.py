@@ -265,12 +265,16 @@ class DefaultSummarizer:
             for dataset_abbr in dataset_abbrs:
                 if dataset_abbr in dataset_metrics:
                     for metric in dataset_metrics[dataset_abbr]:
+                        if metric not in METRIC_WHITELIST:
+                            continue
                         summarizer_dataset_abbrs.append((dataset_abbr, metric))
                 else:
                     summarizer_dataset_abbrs.append((dataset_abbr, None))
             # along with all possible group metrics
             for dataset_abbr in dataset_metrics:
                 for metric in dataset_metrics[dataset_abbr]:
+                    if metric not in METRIC_WHITELIST:
+                            continue
                     if (dataset_abbr, metric) not in summarizer_dataset_abbrs:
                         summarizer_dataset_abbrs.append((dataset_abbr, metric))
         else:
@@ -302,6 +306,10 @@ class DefaultSummarizer:
             for model_abbr in self.model_abbrs:
                 if dataset_abbr in parsed_results[model_abbr]:
                     row.append('{:.02f}'.format(parsed_results[model_abbr][dataset_abbr][metric]))
+                    correct_count = parsed_results[model_abbr][dataset_abbr].pop('correct_count', None)
+                    total_count = parsed_results[model_abbr][dataset_abbr].pop('total_count', None)
+                    if correct_count is not None and total_count is not None:
+                        row[-1] = str(row[-1]) + f' ({correct_count}/{total_count})'
                 else:
                     row.append('-')
             table.append(row)

@@ -110,6 +110,7 @@ class GenInferencer(BaseInferencer):
         self.is_synthetic = is_synthetic
         self.tmp_result_ids = []
         self.max_out_lens = []
+        self.functioncall_infos = []
 
     def inference_with_multi_process(
         self, model, model_cfg, inputs, golds, **extra_gen_kwargs
@@ -155,18 +156,19 @@ class GenInferencer(BaseInferencer):
                 while bucket_size > 0:
                     if data_index not in self.tmp_result_ids:
                         try:
-                            mp_queue.put(
-                                dict(
-                                    data_id=data_index,
-                                    prompt=inputs[data_index],
-                                    gold=golds[data_index],
-                                    max_tokens=(
-                                        self.max_out_len
-                                        if data_index >= len(self.max_out_lens)
-                                        else self.max_out_lens[data_index]
-                                    ),
-                                )
+                            data_dict = dict(
+                                data_id=data_index,
+                                prompt=inputs[data_index],
+                                gold=golds[data_index],
+                                max_tokens=(
+                                    self.max_out_len
+                                    if data_index >= len(self.max_out_lens)
+                                    else self.max_out_lens[data_index]
+                                ),
                             )
+                            if data_index < len(self.functioncall_infos):
+                                data_dict.update(self.functioncall_infos[data_index])
+                            mp_queue.put(data_dict)
                             real_data_num += 1
                         except IndexError as e:
                             logger.error(f"data index out of range")
@@ -456,6 +458,27 @@ class GenInferencer(BaseInferencer):
                     prompt_token_num = self.model.get_token_len_from_template(
                         prompt, mode='gen')
             prompt_list.append(prompt)
+        ds_reader = retriever.dataset_reader
+        
+        keys_of_interest = [
+            "function",
+            "id",
+            "involved_classes",
+            "initial_config",
+            "missed_function",
+        ]
+        
+        for i in range(len(ds_reader['test'])):
+            row = ds_reader['test'][i]  
+            entry = {}
+            for k in keys_of_interest:
+                if k in row:
+                    entry[k] = row[k]
+                else:
+                    continue
+                if k == 'id':
+                    entry['data_name'] = entry.pop('id')
+            self.functioncall_infos.append(entry)
         return prompt_list
 
     def get_max_token_list_from_meta_json_file(self, output_config: dict, prompt_length):
