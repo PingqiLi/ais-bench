@@ -136,7 +136,18 @@ def xfinder_postprocess(preds: list, question_type: str, model_name: str,
     return extracted_answers
 
 
+def list_decorator(func):
+    """Decorator: make the function able to handle list input"""
+    def wrapper(text_or_list, *args, **kwargs):
+        if isinstance(text_or_list, list):
+            return [func(text, *args, **kwargs) for text in text_or_list]
+        else:
+            return func(text_or_list, *args, **kwargs)
+    return wrapper
+
+
 @TEXT_POSTPROCESSORS.register_module('extract-non-reasoning-content')
+@list_decorator
 def extract_non_reasoning_content(
     text: str,
     think_start_token: str = '<think>',
@@ -165,6 +176,11 @@ def extract_non_reasoning_content(
         >>> text = "Start<think>reasoning here</think> End"
         >>> extract_non_reasoning_content(text)
         'Start End'
+        
+        >>> # When input is a list
+        >>> texts = ["Start<think>reasoning</think> End", "Test</think> Result"]
+        >>> extract_non_reasoning_content(texts)
+        ['Start End', 'Result']
     """
     # If text contains only end token, split by end token and take the last part
     if think_start_token not in text and think_end_token in text:

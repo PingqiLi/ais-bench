@@ -200,7 +200,10 @@ class OpenICLEvalTask(BaseTask):
                 pred_strs = [
                     Counter(s).most_common(1)[0][0] for s in pred_strs
                 ]
-
+                
+            #TODO Configure eval in a more elegant way
+            if 'returns_tool_calls' in self.model_cfg.keys():
+                self.eval_cfg['evaluator'].update({'is_fc_model':self.model_cfg.get('returns_tool_calls')})
             icl_evaluator = ICL_EVALUATORS.build(self.eval_cfg['evaluator'])
             # need results dir to save other files
             out_path = get_infer_output_path(

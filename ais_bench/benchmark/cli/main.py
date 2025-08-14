@@ -154,7 +154,7 @@ def main():
     from ais_bench.benchmark.utils import LarkReporter, get_logger
     from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
     from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg,
-        fill_merged_infer_cfg, fill_merged_eval_cfg)
+        fill_merged_infer_cfg, fill_merged_eval_cfg, function_call_task_check, get_config_type)
 
     # initialize logger
     logger = get_logger(log_level='DEBUG' if args.debug else 'INFO')
@@ -198,6 +198,9 @@ def main():
     # types cannot be serialized
     cfg = Config.fromfile(output_config_path, format_python_code=False)
 
+    # check if the tasks all function call tasks
+    function_call_task_check(cfg)
+    
     if args.mode == 'perf':
         fill_perf_cfg(cfg, args)
         cfg.infer.partitioner['out_dir'] = osp.join(cfg['work_dir'],
