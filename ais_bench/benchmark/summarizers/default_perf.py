@@ -9,6 +9,7 @@ import orjson
 import os.path as osp
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import numpy as np
 
 import mmengine
 import tabulate
@@ -19,7 +20,7 @@ from ais_bench.benchmark.utils import (LarkReporter, dataset_abbr_from_cfg, get_
                                model_abbr_from_cfg, plot_sorted_request_timelines)
 from ais_bench.benchmark.utils.prompt import get_prompt_hash
 from ais_bench.benchmark.utils.build import build_perf_metric_calculator_from_cfg
-from ais_bench.benchmark.utils.results import dump_results_dict
+from ais_bench.benchmark.utils.results import dump_results_dict, load_from_h5
 
 
 def model_abbr_from_cfg_used_in_summarizer(model):
@@ -78,6 +79,9 @@ class DefaultPerfSummarizer:
                     continue
                 self.logger.info(f"Loading detail perf data of {model=} {dataset=} ...")
                 details_data = orjson.loads(open(perf_details_file, "rb").read())
+                decode_cost_file = osp.join(self.work_dir, "performances", model, f"{dataset}_details.h5")
+                h5_data = load_from_h5(decode_cost_file)
+                details_data["requests"]["decode_token_latencies"] = [value for value in h5_data]
                 plot_file_path = osp.join(self.work_dir, "performances", model, f"{dataset}_plot.html")
                 has_plot = plot_sorted_request_timelines(
                     details_data["requests"]["start_time"],

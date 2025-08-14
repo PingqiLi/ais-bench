@@ -1,14 +1,18 @@
 import csv
 import json
+import copy
 import orjson
+import h5py
+from tqdm import tqdm
+import numpy as np
 import collections
 import math
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, field
-
-import numpy as np
 import copy
 from ais_bench.benchmark.utils import get_logger
+
+MAX_H5_CHUNK_SIZE = 5000
 
 
 def dump_results_dict(results_dict, filename, formatted = True):
@@ -21,6 +25,29 @@ def dump_results_dict(results_dict, filename, formatted = True):
 def fast_dump_results_dict(results_dict, filename):
     with open(filename, 'wb') as f:
         f.write(orjson.dumps(results_dict))
+
+
+def dump_list_as_h5(data_list, h5_file, data_type=np.float32):
+    total_rows = len(data_list)
+    chunk_size = MAX_H5_CHUNK_SIZE if total_rows >= MAX_H5_CHUNK_SIZE else total_rows
+    with h5py.File(h5_file, 'w') as f:
+        dt = h5py.vlen_dtype(data_type)
+        dset = f.create_dataset('arrays', (total_rows,), dtype=dt,
+                            compression='gzip', chunks=(chunk_size,))
+
+        # 分块写入（带进度条）
+        for i in tqdm(range(0, total_rows, chunk_size), desc="Dumping data to h5"):
+            end_idx = min(i + chunk_size, total_rows)
+            chunk = data_list[i:end_idx]
+            for j, arr in enumerate(chunk):
+                dset[i+j] = arr
+
+
+def load_from_h5(h5_file):
+    with h5py.File(h5_file, 'r') as f:
+        dset = f['arrays']
+        data = dset[:]
+    return data
 
 
 @dataclass
@@ -49,7 +76,6 @@ class MiddleData:
     model_id: str = ""
     is_success: bool = False
     is_empty: bool = False
-    chunk_time_point_list: list[int] = field(default_factory=list)
     multiturn_group_id: str = ""
 
     def is_valid(self):
@@ -73,8 +99,8 @@ class MiddleData:
                 return self.output_reasoning
         else:
             return self.output
-    
-    
+
+
     def convert_to_performance_data(self) -> dict:
         return {
             "id": self.data_id,
@@ -84,10 +110,10 @@ class MiddleData:
             "output_token_id": self.output_token_id,
             "prefill_latency": self.prefill_latency,
             "prefill_throughput": round(len(self.input_token_id) / self.prefill_latency * 1000, 4) if self.prefill_latency > 0 else 0,
-            "decode_token_latencies": self.decode_cost[:],
-            "last_decode_latency": self.decode_cost[-1] if self.decode_cost else 0.0,
+            "decode_token_latencies": self.decode_cost,
+            "last_decode_latency": float(self.decode_cost[-1]) if self.decode_cost.any() else 0.0,
             "decode_max_token_latency": (
-                max(self.decode_cost) if self.decode_cost else 0.0
+                float(np.max(self.decode_cost)) if self.decode_cost.any() else 0.0
             ),
             "seq_latency": self.req_latency,
             "input_tokens_len": self.num_input_tokens,
@@ -108,6 +134,5 @@ class MiddleData:
             "end_time": self.end_time,
             "is_success": self.is_success,
             "is_empty": self.is_empty,
-            "chunk_time_point_list": self.chunk_time_point_list,
             "multiturn_group_id": self.multiturn_group_id
         }

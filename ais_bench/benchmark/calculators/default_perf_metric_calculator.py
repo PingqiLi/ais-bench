@@ -149,7 +149,11 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
                 else:
                     ans[mapping_value].append(value)
 
-        for key in ["TTFT", "TPOT", "ITL"]:
+        for key in ["ITL"]:
+            if isinstance(ans[key][0], np.ndarray) and not ans[key][0].any():
+                ans.pop(key)
+
+        for key in ["TTFT", "TPOT"]:
             if math.isclose(sum(ans[key]), 0):
                 ans.pop(key)
 
@@ -176,7 +180,10 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
                         value = self.__statistic_prefill_or_decode_batch_size(value)
 
                     # Compute statistical values
-                    arr = np.array(value)
+                    if isinstance(value[0], np.ndarray):
+                        arr = np.concatenate(value)
+                    else:
+                        arr = np.array(value)
                     for stat in self.stats_list:
                         if stat == "Average":
                             stats[stat] = round(arr.mean(), 4)

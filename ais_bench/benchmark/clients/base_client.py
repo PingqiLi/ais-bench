@@ -6,6 +6,7 @@ from abc import abstractmethod, ABC
 import urllib3
 import threading
 import urllib3.util
+import numpy as np
 from http import HTTPStatus
 from urllib3.exceptions import HTTPError, ReadTimeoutError, NewConnectionError, MaxRetryError
 
@@ -146,7 +147,6 @@ class BaseClient(ABC):
             parameters=parameters,
         )
         start_time = time.perf_counter()
-        inputs.chunk_time_point_list.append(start_time * 1000)
         response_raw = self.do_request(request_body, "POST")
         if response_raw.status != HTTPStatus.OK:
             raise_error(
@@ -172,6 +172,7 @@ class BaseClient(ABC):
             except Exception as e:
                 raise_error(f"Other error during stream response processing: {e}.", self.lock, self.request_counter)
         self.rev_count()
+        inputs.decode_cost = np.array(inputs.decode_cost, dtype=np.float32)
         self.update_request_time(inputs, start_time)
         return inputs.get_output()
 
@@ -187,8 +188,8 @@ class BaseStreamClient(BaseClient, ABC):
 
     def iter_lines(self, stream):
         """
-        Split the input stream into lines based on "\n\n". 
-        If the received packet does not encounter the end or \n\n, 
+        Split the input stream into lines based on "\n\n".
+        If the received packet does not encounter the end or \n\n,
         cache it and concatenate it with the subsequent stream.
         """
         pending = None
@@ -209,7 +210,7 @@ class BaseStreamClient(BaseClient, ABC):
         # After the stream ends, yield any remaining incomplete data
         if pending is not None:
             yield pending
-            
+
     def process_response(self, response, last_time_point):
         time_name = "prefill_time"
         for raw_chunk in self.iter_lines(response.stream(amt=valid_max_chunk_size())):
@@ -222,7 +223,6 @@ class BaseStreamClient(BaseClient, ABC):
                 response_dict = self.process_stream_line(chunk)
                 if time_name not in response_dict.keys():
                     response_dict[time_name] = round((cur_time_point - last_time_point) * 1000, 4)
-                    response_dict["chunk_time_point"] = cur_time_point * 1000
                 yield response_dict
                 time_name = "decode_time"
                 last_time_point = time.perf_counter()

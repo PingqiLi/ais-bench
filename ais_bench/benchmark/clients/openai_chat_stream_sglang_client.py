@@ -59,12 +59,9 @@ class OpenAIChatStreamSglangClient(BaseStreamClient, ABC):
         decode_time = res.get("decode_time")
         if decode_time:
             inputs.decode_cost.append(decode_time)
-        chunk_time_point = res.get("chunk_time_point")
-        if chunk_time_point:
-            inputs.chunk_time_point_list.append(chunk_time_point)
         if res.get("completion_tokens"):
             inputs.num_generated_tokens = res.get("completion_tokens")
-    
+
     def process_response(self, response, last_time_point):
         time_name = "prefill_time"
         for raw_chunk in self.iter_lines(response.stream(amt=valid_max_chunk_size())):
@@ -76,7 +73,7 @@ class OpenAIChatStreamSglangClient(BaseStreamClient, ABC):
                 cur_time_point = time.perf_counter()
                 response_dict = self.process_stream_line(chunk)
                 if not response_dict.get("generated_text") and not response_dict.get("completion_tokens"):  #first return chunk: None, reset start time
-                    continue 
+                    continue
                 if time_name not in response_dict.keys():
                     response_dict[time_name] = (
                         cur_time_point - last_time_point

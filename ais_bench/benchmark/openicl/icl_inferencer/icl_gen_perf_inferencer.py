@@ -1,5 +1,6 @@
 import inspect
 import json
+import h5py
 import os
 import os.path as osp
 import time
@@ -22,7 +23,7 @@ from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
 from ..utils.logging import get_logger
 from .icl_base_inferencer import GenInferencerOutputHandler
-from ais_bench.benchmark.utils.results import dump_results_dict, fast_dump_results_dict
+from ais_bench.benchmark.utils.results import dump_results_dict, fast_dump_results_dict, dump_list_as_h5
 from .icl_gen_inferencer import GenInferencer
 
 logger = get_logger(__name__)
@@ -149,6 +150,11 @@ class GenPerfInferencer(GenInferencer):
             }
             logger.info("Dumping detail perf data ...")
             dump_start = time.perf_counter()
+            dump_list_as_h5(
+                perf_details["requests"]["decode_token_latencies"],
+                osp.join(output_filepath, output_filename + "_details.h5")
+            )
+            del perf_details["requests"]["decode_token_latencies"]
             fast_dump_results_dict(
                 perf_details,
                 osp.join(output_filepath, output_filename + "_details.json")
@@ -184,7 +190,6 @@ class GenPerfInferencer(GenInferencer):
         }
         preds["is_success"] = [pred.get("is_success", False) for pred in results]
         preds["is_empty"] = [pred.get("is_empty", False) for pred in results]
-        del preds["chunk_time_point_list"]
         del preds["input_data"]
         del preds["output"]
         return preds

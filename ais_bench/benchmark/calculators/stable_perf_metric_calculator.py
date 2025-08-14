@@ -193,7 +193,11 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
                 else:
                     ans[mapping_value].append(value)
 
-        for key in ["TTFT", "TPOT", "ITL"]:
+        for key in ["ITL"]:
+            if isinstance(ans[key][0], np.ndarray) and not ans[key][0].any():
+                ans.pop(key)
+
+        for key in ["TTFT", "TPOT"]:
             if math.isclose(sum(ans[key]), 0):
                 ans.pop(key)
 
