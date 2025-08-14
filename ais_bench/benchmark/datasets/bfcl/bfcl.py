@@ -111,7 +111,7 @@ class BFCLDataset(BaseDataset):
         if not is_relevance_category:
             # Load ground truth from file for non-relevance categories
             gt_path = get_data_path(
-                osp.join(path, f"possible_answer/{VERSION_PREFIX}_{category}.json")
+                osp.join(real_path, f"possible_answer/{VERSION_PREFIX}_{category}.json")
             )
             with open(gt_path, "r") as f:
                 for line in f:
