@@ -1,5 +1,8 @@
 from setuptools import find_packages, setup
 from setuptools.command.install import install
+import subprocess
+import sys
+
 
 
 class DownloadNLTK(install):
@@ -97,18 +100,61 @@ def parse_requirements(fname='requirements.txt', with_version=True):
     return packages
 
 
-def get_version():
+def get_default_version():
     version_file = 'ais_bench/benchmark/__init__.py'
     with open(version_file, 'r', encoding='utf-8') as f:
         exec(compile(f.read(), version_file, 'exec'))
     return locals()['__version__']
 
 
+def get_commit_id():
+    try:
+        git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
+    except Exception:
+        git_hash = ""
+    return git_hash
+
+
+def get_commit_date():
+    try:
+        git_date = subprocess.check_output(['git', 'show', '-s', '--format=%cd', 'HEAD']).decode('utf-8').strip()
+    except Exception:
+        git_date = ""
+    return git_date
+
+
+def get_latest_version():
+    """获取最新的Git tag名称"""
+    try:
+        # get origin tag name
+        tag = subprocess.check_output(
+            ['git', 'describe', '--abbrev=0', '--tags'],
+            stderr=subprocess.STDOUT,
+            text=True
+        ).strip()
+
+        # convert origin tag to PEP440 type version
+        if tag.startswith('v'):
+            tag = tag[1:]
+        tag = tag.replace('-', '.').replace('_', '.')
+        tag_list = tag.split('.')
+        if tag_list[-1] == "master":
+            tag = ".".join(tag_list[:-1])
+        else:
+            tag = ".".join(tag_list[:-1]) + ".dev"
+
+        return tag
+    except subprocess.CalledProcessError:
+        return get_default_version()
+    except FileNotFoundError:
+        return get_default_version()
+
+
 def do_setup():
     setup(
         name='ais_bench_benchmark',
-        version=get_version(),
-        description='A comprehensive toolkit for large model evaluation',
+        version= get_latest_version(),
+        description=f'A comprehensive toolkit for large model evaluation, commit id: {get_commit_id()}, commit date: {get_commit_date()}',
         url='https://gitee.com/aisbench/benchmark',
         long_description=readme(),
         long_description_content_type='text/markdown',
