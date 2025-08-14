@@ -45,14 +45,14 @@ def get_data_path(dataset_path: str, local_mode: bool = True):
         raise TypeError('Customized dataset path type is not a absolute path!')
 
 
-def get_sample_data(prompt_list: list, sample_mode: str = "default", request_count: int = 0):
+def get_sample_data(data_list: list, sample_mode: str = "default", request_count: int = 0):
     if not request_count:
         logger.info("If u do not provide 'request_count' when using custom-dataset sampling feature, "
                        "we will sample all available data by default.")
-        sample_index = len(prompt_list)
-    elif request_count > len(prompt_list):
-        repeat_times = (request_count // len(prompt_list)) + (1 if request_count % len(prompt_list) != 0 else 0)
-        prompt_list = (prompt_list * repeat_times)[:request_count]
+        sample_index = len(data_list)
+    elif request_count > len(data_list):
+        repeat_times = (request_count // len(data_list)) + (1 if request_count % len(data_list) != 0 else 0)
+        data_list = (data_list * repeat_times)[:request_count]
         sample_index = request_count
     elif request_count < 0:
         raise ValueError("The 'request_count' is negative, we only support positive integer.")
@@ -60,11 +60,11 @@ def get_sample_data(prompt_list: list, sample_mode: str = "default", request_cou
         sample_index = request_count
     # sampling data
     if sample_mode == "default":
-        return prompt_list[:sample_index]
+        return data_list[:sample_index]
     elif sample_mode == "random":
-        return random.sample(prompt_list, sample_index)
+        return random.sample(data_list, sample_index)
     elif sample_mode == "shuffle":
-        shuffle_data = prompt_list[:sample_index]
+        shuffle_data = data_list[:sample_index]
         random.shuffle(shuffle_data)
         return shuffle_data
     else:
