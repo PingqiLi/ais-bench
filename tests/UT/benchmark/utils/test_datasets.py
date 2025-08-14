@@ -1,4 +1,6 @@
 import unittest
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 from unittest.mock import patch
 from ais_bench.benchmark.utils.datasets import get_sample_data  
 
