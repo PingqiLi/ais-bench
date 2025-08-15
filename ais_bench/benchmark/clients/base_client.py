@@ -1,6 +1,7 @@
 import json
 import time
 import re
+import queue
 from abc import abstractmethod, ABC
 
 import urllib3
@@ -29,8 +30,7 @@ class AisBenchClientException(Exception):
         return self._error_message
 
 def raise_error(message, lock, request_counter):
-    with lock:
-        request_counter['failed_num'] += 1
+    request_counter.put_nowait("fail_req")
     logger = get_logger()
     logger.error(f"[AisBenchClientException] {message}")
     raise AisBenchClientException(message=message) from None
@@ -43,7 +43,7 @@ class BaseClient(ABC):
         self.retry_num = retry
         self._is_stream = False
         self.do_performance = False
-        self.request_counter = dict(get_req_num=0, failed_num=0)
+        self.request_counter = queue.SimpleQueue()
         self.lock = threading.Lock()
         retries = urllib3.util.Retry(
             total=retry,
@@ -77,9 +77,6 @@ class BaseClient(ABC):
         input.end_time = time.perf_counter()
         input.req_latency = (input.end_time - input.start_time) * 1000
 
-    def set_request_counter(self,  request_counter):
-        self.request_counter = request_counter
-
     def set_performance(self):
         self.do_performance = True
 
@@ -87,8 +84,13 @@ class BaseClient(ABC):
         self._http_pool_manager.clear()
 
     def rev_count(self):
-        with self.lock:
-            self.request_counter['get_req_num'] += 1
+        self.request_counter.put_nowait("get_req")
+    
+    def post_count(self):
+        self.request_counter.put_nowait("post_req")
+        
+    def finish_count(self):
+        self.request_counter.put_nowait("finish_req")
 
     def do_request(
         self,
@@ -96,6 +98,7 @@ class BaseClient(ABC):
         request_method: str = "POST",
     ):
         try:
+            self.post_count()
             raw_response = self._http_pool_manager.request(
             request_method,
             self.valid_url,

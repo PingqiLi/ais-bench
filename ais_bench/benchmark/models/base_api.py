@@ -6,6 +6,7 @@ import time
 import json
 import tempfile
 import warnings
+import queue
 from tqdm import tqdm
 from abc import abstractmethod
 from copy import deepcopy
@@ -22,10 +23,6 @@ from .base import BaseModel
 
 
 PromptType = Union[PromptList, str, dict]
-
-LOG_PER_REQUEST = 10
-
-
 
 
 class BaseAPIModel(BaseModel):
@@ -77,13 +74,17 @@ class BaseAPIModel(BaseModel):
         self.template_parser = APITemplateParser(self.meta_template)
         self.generation_kwargs = generation_kwargs
         self.verbose = verbose
-        self.request_counter = dict(post_req_num=0, get_req_num=0, failed_num=0)
         self.lock = threading.Lock()
         self.result_cache = []
         self.post_time = 0
         self.rec_time = 0
         self.start_time = 0
+        self.log_per_request = 10
         self.tmp_result_queue = Queue(-1)
+        self.post_req_num = 0
+        self.get_req_num = 0
+        self.failed_num = 0
+        self.finish_num = 0
         self.task_finish = False
         self.interrupted = False
 
@@ -131,6 +132,22 @@ class BaseAPIModel(BaseModel):
             f"{'Receive Time:':<{left_time}}{rec_time:>{time_width}.2f}s"
         )
         p_log.set_description(desc)
+        
+    def update_count(self):
+        while not self.client.request_counter.empty():
+            try:
+                req_type = self.client.request_counter.get_nowait()
+                if req_type == "post_req":
+                    self.post_req_num += 1
+                elif req_type == "get_req":
+                    self.get_req_num += 1
+                elif req_type == "finish_req":
+                    self.finish_num += 1
+                else:
+                    self.failed_num += 1
+            except queue.Empty:
+                # Queue is empty, break the inner loop
+                break
 
     def draw_plog(self, ori_nums, length, pos):
         p_log = tqdm(total=0, desc="", position=3 * pos + 1, bar_format="{desc}", leave=True)
@@ -139,23 +156,23 @@ class BaseAPIModel(BaseModel):
             pre_post = 0
             pre_get = 0
             pre_failed = 0
+            pbar.refresh()  # Force immediate display of progress bar
             while True:
-                self.post_req_num = len(self.result_cache)
-                self.get_req_num =  self.request_counter.get('get_req_num')
-                self.failed_num = self.request_counter.get('failed_num')
+                self.update_count()
+                # Process all available items in the queue before continuing
                 if self.post_req_num != pre_post:
                     pre_post = self.post_req_num
-                    if pre_post % LOG_PER_REQUEST == 0 or pre_post >= length:
+                    if pre_post % self.log_per_request == 0 or pre_post >= length:
                         self.post_time = time.perf_counter()
                         self.set_description(p_log)
                 if self.get_req_num != pre_get or pre_failed != self.failed_num:
                     pre_get = self.get_req_num
                     pre_failed = self.failed_num
-                cur = self.failed_num + self.get_req_num
+                cur = self.failed_num + self.finish_num
                 if cur != prev:
                     pbar.update(cur - prev)
                     prev = cur
-                    if cur % LOG_PER_REQUEST == 0 :
+                    if cur % self.log_per_request == 0 :
                         self.rec_time = time.perf_counter()
                         self.set_description(p_log)
                 if cur >= length or self.task_finish:
@@ -172,12 +189,11 @@ class BaseAPIModel(BaseModel):
         pre_get = 0
         pre_failed = 0
         while True:
-            self.post_req_num = len(self.result_cache)
-            self.get_req_num =  self.request_counter.get('get_req_num')
-            self.failed_num = self.request_counter.get('failed_num')
+            # Process all available items in the queue before continuing
+            self.update_count()
             if self.post_req_num != pre_post:
                 pre_post = self.post_req_num
-                if pre_post % LOG_PER_REQUEST == 0:
+                if pre_post % self.log_per_request == 0:
                     self.post_time = time.perf_counter()
                     self.set_description(p_log)
             if self.get_req_num != pre_get or pre_failed != self.failed_num:
@@ -186,7 +202,7 @@ class BaseAPIModel(BaseModel):
             cur = self.failed_num + self.get_req_num
             if cur != prev:
                 prev = cur
-                if cur % LOG_PER_REQUEST == 0 :
+                if cur % self.log_per_request == 0 :
                     self.rec_time = time.perf_counter()
                     self.set_description(p_log)
             if self.task_finish:
@@ -218,7 +234,7 @@ class BaseAPIModel(BaseModel):
                 break
             update(tmp_res)
             cur_res_num += 1
-            if cur_res_num % LOG_PER_REQUEST == 0:
+            if cur_res_num % self.log_per_request == 0:
                 self._atomic_dump(res_cache, tmp_result_json_path)
 
     def _atomic_dump(self, data: dict, target_path: str):
@@ -259,12 +275,11 @@ class BaseAPIModel(BaseModel):
         ori_nums = extra_gen_kwargs.get("ori_nums")
         data_nums = extra_gen_kwargs.get("data_nums")
         qps = extra_gen_kwargs.get("qps")
+        self.log_per_request = max(1, int((ori_nums - data_nums) / 0.01))
         if qps > 0:
             self.token_bucket = TokenBucket(qps, self.rpm_verbose)
         else:
             self.token_bucket = None
-        if hasattr(self, 'client'):
-            self.client.set_request_counter(self.request_counter)
 
         if (not hasattr(self, "do_performance")) or (not self.do_performance):
             os.makedirs(tmp_result_dir, exist_ok=True)
@@ -365,8 +380,7 @@ class BaseAPIModel(BaseModel):
 
         self.token_bucket = None
         local_thread_count = 0
-        if hasattr(self, 'client'):
-            self.client.set_request_counter(self.request_counter)
+
         draw_thread = threading.Thread(target=self.draw_plog_pressure, args=(self.tqdm_pos,), daemon=True)
         draw_thread.start()
         generate_threads = []
@@ -823,6 +837,10 @@ def handle_synthetic_input(func):
                 input = input_str
         self.acquire()
         res = func(self, input, max_out_len)
+        try:
+            self.client.finish_count() # hf model has no client
+        except AttributeError as e:
+            pass
         if isinstance(input, dict) and  ((not hasattr(self, "do_performance")) or  (not self.do_performance)):
             tmp_res = {
                 'data_id': input.get('data_id'),
