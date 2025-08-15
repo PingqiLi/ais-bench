@@ -6,7 +6,7 @@ MTBench数据集是一种多轮对话数据集，是覆盖写作、角色扮演�
 ```
 {"question_id": 111, 
 "category": "math", 
-"turns": ["The vertices of a triangle are at points (0, 0), (-1, 1), and (3, 3). What is the area of the triangle?", "What's area of the circle circumscribing the triangle?"], 
+"prompt": ["The vertices of a triangle are at points (0, 0), (-1, 1), and (3, 3). What is the area of the triangle?", "What's area of the circle circumscribing the triangle?"], 
 "reference": ["Area is 3", "5pi"]}
 ```
 
