@@ -34,7 +34,7 @@ LongBench_gov_report_datasets = [
     dict(
         type=LongBenchgov_reportDataset,
         abbr='LongBench_gov_report',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='gov_report',
         reader_cfg=LongBench_gov_report_reader_cfg,
         infer_cfg=LongBench_gov_report_infer_cfg,

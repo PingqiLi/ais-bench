@@ -40,7 +40,7 @@ LongBench_lsht_datasets = [
     dict(
         type=LongBenchlshtDataset,
         abbr='LongBench_lsht',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='lsht',
         reader_cfg=LongBench_lsht_reader_cfg,
         infer_cfg=LongBench_lsht_infer_cfg,

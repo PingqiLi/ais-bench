@@ -10,12 +10,12 @@ LongBench v2包含503道富有挑战性的多项选择题，涵盖六大任务�
 ## 数据集部署
 建议从HuggingFace下载数据集：[https://huggingface.co/datasets/zai-org/LongBench-v2](https://huggingface.co/datasets/zai-org/LongBench-v2)
 - 建议部署在`{工具根路径}/ais_bench/datasets`目录下（数据集任务中设置的默认路径）
-- 部署完成后，在`{工具根路径}/ais_bench/datasets`目录下执行`tree longBenchv2/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 部署完成后，在`{工具根路径}/ais_bench/datasets`目录下执行`tree LongBench-v2/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
-    longbenchv2/
+    LongBench-v2/
     └── data.json
     ```
 ## 可用数据集任务
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|longbenchv2_gen|longbenchv2|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbenchv2_gen.py|
+|longbenchv2_gen|longbenchv2|准确率(accuracy)|0-shot|对话格式|[longbenchv2_gen.py](longbenchv2_gen.py)|

@@ -34,7 +34,7 @@ LongBench_dureader_datasets = [
     dict(
         type=LongBenchdureaderDataset,
         abbr='LongBench_dureader',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='dureader',
         reader_cfg=LongBench_dureader_reader_cfg,
         infer_cfg=LongBench_dureader_infer_cfg,

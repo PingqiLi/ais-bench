@@ -34,7 +34,7 @@ LongBench_qmsum_datasets = [
     dict(
         type=LongBenchqmsumDataset,
         abbr='LongBench_qmsum',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='qmsum',
         reader_cfg=LongBench_qmsum_reader_cfg,
         infer_cfg=LongBench_qmsum_infer_cfg,

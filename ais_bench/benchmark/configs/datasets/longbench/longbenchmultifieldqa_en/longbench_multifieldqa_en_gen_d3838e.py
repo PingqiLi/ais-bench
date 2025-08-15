@@ -34,7 +34,7 @@ LongBench_multifieldqa_en_datasets = [
     dict(
         type=LongBenchmultifieldqa_enDataset,
         abbr='LongBench_multifieldqa_en',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='multifieldqa_en',
         reader_cfg=LongBench_multifieldqa_en_reader_cfg,
         infer_cfg=LongBench_multifieldqa_en_infer_cfg,

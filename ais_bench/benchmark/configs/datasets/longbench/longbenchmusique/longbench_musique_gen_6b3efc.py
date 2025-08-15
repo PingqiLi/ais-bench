@@ -34,7 +34,7 @@ LongBench_musique_datasets = [
     dict(
         type=LongBenchmusiqueDataset,
         abbr='LongBench_musique',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='musique',
         reader_cfg=LongBench_musique_reader_cfg,
         infer_cfg=LongBench_musique_infer_cfg,

@@ -34,7 +34,7 @@ LongBench_qasper_datasets = [
     dict(
         type=LongBenchqasperDataset,
         abbr='LongBench_qasper',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='qasper',
         reader_cfg=LongBench_qasper_reader_cfg,
         infer_cfg=LongBench_qasper_infer_cfg,

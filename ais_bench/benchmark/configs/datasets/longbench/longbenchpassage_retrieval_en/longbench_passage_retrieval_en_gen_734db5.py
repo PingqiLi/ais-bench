@@ -37,7 +37,7 @@ LongBench_passage_retrieval_en_datasets = [
     dict(
         type=LongBenchpassage_retrieval_enDataset,
         abbr='LongBench_passage_retrieval_en',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='passage_retrieval_en',
         reader_cfg=LongBench_passage_retrieval_en_reader_cfg,
         infer_cfg=LongBench_passage_retrieval_en_infer_cfg,

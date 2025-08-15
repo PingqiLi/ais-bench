@@ -32,7 +32,7 @@ needlebench_eval_cfg = dict(
 
 context_lengths = list([1000, 2000, 3000, 4000])
 depths_list = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-base_path = 'ais_bench/datasets/needlebench'
+base_path = 'ais_bench/datasets/NeedleBench'
 needle_file_name = 'needles.jsonl'
 
 # Define configurations for both English and Chinese datasets

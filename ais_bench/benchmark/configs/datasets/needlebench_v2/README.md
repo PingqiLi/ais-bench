@@ -29,9 +29,9 @@ NeedleBench V2引入了更平衡的评分系统。总体评分现在是通过三
 ## 数据集部署
 建议从HuggingFace下载数据集：[https://huggingface.co/opencompass/NeedleBench](https://huggingface.co/datasets/opencompass/NeedleBench)
 - 建议部署在`{工具根路径}/ais_bench/datasets`目录下（数据集任务中设置的默认路径）
-- 部署完成后，在`{工具根路径}/ais_bench/datasets`目录下执行`tree LongBench/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
+- 部署完成后，在`{工具根路径}/ais_bench/datasets`目录下执行`tree NeedleBench/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
-    needlebench/
+    NeedleBench/
     ├── gitattributes
     ├── multi_needle_reasoning_en.json
     ├── multi_needle_reasoning_zh.json
@@ -49,33 +49,33 @@ NeedleBench V2引入了更平衡的评分系统。总体评分现在是通过三
 ## 可用数据集任务
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|atc_0shot_nocot_2_power_en|atc_0shot_nocot_2_power_en|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|atc_0shot_nocot_2_power_en.py|
-|needlebench_v2_4k|needlebench_v2_4k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_4k.py|
-|needlebench_v2_multi_reasoning_4k|needlebench_v2_multi_reasoning_4k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_reasoning_4k.py|
-|needlebench_v2_multi_retrieval_4k|needlebench_v2_multi_retrieval_4k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_retrieval_4k.py|
-|needlebench_v2_single_4k|needlebench_v2_single_4k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_single_4k.py|
-|needlebench_v2_8k|needlebench_v2_8k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_8k.py|
-|needlebench_v2_multi_reasoning_8k|needlebench_v2_multi_reasoning_8k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_reasoning_8k.py|
-|needlebench_v2_multi_retrieval_8k|needlebench_v2_multi_retrieval_8k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_retrieval_8k.py|
-|needlebench_v2_single_8k|needlebench_v2_single_8k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_single_8k.py|
-|needlebench_v2_multi_retrieval_compare_batch_8k|needlebench_v2_multi_retrieval_compare_batch_8k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_retrieval_compare_batch_8k.py|
-|needlebench_v2_32k|needlebench_v2_32k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_32k.py|
-|needlebench_v2_multi_reasoning_32k|needlebench_v2_multi_reasoning_32k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_reasoning_32k.py|
-|needlebench_v2_multi_retrieval_32k|needlebench_v2_multi_retrieval_32k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_retrieval_32k.py|
-|needlebench_v2_single_32k|needlebench_v2_single_32k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_single_32k.py|
-|needlebench_v2_128k|needlebench_v2_128k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_128k.py|
-|needlebench_v2_multi_reasoning_128k|needlebench_v2_multi_reasoning_128k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_reasoning_128k.py|
-|needlebench_v2_multi_retrieval_128k|needlebench_v2_multi_retrieval_128k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_retrieval_128k.py|
-|needlebench_v2_single_128k|needlebench_v2_single_128k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_single_128k.py|
-|needlebench_v2_200k|needlebench_v2_200k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_200k.py|
-|needlebench_v2_multi_reasoning_200k|needlebench_v2_multi_reasoning_200k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_reasoning_200k.py|
-|needlebench_v2_multi_retrieval_200k|needlebench_v2_multi_retrieval_200k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_retrieval_200k.py|
-|needlebench_v2_single_200k|needlebench_v2_single_200k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_single_200k.py|
-|needlebench_v2_256k|needlebench_v2_256k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_256k.py|
-|needlebench_v2_multi_reasoning_256k|needlebench_v2_multi_reasoning_256k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_reasoning_256k.py|
-|needlebench_v2_multi_retrieval_256k|needlebench_v2_multi_retrieval_256k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_retrieval_256k.py|
-|needlebench_v2_single_256k|needlebench_v2_single_256k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_single_256k.py|
-|needlebench_v2_1000k|needlebench_v2_1000k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_1000k.py|
-|needlebench_v2_multi_reasoning_1000k|needlebench_v2_multi_reasoning_1000k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_reasoning_1000k.py|
-|needlebench_v2_multi_retrieval_1000k|needlebench_v2_multi_retrieval_1000k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_multi_retrieval_1000k.py|
-|needlebench_v2_single_1000k|needlebench_v2_single_1000k|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|needlebench_v2_single_1000k.py|
+|atc_0shot_nocot_2_power_en|atc_0shot_nocot_2_power_en|准确率(accuracy)|0-shot|对话格式|[atc/atc_0shot_nocot_2_power_en.py]()|
+|needlebench_v2_4k|needlebench_v2_4k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_4k.py](needlebench_v2_4k/needlebench_v2_4k.py)|
+|needlebench_v2_multi_reasoning_4k|needlebench_v2_multi_reasoning_4k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_reasoning_4k.py](needlebench_v2_4k/needlebench_v2_multi_reasoning_4k.py)|
+|needlebench_v2_multi_retrieval_4k|needlebench_v2_multi_retrieval_4k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_retrieval_4k.py](needlebench_v2_4k/needlebench_v2_multi_retrieval_4k.py)|
+|needlebench_v2_single_4k|needlebench_v2_single_4k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_single_4k.py](needlebench_v2_4k/needlebench_v2_single_4k.py)|
+|needlebench_v2_8k|needlebench_v2_8k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_8k.py](needlebench_v2_8k/needlebench_v2_8k.py)|
+|needlebench_v2_multi_reasoning_8k|needlebench_v2_multi_reasoning_8k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_reasoning_8k.py](needlebench_v2_8k/needlebench_v2_multi_reasoning_8k.py)|
+|needlebench_v2_multi_retrieval_8k|needlebench_v2_multi_retrieval_8k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_retrieval_8k.py](needlebench_v2_8k/needlebench_v2_multi_retrieval_8k.py)|
+|needlebench_v2_single_8k|needlebench_v2_single_8k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_single_8k.py](needlebench_v2_8k/needlebench_v2_single_8k.py)|
+|needlebench_v2_multi_retrieval_compare_batch_8k|needlebench_v2_multi_retrieval_compare_batch_8k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_retrieval_compare_batch_8k.py](needlebench_v2_8k/needlebench_v2_multi_retrieval_compare_batch_8k.py)|
+|needlebench_v2_32k|needlebench_v2_32k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_32k.py](needlebench_v2_32k/needlebench_v2_32k.py)|
+|needlebench_v2_multi_reasoning_32k|needlebench_v2_multi_reasoning_32k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_reasoning_32k.py](needlebench_v2_32k/needlebench_v2_multi_reasoning_32k.py)|
+|needlebench_v2_multi_retrieval_32k|needlebench_v2_multi_retrieval_32k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_retrieval_32k.py](needlebench_v2_32k/needlebench_v2_multi_retrieval_32k.py)|
+|needlebench_v2_single_32k|needlebench_v2_single_32k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_single_32k.py](needlebench_v2_32k/needlebench_v2_single_32k.py)|
+|needlebench_v2_128k|needlebench_v2_128k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_128k.py](needlebench_v2_128k/needlebench_v2_128k.py)|
+|needlebench_v2_multi_reasoning_128k|needlebench_v2_multi_reasoning_128k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_reasoning_128k.py](needlebench_v2_128k/needlebench_v2_multi_reasoning_128k.py)|
+|needlebench_v2_multi_retrieval_128k|needlebench_v2_multi_retrieval_128k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_retrieval_128k.py](needlebench_v2_128k/needlebench_v2_multi_retrieval_128k.py)|
+|needlebench_v2_single_128k|needlebench_v2_single_128k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_single_128k.py](needlebench_v2_128k/needlebench_v2_single_128k.py)|
+|needlebench_v2_200k|needlebench_v2_200k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_200k.py](needlebench_v2_200k/needlebench_v2_200k.py)|
+|needlebench_v2_multi_reasoning_200k|needlebench_v2_multi_reasoning_200k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_reasoning_200k.py](needlebench_v2_200k/needlebench_v2_multi_reasoning_200k.py)|
+|needlebench_v2_multi_retrieval_200k|needlebench_v2_multi_retrieval_200k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_retrieval_200k.py](needlebench_v2_200k/needlebench_v2_multi_retrieval_200k.py)|
+|needlebench_v2_single_200k|needlebench_v2_single_200k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_single_200k.py](needlebench_v2_200k/needlebench_v2_single_200k.py)|
+|needlebench_v2_256k|needlebench_v2_256k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_256k.py](needlebench_v2_256k/needlebench_v2_256k.py)|
+|needlebench_v2_multi_reasoning_256k|needlebench_v2_multi_reasoning_256k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_reasoning_256k.py](needlebench_v2_256k/needlebench_v2_multi_reasoning_256k.py)|
+|needlebench_v2_multi_retrieval_256k|needlebench_v2_multi_retrieval_256k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_retrieval_256k.py](needlebench_v2_256k/needlebench_v2_multi_retrieval_256k.py)|
+|needlebench_v2_single_256k|needlebench_v2_single_256k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_single_256k.py](needlebench_v2_256k/needlebench_v2_single_256k.py)|
+|needlebench_v2_1000k|needlebench_v2_1000k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_1000k.py](needlebench_v2_1000k/needlebench_v2_1000k.py)|
+|needlebench_v2_multi_reasoning_1000k|needlebench_v2_multi_reasoning_1000k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_reasoning_1000k.py](needlebench_v2_1000k/needlebench_v2_multi_reasoning_1000k.py)|
+|needlebench_v2_multi_retrieval_1000k|needlebench_v2_multi_retrieval_1000k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_multi_retrieval_1000k.py](needlebench_v2_1000k/needlebench_v2_multi_retrieval_1000k.py)|
+|needlebench_v2_single_1000k|needlebench_v2_single_1000k|准确率(accuracy)|0-shot|对话格式|[needlebench_v2_single_1000k.py](needlebench_v2_1000k/needlebench_v2_single_1000k.py)|

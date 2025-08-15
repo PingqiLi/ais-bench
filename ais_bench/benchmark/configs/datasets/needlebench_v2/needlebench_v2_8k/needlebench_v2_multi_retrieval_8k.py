@@ -8,7 +8,7 @@ with read_base():
 
 needlebench_eval_cfg['evaluator']['type'] = NeedleBenchParallelEvaluator
 
-base_path = 'ais_bench/datasets/needlebench'
+base_path = 'ais_bench/datasets/NeedleBench'
 needle_file_name = 'needles.jsonl'
 
 # Define configurations for both English and Chinese datasets

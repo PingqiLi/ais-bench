@@ -8,7 +8,7 @@ LongBench包含14个英文任务、5个中文任务和2个代码任务，大部�
 - 建议部署在`{工具根路径}/ais_bench/datasets`目录下（数据集任务中设置的默认路径）
 - 部署完成后，在`{工具根路径}/ais_bench/datasets`目录下执行`tree LongBench/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
-    Longbench/
+    LongBench/
     ├── data
     │   ├── 2wikimqa_e.jsonl
     │   ├── 2wikimqa.jsonl
@@ -49,25 +49,25 @@ LongBench包含14个英文任务、5个中文任务和2个代码任务，大部�
 ## 可用数据集任务
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|longbench|longbench|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench.py|
-|longbench_2wikimqa_gen|longbench_2wikimqa_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_2wikimqa_gen.py|
-|longbench_dureader_gen|longbench_dureader_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_dureader_gen.py|
-|longbench_gov_report_gen|longbench_gov_report_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_gov_report_gen.py|
-|longbench_hotpotqa_gen|longbench_hotpotqa_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_hotpotqa_gen.py|
-|longbench_lcc_gen|longbench_lcc_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_lcc_gen.py|
-|longbench_lsht_gen|longbench_lsht_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_lsht_gen.py|
-|longbench_multi_news_gen|longbench_multi_news_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_multi_news_gen.py|
-|longbench_multifieldqa_en_gen|longbench_multifieldqa_en_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_multifieldqa_en_gen.py|
-|longbench_multifieldqa_zh_gen|longbench_multifieldqa_zh_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_multifieldqa_zh_gen.py|
-|longbench_musique_gen|longbench_musique_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_musique_gen.py|
-|longbench_narrativeqa_gen|longbench_narrativeqa_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_narrativeqa_gen.py|
-|longbench_passage_count_gen|longbench_passage_count_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_passage_count_gen.py|
-|longbench_passage_retrieval_en_gen|longbench_passage_retrieval_en_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_passage_retrieval_en_gen.py|
-|longbench_passage_retrieval_zh_gen|longbench_passage_retrieval_zh_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_passage_retrieval_zh_gen.py|
-|longbench_qasper_gen|longbench_qasper_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_qasper_gen.py|
-|longbench_qmsum_gen|longbench_qmsum_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_qmsum_gen.py|
-|longbench_repobench_gen|longbench_repobench_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_repobench_gen.py|
-|longbench_samsum_gen|longbench_samsum_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_samsum_gen.py|
-|longbench_trec_gen|longbench_trec_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_trec_gen.py|
-|longbench_triviaqa_gen|longbench_triviaqa_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_triviaqa_gen.py|
-|longbench_vcsum_gen|longbench_vcsum_gen|数据集生成式任务|准确率(accuracy)|0-shot|对话格式|longbench_vcsum_gen.py|
+|longbench|longbench|准确率(accuracy)|0-shot|对话格式|[longbench.py](longbench.py)|
+|longbench_2wikimqa_gen|longbench_2wikimqa_gen|准确率(accuracy)|0-shot|对话格式|[longbench_2wikimqa_gen.py](longbench2wikimqa/longbench_2wikimqa_gen.py)|
+|longbench_dureader_gen|longbench_dureader_gen|准确率(accuracy)|0-shot|对话格式|[longbench_dureader_gen.py](longbenchdureader/longbench_dureader_gen.py)|
+|longbench_gov_report_gen|longbench_gov_report_gen|准确率(accuracy)|0-shot|对话格式|[longbench_gov_report_gen.py](longbenchgov_report/longbench_gov_report_gen.py)|
+|longbench_hotpotqa_gen|longbench_hotpotqa_gen|准确率(accuracy)|0-shot|对话格式|[longbench_hotpotqa_gen.py](longbenchhotpotqa/longbench_hotpotqa_gen.py)|
+|longbench_lcc_gen|longbench_lcc_gen|准确率(accuracy)|0-shot|对话格式|[longbench_lcc_gen.py](longbenchlcc/longbench_lcc_gen.py)|
+|longbench_lsht_gen|longbench_lsht_gen|准确率(accuracy)|0-shot|对话格式|[longbench_lsht_gen.py](longbenchlsht/longbench_lsht_gen.py)|
+|longbench_multi_news_gen|longbench_multi_news_gen|准确率(accuracy)|0-shot|对话格式|[longbench_multi_news_gen.py](longbenchmulti_news/longbench_multi_news_gen.py)|
+|longbench_multifieldqa_en_gen|longbench_multifieldqa_en_gen|准确率(accuracy)|0-shot|对话格式|[longbench_multifieldqa_en_gen.py](longbenchmultifieldqa_en/longbench_multifieldqa_en_gen.py)|
+|longbench_multifieldqa_zh_gen|longbench_multifieldqa_zh_gen|准确率(accuracy)|0-shot|对话格式|[longbench_multifieldqa_zh_gen.py](longbenchmultifieldqa_zh/longbench_multifieldqa_zh_gen.py)|
+|longbench_musique_gen|longbench_musique_gen|准确率(accuracy)|0-shot|对话格式|[longbench_musique_gen.py](longbenchmusique/longbench_musique_gen.py)|
+|longbench_narrativeqa_gen|longbench_narrativeqa_gen|准确率(accuracy)|0-shot|对话格式|[longbench_narrativeqa_gen.py](longbenchnarrativeqa/longbench_narrativeqa_gen.py)|
+|longbench_passage_count_gen|longbench_passage_count_gen|准确率(accuracy)|0-shot|对话格式|[longbench_passage_count_gen.py](longbenchpassage_count/longbench_passage_count_gen.py)|
+|longbench_passage_retrieval_en_gen|longbench_passage_retrieval_en_gen|准确率(accuracy)|0-shot|对话格式|[longbench_passage_retrieval_en_gen.py](longbenchpassage_retrieval_en/longbench_passage_retrieval_en_gen.py)|
+|longbench_passage_retrieval_zh_gen|longbench_passage_retrieval_zh_gen|准确率(accuracy)|0-shot|对话格式|[longbench_passage_retrieval_zh_gen.py](longbenchpassage_retrieval_zh/longbench_passage_retrieval_zh_gen.py)|
+|longbench_qasper_gen|longbench_qasper_gen|准确率(accuracy)|0-shot|对话格式|[longbench_qasper_gen.py](longbenchqasper/longbench_qasper_gen.py)|
+|longbench_qmsum_gen|longbench_qmsum_gen|准确率(accuracy)|0-shot|对话格式|[longbench_qmsum_gen.py](longbenchqmsum/longbenchqmsum_gen.py)|
+|longbench_repobench_gen|longbench_repobench_gen|准确率(accuracy)|0-shot|对话格式|[longbench_repobench_gen.py](longbenchrepobench/longbench_repobench_gen.py)|
+|longbench_samsum_gen|longbench_samsum_gen|准确率(accuracy)|0-shot|对话格式|[longbench_samsum_gen.py](longbenchsamsum/longbench_samsum_gen.py)|
+|longbench_trec_gen|longbench_trec_gen|准确率(accuracy)|0-shot|对话格式|[longbench_trec_gen.py](longbenchtrec/longbench_trec_gen.py)|
+|longbench_triviaqa_gen|longbench_triviaqa_gen|准确率(accuracy)|0-shot|对话格式|[longbench_triviaqa_gen.py](longbenchtriviaqa/longbench_triviaqa_gen.py)|
+|longbench_vcsum_gen|longbench_vcsum_gen|准确率(accuracy)|0-shot|对话格式|[longbench_vcsum_gen.py](longbenchvcsum/longbench_vcsum_gen.py)|

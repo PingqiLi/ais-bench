@@ -7,7 +7,7 @@ from ais_bench.benchmark.datasets.needlebench_v2.atc import NeedleBenchATCEvalua
 
 # ----------------------- Prompt Settings ----------------------- #
 needle_num_list = [2, 4, 8, 16, 32, 64, 128, 256, 512]
-path = 'ais_bench/datasets/needlebench'
+path = 'ais_bench/datasets/NeedleBench'
 file_name = 'names.json'
 repeats = 10
 

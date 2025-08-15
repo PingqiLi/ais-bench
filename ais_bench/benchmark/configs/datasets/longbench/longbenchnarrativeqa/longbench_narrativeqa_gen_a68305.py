@@ -34,7 +34,7 @@ LongBench_narrativeqa_datasets = [
     dict(
         type=LongBenchnarrativeqaDataset,
         abbr='LongBench_narrativeqa',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='narrativeqa',
         reader_cfg=LongBench_narrativeqa_reader_cfg,
         infer_cfg=LongBench_narrativeqa_infer_cfg,

@@ -34,7 +34,7 @@ LongBench_repobench_datasets = [
     dict(
         type=LongBenchrepobenchDataset,
         abbr='LongBench_repobench-p',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='repobench-p',
         reader_cfg=LongBench_repobench_reader_cfg,
         infer_cfg=LongBench_repobench_infer_cfg,

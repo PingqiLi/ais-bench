@@ -37,7 +37,7 @@ LongBench_passage_retrieval_zh_datasets = [
     dict(
         type=LongBenchpassage_retrieval_zhDataset,
         abbr='LongBench_passage_retrieval_zh',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='passage_retrieval_zh',
         reader_cfg=LongBench_passage_retrieval_zh_reader_cfg,
         infer_cfg=LongBench_passage_retrieval_zh_infer_cfg,

@@ -34,7 +34,7 @@ LongBench_2wikimqa_datasets = [
     dict(
         type=LongBench2wikimqaDataset,
         abbr='LongBench_2wikimqa',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='2wikimqa',
         reader_cfg=LongBench_2wikimqa_reader_cfg,
         infer_cfg=LongBench_2wikimqa_infer_cfg,

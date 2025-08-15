@@ -58,7 +58,7 @@ context_lengths = list(range(5000, 9000, 1000))
 document_depth_percent_intervals_list = [1, 5, 10, 15, 20]
 document_depth_percent_interval_type = 'linear'
 
-base_path = 'ais_bench/datasets/needlebench'
+base_path = 'ais_bench/datasets/NeedleBench'
 file_list = ['PaulGrahamEssays.jsonl']
 needlebench_en_datasets = []
 needle_file_name = 'needles.jsonl'

@@ -35,7 +35,7 @@ LongBenchv2_datasets = [
     dict(
         type=LongBenchv2Dataset,
         abbr='LongBenchv2',
-        path='ais_bench/datasets/longbenchv2/data.json',
+        path='ais_bench/datasets/LongBench-v2/data.json',
         reader_cfg=LongBenchv2_reader_cfg,
         infer_cfg=LongBenchv2_infer_cfg,
         eval_cfg=LongBenchv2_eval_cfg,

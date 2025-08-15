@@ -7,7 +7,7 @@ with read_base():
 
 
 # ----------English Version----------
-base_path = 'ais_bench/datasets/needlebench'
+base_path = 'ais_bench/datasets/NeedleBench'
 file_list = ['PaulGrahamEssays.jsonl']
 needle_file_name = 'names.json'
 diff = 10
@@ -50,7 +50,7 @@ for num_needles in range(2, 6):
             globals()[f'needlebench_{num_needles}needle_en_datasets'].append(dataset_dict)
 
 # ----------Chinese Version----------
-base_path = 'ais_bench/datasets/needlebench'
+base_path = 'ais_bench/datasets/NeedleBench'
 file_list = ['zh_finance.jsonl']
 needle_file_name = 'names.json'
 diff = 10

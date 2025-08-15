@@ -34,7 +34,7 @@ LongBench_lcc_datasets = [
     dict(
         type=LongBenchlccDataset,
         abbr='LongBench_lcc',
-        path='ais_bench/datasets/Longbench',
+        path='ais_bench/datasets/LongBench',
         name='lcc',
         reader_cfg=LongBench_lcc_reader_cfg,
         infer_cfg=LongBench_lcc_infer_cfg,
