@@ -224,7 +224,10 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
                         value = self.__statistic_prefill_or_decode_batch_size(value)
 
                     # Compute statistical values
-                    arr = np.array(value)
+                    if isinstance(value[0], np.ndarray):
+                        arr = np.concatenate(value)
+                    else:
+                        arr = np.array(value)
                     for stat in self.stats_list:
                         if stat == "Average":
                             stats[stat] = round(arr.mean(), 4)
