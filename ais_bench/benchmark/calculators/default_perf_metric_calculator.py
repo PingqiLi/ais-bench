@@ -68,8 +68,8 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         # Compute the average decode latency per request
         if not math.isclose(sum(result["prefill_latency"]), 0):
             for i, value in enumerate(result["seq_latency"]):
-                if value:  # Skip empty lists
-                    tpot = (value - result["prefill_latency"][i]) / result["generate_tokens_len"][i]
+                if value and result["generate_tokens_len"][i] > 1:  # Skip empty lists
+                    tpot = (value - result["prefill_latency"][i]) / (result["generate_tokens_len"][i] - 1)
                     per_request_avg_decode_time.append(tpot)
             result["average_decode_latencies"] = per_request_avg_decode_time[:]
         else:
@@ -205,7 +205,15 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             # Assign fixed count value for all metrics
             for key in self.metrics:
                 self.metrics[key][stage_name]["N"] = self.success_count[stage_name]
-
+                # TPOT and ITL is the average decode latency per request, count the number of requests that have decode latency
+                if key == "TPOT" or key == "ITL":
+                    self.metrics[key][stage_name]["N"] = sum(
+                        [
+                            1
+                            for decode_list in self.decode_latencies[stage_name]
+                            if np.array(decode_list).any()
+                        ]
+                    )
 
     def __statistic_prefill_or_decode_batch_size(self, batch_sizes: list):
         """
