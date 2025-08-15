@@ -141,7 +141,7 @@ def _check_percentage_distribute(obj) -> bool:
     return False
 
 
-def _check_output_config_from_meta_json(obj) -> bool:
+def check_output_config_from_meta_json(obj) -> bool:
     if obj == {} or "output_config" not in obj:
         return False
     output_config = obj["output_config"]
@@ -151,9 +151,11 @@ def _check_output_config_from_meta_json(obj) -> bool:
         raise ValueError("Make sure to set the 'params' parameter in the 'output_config'.")
     if method == "uniform":
         if "min_value" in param and "max_value" in param:
-            if _check_positive_int_value(param["min_value"]) and _check_positive_int_value(param["max_value"]):
-                return True
-            raise ValueError("Please make sure that the value of parameter 'min_value' and 'max_value' can be converted to int(greater than 0).")
+            if (not _check_positive_int_value(param["min_value"])) or (not _check_positive_int_value(param["max_value"])):
+                raise ValueError("Please make sure that the value of parameter 'min_value' and 'max_value' can be converted to int(greater than 0).")
+            if int(param["min_value"]) > int(param["max_value"]):
+                raise ValueError("When the uniform distribution is set, parameter 'min_value' must be less than or equal to parameter 'max_value'.")
+            return True
         else:
             raise ValueError("When the uniform distribution is set, parameter 'min_value' and 'max_value' must be provided.")
     elif method == "percentage":

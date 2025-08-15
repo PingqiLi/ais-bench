@@ -20,7 +20,7 @@ from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched, build_model_from_cfg
 from ais_bench.benchmark.global_consts import WORKERS_NUM
-from ais_bench.benchmark.utils.types import convert_positive_integers, _check_output_config_from_meta_json
+from ais_bench.benchmark.utils.types import convert_positive_integers, check_output_config_from_meta_json
 
 from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
@@ -310,7 +310,7 @@ class GenInferencer(BaseInferencer):
         if ds_reader.max_tokens_column:
             self.max_out_lens:List[int] = convert_positive_integers(ds_reader.dataset['test'][ds_reader.max_tokens_column],
                                                                     ds_reader.max_tokens_column)
-        elif _check_output_config_from_meta_json(self.meta_json_conf):
+        elif check_output_config_from_meta_json(self.meta_json_conf):
             self.max_out_lens = self.get_max_token_list_from_meta_json_file(self.meta_json_conf["output_config"],
                                                                             len(prompt_list))
         else:

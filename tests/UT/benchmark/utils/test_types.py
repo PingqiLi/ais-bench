@@ -1,5 +1,5 @@
 import unittest
-from ais_bench.benchmark.utils.types import check_meta_json_dict, _check_output_config_from_meta_json 
+from ais_bench.benchmark.utils.types import check_meta_json_dict, check_output_config_from_meta_json
 
 
 class TestCheckMetaJsonDict(unittest.TestCase):
@@ -104,14 +104,14 @@ class TestCheckMetaJsonDict(unittest.TestCase):
 
 class TestCheckOutputConfigFromMetaJson(unittest.TestCase):
     def test_empty_object(self):
-        self.assertFalse(_check_output_config_from_meta_json({}))
+        self.assertFalse(check_output_config_from_meta_json({}))
 
     def test_missing_output_config(self):
-        self.assertFalse(_check_output_config_from_meta_json({"other_key": "value"}))
+        self.assertFalse(check_output_config_from_meta_json({"other_key": "value"}))
 
     def test_missing_params(self):
         with self.assertRaises(ValueError):
-            _check_output_config_from_meta_json({"output_config": {"method": "uniform"}})
+            check_output_config_from_meta_json({"output_config": {"method": "uniform"}})
 
     def test_uniform_valid(self):
         config = {
@@ -123,7 +123,7 @@ class TestCheckOutputConfigFromMetaJson(unittest.TestCase):
                 }
             }
         }
-        self.assertTrue(_check_output_config_from_meta_json(config))
+        self.assertTrue(check_output_config_from_meta_json(config))
 
     def test_uniform_invalid_values(self):
         config = {
@@ -136,7 +136,7 @@ class TestCheckOutputConfigFromMetaJson(unittest.TestCase):
             }
         }
         with self.assertRaises(ValueError):
-            _check_output_config_from_meta_json(config)
+            check_output_config_from_meta_json(config)
 
     def test_uniform_with_invalid_param(self):
         config = {
@@ -146,7 +146,17 @@ class TestCheckOutputConfigFromMetaJson(unittest.TestCase):
             }
         }
         with self.assertRaises(ValueError):
-            _check_output_config_from_meta_json(config)
+            check_output_config_from_meta_json(config)
+
+    def test_uniform_when_minvalue_bigger_than_maxvalue(self):
+        config = {
+            "output_config": {
+                "method": "uniform",
+                "params": {"min_value": 12, "max_value": 10}
+            }
+        }
+        with self.assertRaises(ValueError):
+            check_output_config_from_meta_json(config)
 
     def test_percentage_valid(self):
         config = {
@@ -157,7 +167,7 @@ class TestCheckOutputConfigFromMetaJson(unittest.TestCase):
                 }
             }
         }
-        self.assertTrue(_check_output_config_from_meta_json(config))
+        self.assertTrue(check_output_config_from_meta_json(config))
 
     def test_percentage_invalid(self):
         config = {
@@ -169,7 +179,7 @@ class TestCheckOutputConfigFromMetaJson(unittest.TestCase):
             }
         }
         with self.assertRaises(ValueError):
-            _check_output_config_from_meta_json(config)
+            check_output_config_from_meta_json(config)
 
     def test_percentage_missing_distribution(self):
         config = {
@@ -179,7 +189,7 @@ class TestCheckOutputConfigFromMetaJson(unittest.TestCase):
             }
         }
         with self.assertRaises(ValueError):
-            _check_output_config_from_meta_json(config)
+            check_output_config_from_meta_json(config)
 
     def test_unsupported_method(self):
         config = {
@@ -189,7 +199,7 @@ class TestCheckOutputConfigFromMetaJson(unittest.TestCase):
             }
         }
         with self.assertRaises(ValueError):
-            _check_output_config_from_meta_json(config)
+            check_output_config_from_meta_json(config)
 
 
 if __name__ == '__main__':
