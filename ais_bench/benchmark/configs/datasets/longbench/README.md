@@ -44,7 +44,7 @@ LongBench包含14个英文任务、5个中文任务和2个代码任务，大部�
     │   ├── triviaqa_e.jsonl
     │   ├── triviaqa.jsonl
     │   └── vcsum.jsonl
-    └── Longbench.py
+    └── LongBench.py
     ```
 ## 可用数据集任务
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
