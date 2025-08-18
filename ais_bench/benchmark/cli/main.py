@@ -199,7 +199,7 @@ def main():
     cfg = Config.fromfile(output_config_path, format_python_code=False)
 
     # check if the tasks all function call tasks
-    function_call_task_check(cfg)
+    function_call_task_check(cfg, args.merge_ds)
     
     if args.mode == 'perf':
         fill_perf_cfg(cfg, args)

@@ -1,5 +1,6 @@
 # flake8: noqa
 # yapf: disable
+from ctypes import ArgumentError
 import os
 from typing import List, Tuple, Union
 
@@ -284,7 +285,7 @@ def fill_merged_eval_cfg(cfg, args):
     cfg.merge_from_dict(new_cfg)
 
 
-def function_call_task_check(cfg):
+def function_call_task_check(cfg, merge_ds):
     """
     Check if the configuration represents a function call task.
     
@@ -330,4 +331,6 @@ def function_call_task_check(cfg):
         raise ValueError(f"VLLMFunctionCallAPIChat can only be used with BFCLDataset, but found incompatible datasets: {non_bfcl_datasets}")
     
     is_function_call_task = all_models_function_call and all_datasets_bfcl
+    if is_function_call_task and merge_ds:
+        raise ValueError("Option '--merge-ds' is not supported with function call tasks")
     cfg.merge_from_dict({"is_function_call_task": is_function_call_task})
