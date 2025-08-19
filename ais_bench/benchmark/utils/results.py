@@ -102,30 +102,24 @@ class MiddleData:
 
 
     def convert_to_performance_data(self) -> dict:
-        return {
+        converted_data = {
             "id": self.data_id,
             "input_data": self.input_data,
             "input_token_id": self.input_token_id,
             "output": self.get_output(),
             "output_token_id": self.output_token_id,
             "prefill_latency": self.prefill_latency,
-            "prefill_throughput": round(len(self.input_token_id) / self.prefill_latency * 1000, 4) if self.prefill_latency > 0 else 0,
+            "prefill_throughput": 0,
             "decode_token_latencies": self.decode_cost,
-            "last_decode_latency": float(self.decode_cost[-1]) if self.decode_cost.any() else 0.0,
-            "decode_max_token_latency": (
-                float(np.max(self.decode_cost)) if self.decode_cost.any() else 0.0
-            ),
+            "last_decode_latency": 0.0,
+            "decode_max_token_latency": 0.0,
             "seq_latency": self.req_latency,
             "input_tokens_len": self.num_input_tokens,
             "generate_tokens_len": self.num_generated_tokens,
-            "generate_tokens_speed": round(self.num_generated_tokens / self.req_latency * 1000, 4) if self.req_latency > 0 else 0,
+            "generate_tokens_speed": 0,
             "input_characters_len": len(self.input_data),
             "generate_characters_len": self.num_generated_chars,
-            "characters_per_token": (
-                round(self.num_generated_chars / self.num_generated_tokens, 4)
-                if self.num_generated_tokens
-                else 0.0
-            ),
+            "characters_per_token": 0.0,
             "prefill_batch_size": self.prefill_batch_size,
             "decode_batch_size": self.decode_batch_size[:],
             "queue_wait_time": self.queue_wait_time[:],
@@ -136,3 +130,15 @@ class MiddleData:
             "is_empty": self.is_empty,
             "multiturn_group_id": self.multiturn_group_id
         }
+        if self.is_success: # calculate when request succeed
+            converted_data["prefill_throughput"] = round(len(self.input_token_id) / self.prefill_latency * 1000, 4) if self.prefill_latency > 0 else 0
+            converted_data["last_decode_latency"] = float(self.decode_cost[-1]) if self.decode_cost.any() else 0.0
+            converted_data["decode_max_token_latency"] = float(np.max(self.decode_cost)) if self.decode_cost.any() else 0.0
+            converted_data["generate_tokens_speed"] = round(self.num_generated_tokens / self.req_latency * 1000, 4) if self.req_latency > 0 else 0
+            converted_data["characters_per_token"] = (
+                round(self.num_generated_chars / self.num_generated_tokens, 4)
+                if self.num_generated_tokens
+                else 0.0
+            )
+
+        return converted_data
