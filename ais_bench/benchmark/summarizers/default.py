@@ -265,7 +265,7 @@ class DefaultSummarizer:
             for dataset_abbr in dataset_abbrs:
                 if dataset_abbr in dataset_metrics:
                     for metric in dataset_metrics[dataset_abbr]:
-                        if metric not in METRIC_WHITELIST:
+                        if metric in ("correct_count", "total_count"):
                             continue
                         summarizer_dataset_abbrs.append((dataset_abbr, metric))
                 else:
@@ -273,8 +273,8 @@ class DefaultSummarizer:
             # along with all possible group metrics
             for dataset_abbr in dataset_metrics:
                 for metric in dataset_metrics[dataset_abbr]:
-                    if metric not in METRIC_WHITELIST:
-                            continue
+                    if metric in ("correct_count", "total_count"):
+                        continue
                     if (dataset_abbr, metric) not in summarizer_dataset_abbrs:
                         summarizer_dataset_abbrs.append((dataset_abbr, metric))
         else:
