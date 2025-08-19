@@ -104,10 +104,11 @@ class CustomDataset(BaseDataset):
             raise ValueError(f'Unsupported file format: {path}')
         if meta_json_conf is not None:
             meta_json_conf = check_meta_json_dict(meta_json_conf)
-        sample_mode = meta_json_conf.get('sampling_mode', 'default')
-        request_count = meta_json_conf.get('request_count', 0)
-        sample_data = get_sample_data(data, sample_mode, int(request_count))
-        return Dataset.from_list(sample_data)
+            sample_mode = meta_json_conf.get('sampling_mode', 'default')
+            request_count = meta_json_conf.get('request_count', 0)
+            sample_data = get_sample_data(data, sample_mode, int(request_count))
+            return Dataset.from_list(sample_data)
+        return Dataset.from_list(data)
 
 
 def stringfy_types(obj):
