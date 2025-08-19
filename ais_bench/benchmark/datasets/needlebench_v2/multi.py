@@ -12,6 +12,7 @@ from ais_bench.benchmark.datasets.needlebench_v2.atc import (
     relationship_templates_en, relationship_templates_zh_CN,
     relationship_terms_en, relationship_terms_zh_CN)
 from ais_bench.benchmark.registry import LOAD_DATASET
+from ais_bench.benchmark.utils import get_data_path
 
 
 def get_random_needles(counter, file_path, num_needles, language):
@@ -237,8 +238,11 @@ The content of the long document is as follows
             'zh_game.jsonl', 'zh_general.jsonl', 'zh_government.jsonl',
             'zh_movie.jsonl', 'zh_tech.jsonl'
         ]
+        path = get_data_path(path)
         needle_file_path = os.path.join(path, needle_file_name)
         for file_name in file_names:
+            if file_name not in file_list:
+                continue
             file_path = os.path.join(path, file_name)
             if not os.path.exists(file_path):
                 raise ValueError(f'Dataset file does not exist: {file_path}')
