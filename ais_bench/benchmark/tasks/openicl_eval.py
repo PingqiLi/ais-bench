@@ -243,7 +243,9 @@ class OpenICLEvalTask(BaseTask):
                     new_key = 'model_postprocess_' + key
                     result[new_key] = model_result[key]
 
-            if self.dump_details:
+            if self.dump_details and 'BFCL' in self.dataset_cfg.get("type", ""):
+                self.logger.info("BFCL evaluation - saving only bad case details")
+            elif self.dump_details:
                 details = result.get('details', None)
                 try:
                     result['details'] = self.format_details(

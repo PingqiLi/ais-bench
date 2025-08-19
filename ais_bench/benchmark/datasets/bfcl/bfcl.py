@@ -301,6 +301,9 @@ class BFCLRelevanceEvaluator(BFCLEvaluator):
                 # Record error details for failed cases
                 temp = {}
                 temp["id"] = index
+                temp["prompt"] = test_set[i]["question"]
+                temp["origin_prediction"] = model_result_item
+                temp["predictions"] = decoded_result
                 temp["correct"] = success
                 if "irrelevance" in index:
                     temp["error"] = [
@@ -312,10 +315,6 @@ class BFCLRelevanceEvaluator(BFCLEvaluator):
                         f"Invalid syntax. Failed to decode AST when it should have. {decode_error}"
                     ]
                     temp["error_type"] = "relevance_error:decoder_failed"
-                temp["prompt"] = test_set[i]["question"]
-                temp["model_result"] = model_result_item
-                temp["decoded_result"] = decoded_result
-
                 details.append(temp)
 
         score = correct_count / len(predictions)
@@ -479,12 +478,12 @@ class BFCLMultiTurnEvaluator(BFCLEvaluator):
                 # Record error details for failed cases
                 temp = {}
                 temp["id"] = index
-                temp["correct"] = accuracy_checker_result.pop("valid")
-                temp["error"] = make_json_serializable(accuracy_checker_result)
                 temp["prompt"] = test_entry["question"]
-                temp["model_result_raw"] = multi_turn_model_result_list
-                temp["model_result_decoded"] = multi_turn_model_result_list_decoded
-                temp["possible_answer"] = multi_turn_ground_truth_list
+                temp["origin_prediction"] = multi_turn_model_result_list
+                temp["predictions"] = multi_turn_model_result_list_decoded
+                temp["references"] = multi_turn_ground_truth_list
+                temp["correct"] = accuracy_checker_result.pop("valid", False)
+                temp["error"] = make_json_serializable(accuracy_checker_result)
                 details.append(temp)
             else:
                 correct_count += 1
@@ -595,13 +594,13 @@ class BFCLSingleTurnEvaluator(BFCLEvaluator):
                 # Record error details for failed cases
                 temp = {}
                 temp["id"] = index
+                temp["prompt"] = test_set[i]["question"]
+                temp["origin_prediction"] = model_result_item_raw
+                temp["predictions"] = model_result_item
+                temp["references"] = possible_answer_item
                 temp["correct"] = checker_result["valid"]
                 temp["error"] = checker_result["error"]
                 temp["error_type"] = checker_result["error_type"]
-                temp["prompt"] = test_set[i]["question"]
-                temp["model_result_raw"] = model_result_item_raw
-                temp["model_result_decoded"] = model_result_item
-                temp["possible_answer"] = possible_answer_item
                 details.append(temp)
 
         score = correct_count / len(predictions)
