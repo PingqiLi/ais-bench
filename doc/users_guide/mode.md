@@ -135,6 +135,7 @@ outputs/default/
 │       └── vllm-api-general-stream/
 │           ├── syntheticdataset.csv        # 单次推理请求性能数据
 │           ├── syntheticdataset.json       # 端到端性能数据
+│           ├── syntheticdataset_details.h5  # 完整打点中的ITL数据
 │           ├── syntheticdataset_details.json  # 完整打点明细
 │           └── syntheticdataset_plot.html     # 实时并发与请求可视化页面
 └── ...

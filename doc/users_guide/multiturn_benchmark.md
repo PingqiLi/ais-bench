@@ -24,7 +24,7 @@
 ### 命令含义
 以`ShareGPT`多轮对话`vLLM`服务化性能测评场景为例：
 ```
-ais_bench --models vllm_api_stream_chat_multiturn --datasets sharegpt_gen --debug -m perf 
+ais_bench --models vllm_api_stream_chat_multiturn --datasets sharegpt_gen --debug -m perf
 ```
 其中：
 - `--models`指定了模型任务，即`vllm_api_stream_chat_multiturn`模型任务。
@@ -166,7 +166,8 @@ ais_bench --models vllm_api_stream_chat_multiturn --datasets sharegpt_gen -m per
 │    └── vllm-multiturn-api-chat-stream/          # “服务化模型配置”名称，对应模型任务配置文件中models的 abbr参数
 │         ├── sharegptdataset.csv          # 单次请求性能输出（CSV），与性能结果打屏中的Performance Parameters表格一致
 │         ├── sharegptdataset.json         # 端到端性能输出（JSON），与性能结果打屏中的Common Metric表格一致
-│         ├── sharegptdataset_details.json # 全量打点日志（JSON）
+│         ├── sharegptdataset_details.h5 # 完整打点中的ITL数据
+│         ├── sharegptdataset_details.json # 完整打点明细
 │         └── sharegptdataset_plot.html    # 请求并发可视化报告（HTML）
 ```
 💡其中 `sharegptdataset_plot.html`这个请求并发可视化报告建议使用Chrome或者Edge等浏览器打开，可以看到每个请求的时延以及每个时刻client端感知的服务时间并发数：
