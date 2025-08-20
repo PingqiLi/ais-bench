@@ -17,6 +17,7 @@ AISBench Benchmark 支持多种服务化推理后端，包括 vLLM、SGLang、Tr
 | `vllm_api_general_chat`  | 通过 vLLM 兼容 OpenAI 的 API 访问推理服务，接口为 `v1/chat/completions` | 基于 vLLM 版本支持 `v1/chat/completions` 子服务 | 文本接口 | 字符串格式、对话格式、多模态格式 | [vllm_api_general_chat.py](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py)  |
 | `vllm_api_stream_chat`| 流式访问 vLLM 推理服务，接口为 `v1/chat/completions`| 基于 vLLM 版本支持 `v1/chat/completions` 子服务 | 流式接口 | 字符串格式、对话格式、多模态格式 | [vllm_api_stream_chat.py](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py) |
 | `vllm_api_stream_chat_multiturn`| 多轮对话场景的流式访问 vLLM 推理服务，接口为 `v1/chat/completions`| 基于 vLLM 版本支持 `v1/chat/completions` 子服务 | 流式接口 | 对话格式 | [vllm_api_stream_chat_multiturn.py](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat_multiturn.py) |
+| `vllm_api_function_call_chat`| function call精度测评场景访问 vLLM 推理服务的API ，接口为 `v1/chat/completions`（只适用于[BFCL](../../ais_bench/benchmark/configs/datasets/BFCL/README.md)测评场景)| 基于 vLLM 版本支持 `v1/chat/completions` 子服务 | 文本接口 | 对话格式 | [vllm_api_function_call_chat.py](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_function_call_chat.py) |
 | `vllm_api_old`  | 通过 vLLM 兼容 API 访问推理服务，接口为 `generate`| 基于 vLLM 版本支持 `generate` 子服务| 文本接口 | 字符串格式、多模态格式| [vllm_api_old.py](../../ais_bench/benchmark/configs/models/vllm_api/vllm_api_old.py)|
 | `mindie_stream_api_general` | 通过 MindIE 流式 API 访问推理服务，接口为 `infer`| 基于 MindIE 版本支持 `infer` 子服务 | 流式接口 | 字符串格式、多模态格式| [mindie_stream_api_general.py](../../ais_bench/benchmark/configs/models/mindie_api/mindie_stream_api_general.py) |
 | `triton_api_general`  | 通过 Triton API 访问推理服务，接口为 `v2/models/{model name}/generate`  | 启动支持 Triton API 的推理服务| 文本接口 | 字符串格式、多模态格式| [triton_api_general.py](../../ais_bench/benchmark/configs/models/triton_api/triton_api_general.py) |
@@ -70,6 +71,8 @@ models = [
 | `max_out_len` | Int | 推理响应的最大输出长度，实际长度可能受服务端限制。合法范围：(0, 131072] |
 | `batch_size` | Int | 请求的并发批处理大小。合法范围：(0, 64000] |
 | `generation_kwargs` | Dict | 推理生成参数配置，依赖具体的服务化后端和接口类型。注意：当前不支持 `best_of` 和 `n` 等多次采样参数 |
+| `returns_tool_calls` | Bool | 控制函数调用信息的提取方式。当设置为True时，系统从API响应的`tool_calls`字段中提取函数调用信息；当设置为False时，系统从`content`字段中解析函数调用信息 |
+| `pred_postprocessor` | Dict | 模型输出结果的后处理配置。用于对原始模型输出进行格式化、清理或转换，以满足特定评估任务的要求 |
 
 **注意事项：**
 - `request_rate` 受硬件性能影响，可通过增加  📚 [WORKERS_NUM](./cli_args.md#配置常量文件参数) 提高并发能力。

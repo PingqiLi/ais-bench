@@ -43,6 +43,7 @@ AISBench Benchmark当前支持的数据集类型如下：
 | triviaqa         | 知识问答              | [详细介绍](../../ais_bench/benchmark/configs/datasets/triviaqa/README.md) |
 | winogrande       | 常识推理（代词消解）   | [详细介绍](../../ais_bench/benchmark/configs/datasets/winogrande/README.md) |
 | Xsum             | 文本生成（摘要）       | [详细介绍](../../ais_bench/benchmark/configs/datasets/Xsum/README.md) |
+| BFCL             | 函数调用能力评估        | [详细介绍](../../ais_bench/benchmark/configs/datasets/BFCL/README.md) |
 ### 多模态类数据集
 | 数据集名称| 分类 | 详细介绍&获取方式 |
 |---------------|----------------------|-------------------|

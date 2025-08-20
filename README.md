@@ -22,6 +22,7 @@
 </div>
 
 ## 🔥 最新进展
+- **\[2025.8.19\]** 🚀 新增Function Call专用模型配置 [vllm_api_function_call_chat](ais_bench/benchmark/configs/models/vllm_api/vllm_api_function_call_chat.py)，支持 [BFCL 函数调用能力评估](ais_bench/benchmark/configs/datasets/BFCL/README.md) 🔥🔥🔥
 - **\[2025.7.15\]** 
   - 支持[sharegpt](ais_bench/benchmark/configs/datasets/sharegpt/README.md)和[mtbench](ais_bench/benchmark/configs/datasets/mtbench/README.md)多轮对话数据集服务化性能测评和可视化，测评方式见📚[多轮对话测评指南](doc/users_guide/multiturn_benchmark.md)！🔥🔥🔥
   - 性能评测场景使用[自定义数据集](doc/users_guide/custom_dataset.md)，支持定义每条数据对应的最大输出长度限制！🔥🔥🔥
@@ -278,5 +279,6 @@ demo_gsm8k              401e4c   accuracy gen                   62.50
 - 本项目代码基于🔗 [OpenCompass](https://github.com/open-compass/opencompass)做拓展开发。
 - 本项目部分数据集和提示词实现修改自[simple-evals](https://github.com/openai/simple-evals)。
 - 本项目代码中打点的性能指标与[VLLM Benchmark](https://github.com/vllm-project/vllm/tree/main/benchmarks)对齐。
+- 本项目的BFCL函数调用能力评估功能基于 [Berkeley Function Calling Leaderboard (BFCL)](https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard) 实现。
 
 <p align="right"><a href="#top">🔝Back to top</a></p>
