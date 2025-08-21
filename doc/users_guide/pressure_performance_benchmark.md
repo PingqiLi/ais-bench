@@ -194,7 +194,8 @@ ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_cha
 │    └── vllm-api-stream-chat/          # “服务化模型配置”名称，对应模型任务配置文件中models的 abbr参数
 │         ├── gsm8kdataset.csv          # 单次请求性能输出（CSV），与性能结果打屏中的Performance Parameters表格一致
 │         ├── gsm8kdataset.json         # 端到端性能输出（JSON），与性能结果打屏中的Common Metric表格一致
-│         ├── gsm8kdataset_details.json # 全量打点日志（JSON）
+│         ├── gsm8kdataset_details.h5 # 完整打点中的ITL数据
+│         ├── gsm8kdataset_details.json # 完整打点明细
 │         └── gsm8kdataset_plot.html    # 请求并发可视化报告（HTML）
 ```
 💡其中 `gsm8kdataset_plot.html`这个请求并发可视化报告建议使用Chrome或者Edge等浏览器打开，可以看到每个请求的时延以及每个时刻client端感知的服务时间并发数：
