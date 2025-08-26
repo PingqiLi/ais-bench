@@ -191,15 +191,19 @@ class BaseStreamClient(BaseClient, ABC):
 
     def iter_lines(self, stream):
         """
-        Split the input stream into lines based on "\n\n".
-        If the received packet does not encounter the end or \n\n,
+        Split the input stream into lines based on multiple delimiters:
+        - "\n\n" (LF LF)
+        - "\r\n\r\n" (CRLF CRLF) 
+        - "\r\r" (CR CR)
+        
+        If the received packet does not encounter any of these delimiters,
         cache it and concatenate it with the subsequent stream.
         """
         pending = None
         for chunk in stream:
             if pending is not None:
                 chunk = pending + chunk
-            lines = [d for d in chunk.split(b'\n\n') if d]
+            lines = [d for d in chunk.replace(b'\r\n\r\n', b'\n\n').replace(b'\r\r', b'\n\n').split(b'\n\n') if d]
             # If there are no lines or the chunk is empty, clear pending
             if not lines or not chunk:
                 pending = None
