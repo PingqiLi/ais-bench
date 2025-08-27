@@ -142,7 +142,7 @@ datasets = [
 - `max_value` (str or int): 生成数据最大长度，当method: uniform有效。
 - `percentage_distribute` (list): 生成输出长度的百分比分布，当method: percentage有效，格式为二维数组，其中第一个元素表示输出长度，第二个元素表示百分比。
 
-样例如下：
+下面分别提供百分比分布和均匀分布的配置示例：
 ```json
 {
     "output_config": {
@@ -157,6 +157,17 @@ datasets = [
     },
     "request_count": "10",
     "sampling_mode": "shuffle"
+}
+```
+```json
+{
+    "output_config": {
+        "method": "uniform",
+        "params": {
+            "min_value": 100,
+            "max_value": 200
+        }
+    }
 }
 ```
 ## 特殊字段
