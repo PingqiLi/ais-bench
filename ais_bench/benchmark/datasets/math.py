@@ -196,6 +196,7 @@ def math_postprocess_v2(text: str) -> str:
 class MATHEvaluator(BaseEvaluator):
 
     def __init__(self, version='v1'):
+        super().__init__()
         assert version in ['v1', 'v2']
         self.version = version
 

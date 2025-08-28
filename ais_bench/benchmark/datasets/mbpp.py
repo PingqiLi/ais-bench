@@ -214,6 +214,7 @@ class MBPPEvaluator(BaseEvaluator):
     def __init__(self, metric: str = 'MBPP') -> None:
         self.metric = metric
         assert self.metric in ['MBPP', 'MBPPPlus']
+        super.__init__()
 
     def score(self, predictions, references):
         if len(predictions) != len(references):
