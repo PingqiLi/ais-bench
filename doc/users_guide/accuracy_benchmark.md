@@ -51,13 +51,17 @@ ais_bench --models vllm_api_general_chat vllm_api_stream_chat --datasets gsm8k_g
 - 参考📚 [配置开源数据集](datasets.md#配置开源数据集)按照实际情况配置数据集任务`gsm8k_gen_4_shot_cot_str`和`aime2024_gen_0_shot_chat_prompt`对应的配置文件。**注**：如果数据集放在默认目录 `ais_bench/datasets/`下，则一般不需要配置
 
 #### 执行评测命令
+
 执行命令：
+
 ```bash
 ais_bench --models vllm_api_general_chat vllm_api_stream_chat --datasets gsm8k_gen_4_shot_cot_str aime2024_gen_0_shot_chat_prompt
 ```
+
 执行过程中会在📚 [`--work-dir`](cli_args.md#公共参数)路径（默认是`outputs/default/`）下创建时间戳目录用于保存执行细节。
 
 任务结束后结果呈现的打屏日志示例如下：
+
 ```bash
 dataset    version    metric    mode      vllm-api-general-chat    vllm-api-stream-chat
 ---------  ---------  --------  ------  -----------------------  ----------------------
@@ -175,6 +179,38 @@ ais_bench --models vllm_api_general --datasets ceval_gen --merge-ds
 ```
 > ⚠️ 注意：合并模式下将只生成整体结果，子数据集精度不再单独列出。同时对合并模式下中断或失败的推理结果进行数据集中断续测 & 失败用例重测也必须在命令中加`--merge-ds`
 
+### 多次独立重复推理
+
+> 该功能开启后，由于`数据集`/`请求数量`将按照`数据点级别`成倍扩充，从而导致推理时间显著变长，且使用内存显著提高。请在阅读 📚 [精度评测场景：评估指标解析](accuracy_metric.md) 后，**确认当前场景是否需要开启该功能**。
+
+该场景旨在从可靠性、稳定性、整体准确性等多维度探究模型能力，开启方式为：在 `服务化推理后端配置参数` 中的超参 `generation_kwargs` 中配置 🔗[`num_return_sequences`参数数值](models.md#服务化推理后端配置参数说明)，格式按照以下示例内容（取值仅供参考）：
+
+```python
+models = [
+    dict(
+        ... # 其它参数
+        generation_kwargs = dict(
+            num_return_sequences = 5, # 具体作用和约束请参考文档 accuracy_metric.md
+            ... # 其它参数 
+        ),
+        ...
+    )
+]
+```
+
+精度评估阶段结束后，结果会记录在日志和打屏在运行窗口，格式按照以下示例内容（数据仅供参考）：
+
+```bash
+| dataset   | version   | metric                    | mode | vllm-api-stream-chat |
+| --------- | --------- | ------------------------- | ---- | -------------------- |
+| aime2024  | 604a78    | accuracy (5 runs average) | gen  | 18.00                |
+| aime2024  | 604a78    | avg@5                     | gen  | 18.00                |
+| aime2024  | 604a78    | pass@5                    | gen  | 53.33                |
+| aime2024  | 604a78    | cons@5                    | gen  | 13.33                |
+```
+
+上表中，**具体指标解读**和**参数约束** 请参考📚 [精度评测场景：评估指标解析](accuracy_metric.md)
+
 ## 其他功能场景
 ### 推理结果重评估
 主要功能场景下评测任务的执行流程包括完整的推理 → 评估 → 汇总流程：
@@ -231,6 +267,8 @@ gsm8k_eval_cfg = dict(evaluator=dict(type=Gsm8kEvaluator),
 ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt --mode eval --reuse 20250628_151326
 
 ```
+
+---
 
 # 纯模型精度测评
 在本地环境加载模型与数据集，通过统一推理流程比对输出与参考答案，评估模型固有准确率。自定义批量大小、序列长度等参数，适用于**Huggingface Transformers**推理框架。

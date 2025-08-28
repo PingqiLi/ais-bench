@@ -19,6 +19,7 @@ from ais_bench.benchmark.tasks.base import BaseTask
 from ais_bench.benchmark.utils import (build_dataset_from_cfg, build_dataset_from_cfg_with_model_path,
                                        build_model_from_cfg, get_infer_output_path,
                                        get_logger, task_abbr_from_cfg)
+from ais_bench.benchmark.utils.types import _check_type
 
 from .base import BaseRunner
 
@@ -68,11 +69,21 @@ def monkey_run_merged(self):
         self.min_out_len = model_cfg.get("min_out_len", None)
 
         self.model = build_model_from_cfg(model_cfg)
+        
+        num_return_sequences = getattr(model_cfg, 'generation_kwargs', {}).pop('num_return_sequences', 1)
+        _check_type(num_return_sequences, int)
+        assert num_return_sequences > 0, f"num_return_sequences expected a positive integer, but got {num_return_sequences}"
 
         for dataset_cfg in dataset_cfgs:
             self.model_cfg = model_cfg
             self.dataset_cfg = dataset_cfg
             self.infer_cfg = self.dataset_cfg["infer_cfg"]
+            
+            if 'n' not in self.dataset_cfg:
+                    self.dataset_cfg['n'] = num_return_sequences
+            _check_type(self.dataset_cfg['n'], int)
+            assert self.dataset_cfg['n'] > 0, f"n expected a positive integer, but got {self.dataset_cfg['n']}"
+            
             self.dataset = build_dataset_from_cfg(self.dataset_cfg)
             self.build_inference()
             self.sub_cfg = {
@@ -94,11 +105,21 @@ def monkey_run(self):
         self.model = build_model_from_cfg(model_cfg)
         # add global tokens for concurrents
         # assert self.model.is_api, 'Only API model is supported.'
+        
+        num_return_sequences = getattr(model_cfg, 'generation_kwargs', {}).pop('num_return_sequences', 1)
+        _check_type(num_return_sequences, int)
+        assert num_return_sequences > 0, f"num_return_sequences expected a positive integer, but got {num_return_sequences}"
 
         for dataset_cfg in dataset_cfgs:
             self.model_cfg = model_cfg
             self.dataset_cfg = dataset_cfg
             self.infer_cfg = self.dataset_cfg['infer_cfg']
+
+            if 'n' not in self.dataset_cfg:
+                    self.dataset_cfg['n'] = num_return_sequences
+            _check_type(self.dataset_cfg['n'], int)
+            assert self.dataset_cfg['n'] > 0, f"n expected a positive integer, but got {self.dataset_cfg['n']}"
+
             self.dataset = build_dataset_from_cfg(self.dataset_cfg)
             self.sub_cfg = {
                 'models': [self.model_cfg],

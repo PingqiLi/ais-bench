@@ -23,6 +23,7 @@ from ais_bench.benchmark.utils import (build_dataset_from_cfg, dataset_abbr_from
                                get_infer_merged_output_path, get_logger,
                                task_abbr_from_cfg)
 from ais_bench.benchmark.tasks.openicl_eval import OpenICLEvalTask
+from ais_bench.benchmark.utils.types import _check_type
 
 
 @TASKS.register_module()
@@ -50,10 +51,22 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
     def run(self):
         for model_cfg, dataset_cfgs in zip(self.model_cfgs, self.dataset_cfgs):
             self.merge_datasets_cfgs = {}
+            num_return_sequences = getattr(model_cfg, 'generation_kwargs', {}).get('num_return_sequences', 1)
+
             for dataset_cfg in dataset_cfgs:
                 merged_ds_abbr = dataset_cfg.get('type').split('.')[-1].lower()
                 if self.merge_datasets_cfgs.get(merged_ds_abbr) is None:
                     self.merge_datasets_cfgs[merged_ds_abbr] = []
+                    
+                k = dataset_cfg.get('k', num_return_sequences)
+                n = dataset_cfg.get('n', num_return_sequences)
+                _check_type(k, int)
+                assert k > 0, f"k expected a positive integer, but got {k}"
+                _check_type(n, int)
+                assert n > 0, f"n expected a positive integer, but got {n}"
+                dataset_cfg["k"] = k
+                dataset_cfg["n"] = n
+
                 self.merge_datasets_cfgs[merged_ds_abbr].append(dataset_cfg)
 
             if not dataset_cfgs:
@@ -86,7 +99,11 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
 
     def _score(self):
         merged_ds_abbr = self.dataset_cfg.get('type').split('.')[-1].lower()
-        test_set_list = [build_dataset_from_cfg(ds_cfg).test for ds_cfg in self.merge_datasets_cfgs.get(merged_ds_abbr)]
+        test_set_list = []
+        ds_cfgs = self.merge_datasets_cfgs.get(merged_ds_abbr)
+        k = ds_cfgs[0].get('k', 1) if ds_cfgs else 1
+        n = ds_cfgs[0].get('n', 1) if ds_cfgs else 1
+        test_set_list = [build_dataset_from_cfg(ds_cfg).test for ds_cfg in ds_cfgs]
 
         # Postprocess dataset if necessary
         if 'dataset_postprocessor' in self.eval_cfg:
@@ -220,7 +237,7 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
                 k: preds[k]
                 for k in signature(icl_evaluator.score).parameters
             }
-            result = icl_evaluator.score(**preds)
+            result = icl_evaluator.evaluate(k, n, copy.deepcopy(test_set), **preds)
 
             # Get model postprocess result
             model_details = None
