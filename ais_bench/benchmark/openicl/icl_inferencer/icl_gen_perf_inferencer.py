@@ -93,8 +93,12 @@ class GenPerfInferencer(GenInferencer):
         if ds_reader.output_column:
             gold_ans = ds_reader.dataset["test"][ds_reader.output_column]
             prompt_list = list(zip(prompt_list, gold_ans))
-
-        entry, golds = self.extract_data(ds_reader, prompt_list)
+        entry = [p[0] for p in prompt_list] if ds_reader.output_column else prompt_list
+        golds = (
+            [p[1] for p in prompt_list]
+            if ds_reader.output_column
+            else [None] * len(entry)
+        )
         return entry, golds
 
     def inference(
@@ -131,6 +135,10 @@ class GenPerfInferencer(GenInferencer):
         preds = self.extract_preds(results)
         logger.info("Finish extracting pref datas!")
         task_params = {"max_concurrency": self.batch_size}
+
+        num_return_sequences = getattr(self.model, "generation_kwargs", {}).get(
+            "num_return_sequences", 1
+        )
 
         end_time_stamp = time.perf_counter()
 

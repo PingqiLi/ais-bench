@@ -62,6 +62,7 @@ def build_dataset_from_cfg(dataset_cfg: ConfigDict):
     dataset_cfg = copy.deepcopy(dataset_cfg)
     dataset_cfg.pop('infer_cfg', None)
     dataset_cfg.pop('eval_cfg', None)
+    dataset_cfg.pop('abbr', None)
     return LOAD_DATASET.build(dataset_cfg)
 
 

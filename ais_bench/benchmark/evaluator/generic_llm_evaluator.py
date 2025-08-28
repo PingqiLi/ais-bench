@@ -47,7 +47,6 @@ class GenericLLMEvaluator(BaseEvaluator):
 
         self.dict_postprocessor = dict_postprocessor
         self.pred_postprocessor = pred_postprocessor
-        super.__init__()
 
     def build_inferencer(self, ):
         """Build LLM Inference."""

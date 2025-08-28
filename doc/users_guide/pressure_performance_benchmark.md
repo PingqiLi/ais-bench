@@ -200,7 +200,7 @@ ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_cha
 ```
 💡其中 `gsm8kdataset_plot.html`这个请求并发可视化报告建议使用Chrome或者Edge等浏览器打开，可以看到每个请求的时延以及每个时刻client端感知的服务时间并发数：
   ![full_plot_example.img](../../img/请求并发图/full_plot_example.png)
-具体这个html中的图标如何查看请参考📚 [性能测试可视化并发图使用说明](performance_visualization.md)
+具体这个html中的图标如何查看请参考📚 [性能测试可视化并发图使用说明](性能测试可视化并发图使用说明.md)
 
 ## 服务化性能压力测试前置约束
 在执行服务化推理前，需要满足以下条件：

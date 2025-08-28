@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union, TypeVar, Type
+from typing import Any, Dict, List, Union
 from decimal import Decimal
 from datasets import Dataset, DatasetDict
 from mmengine.config import Config
@@ -61,25 +61,6 @@ def _check_dict(obj) -> Dict:
         return obj
     else:
         raise TypeError(f'Expected a Dict object, but got {obj}')
-
-
-_T = TypeVar('_T')
-def _check_type(obj: Any, expected_type: Type[_T]) -> _T:
-    if not isinstance(expected_type, type):
-        raise ValueError(f"Invalid type specifier: {repr(expected_type)}")
-    
-    if obj is None:
-        if expected_type is type(None):
-            return obj
-        raise TypeError(f"Expected {expected_type.__name__}, got None")
-    
-    if isinstance(obj, expected_type):
-        return obj
-    
-    actual_type = type(obj).__name__
-    raise TypeError(
-        f"Expected {expected_type.__name__}, got {actual_type}: {repr(obj)[:100]}{'...' if len(repr(obj)) > 100 else ''}"
-    )
 
 
 def _check_positive_int_value(obj) -> bool:

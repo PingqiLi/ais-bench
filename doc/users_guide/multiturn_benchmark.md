@@ -173,4 +173,4 @@ ais_bench --models vllm_api_stream_chat_multiturn --datasets sharegpt_gen -m per
 💡其中 `sharegptdataset_plot.html`这个请求并发可视化报告建议使用Chrome或者Edge等浏览器打开，可以看到每个请求的时延以及每个时刻client端感知的服务时间并发数：
 > ⚠️ **注意**： 多轮对话场景下，上半图中会将每组对话中的多轮请求拼成一条线，因此纵坐标的实际含义为多轮对话数据组的索引。
   ![full_plot_example.img](../../img/请求并发图/full_plot_example.png)
-具体html中的图标如何查看请参考📚 [性能测试可视化并发图使用说明](performance_visualization.md)
+具体html中的图标如何查看请参考📚 [性能测试可视化并发图使用说明](性能测试可视化并发图使用说明.md)

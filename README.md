@@ -22,9 +22,6 @@
 </div>
 
 ## 🔥 最新进展
-
-- **\[2025.8.28\]** 支持📚[多次独立重复推理精度场景](doc/users_guide/accuracy_benchmark.md#多次独立重复推理)，计算pass@k/cons@k/avg@n等不同维度的精度指标！🔬🔬🔬
-
 - **\[2025.8.19\]** 
   - 新增Function Call专用模型配置 [vllm_api_function_call_chat](ais_bench/benchmark/configs/models/vllm_api/vllm_api_function_call_chat.py)，支持 [BFCL 函数调用能力评估](ais_bench/benchmark/configs/datasets/BFCL/README.md) 🔥🔥🔥
   - 提供工具支持的[性能测试规格说明](doc/users_guide/performance_benchmark.md#服务化性能测试规格说明)，优化推理集群场景工具内存占用及性能计算。最大规格场景（250K条请求，输入/输出token 4K/4K）内存占用下降低60%，内存占用小于64GB；性能结果计算效率提升20倍。🚀🚀🚀
@@ -32,7 +29,7 @@
   - 支持[sharegpt](ais_bench/benchmark/configs/datasets/sharegpt/README.md)和[mtbench](ais_bench/benchmark/configs/datasets/mtbench/README.md)多轮对话数据集服务化性能测评和可视化，测评方式见📚[多轮对话测评指南](doc/users_guide/multiturn_benchmark.md)！🔥🔥🔥
   - 性能评测场景使用[自定义数据集](doc/users_guide/custom_dataset.md)，支持按请求粒度指定最大输出长度！🔥🔥🔥
 
-- **\[2025.6.19\]** 支持📚[性能评测结果可视化](doc/users_guide/performance_visualization.md)，辅助定位推理服务性能瓶颈！🔥🔥🔥
+- **\[2025.6.19\]** 支持📚[性能评测结果可视化](doc/users_guide/performance_visualize.md)，辅助定位推理服务性能瓶颈！🔥🔥🔥
 - **\[2025.6.12\]** 支持[textvqa](ais_bench/benchmark/configs/datasets/textvqa/README.md)、[videobench](ais_bench/benchmark/configs/datasets/videobench/README.md)和[vocalsound](ais_bench/benchmark/configs/datasets/vocalsound/README.md)等多模态数据集的精度和性能评测！🔥🔥🔥
 
 - **\[2025.6.6\]** AISBench支持稳态性能评测，获取系统真实最佳性能，参考📚 [服务化稳定状态性能测试](doc/users_guide/stable_stage.md)进行快速上手! 🔥🔥🔥

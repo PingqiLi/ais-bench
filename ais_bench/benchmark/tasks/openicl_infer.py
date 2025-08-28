@@ -4,7 +4,7 @@ import os.path as osp
 import random
 import sys
 import time
-from typing import Any, List
+from typing import Any
 
 from mmengine.config import Config, ConfigDict
 from mmengine.utils import mkdir_or_exist
@@ -15,7 +15,6 @@ from ais_bench.benchmark.tasks.base import BaseTask
 from ais_bench.benchmark.utils import (build_dataset_from_cfg, build_model_from_cfg,
                                get_infer_output_path, get_logger,
                                model_abbr_from_cfg, task_abbr_from_cfg)
-from ais_bench.benchmark.utils.types import _check_type
 
 
 @TASKS.register_module()
@@ -86,19 +85,9 @@ class OpenICLInferTask(BaseTask):
             else:
                 self.model = build_model_from_cfg(model_cfg)
 
-            num_return_sequences = getattr(model_cfg, 'generation_kwargs', {}).pop('num_return_sequences', 1)
-            _check_type(num_return_sequences, int)
-            assert num_return_sequences > 0, f"num_return_sequences expected a positive integer, but got {num_return_sequences}"
-
             for dataset_cfg in dataset_cfgs:
                 self.model_cfg = model_cfg
                 self.dataset_cfg = dataset_cfg
-                
-                if 'n' not in self.dataset_cfg:
-                    self.dataset_cfg['n'] = num_return_sequences
-                _check_type(self.dataset_cfg['n'], int)
-                assert self.dataset_cfg['n'] > 0, f"n expected a positive integer, but got {self.dataset_cfg['n']}"
-                
                 self.infer_cfg = self.dataset_cfg['infer_cfg']
                 self.dataset = build_dataset_from_cfg(self.dataset_cfg)
                 self.sub_cfg = {
