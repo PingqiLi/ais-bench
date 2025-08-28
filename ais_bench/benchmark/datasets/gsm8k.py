@@ -85,6 +85,7 @@ class Gsm8kAgentEvaluator(BaseEvaluator):
     """
 
     def __init__(self, action: str = 'PythonInterpreter'):
+        super.__init__()
         self.action = action
 
     def is_equal(self, pred, refer):
