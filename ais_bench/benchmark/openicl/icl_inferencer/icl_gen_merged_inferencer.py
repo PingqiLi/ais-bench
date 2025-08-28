@@ -90,12 +90,8 @@ class GenMergedInferencer(GenInferencer):
                                                                             len(prompt_list))
         else:
             logger.info("Use model defined 'max_out_len' to control model max_out_tokens.")
-        entry = [p[0] for p in prompt_list] if ds_reader.output_column else prompt_list
-        golds = (
-            [p[1] for p in prompt_list]
-            if ds_reader.output_column
-            else [None] * len(entry)
-        )
+        
+        entry, golds = self.extract_data(ds_reader, prompt_list)
         return entry, golds
 
     def inference(
@@ -116,7 +112,6 @@ class GenMergedInferencer(GenInferencer):
                                          'tmp_' + output_json_filename)
 
         extra_gen_kwargs = self._build_extra_gen_kwargs()
-        num_return_sequences = getattr(self.model, 'generation_kwargs', {}).get('num_return_sequences', 1)
         all_success = True
         if not self.disable_cb :
             tmp_json_filepath = os.path.join(output_json_filepath,
@@ -134,21 +129,20 @@ class GenMergedInferencer(GenInferencer):
                 generated = [result['output'] for result in results]
             if len(generated) != len(golds):
                 all_success = False
-            for prediction in batched(results, num_return_sequences):
-                if num_return_sequences == 1:
-                    prediction = prediction[0]
-                if not prediction.get('is_success'):
-                    pred = ""
-                    all_success = False
-                else:
-                    pred = prediction.get('output')
-                data_id = prediction.get('id')
-                if data_id >= len(golds) or data_id < 0:
-                    raise IndexError(f"No gold of output id {data_id}")
-                output_handler.save_results(parsed_entries[data_id],
-                                            pred,
-                                            data_id,
-                                            gold=golds[data_id])
+            for predictions in batched(results, self.num_return_sequences):
+                for prediction in predictions:
+                    if not prediction.get('is_success'):
+                        all_success = False
+                        pred = ""
+                    else:
+                        pred = prediction.get('output')
+                    data_id = prediction.get('id')
+                    if data_id >= len(golds) or data_id < 0:
+                        raise IndexError(f"No gold of output id {data_id}")
+                    output_handler.save_results(parsed_entries[data_id],
+                                                pred,
+                                                data_id,
+                                                gold=golds[data_id])
 
         else: # static batch run
             tmp_json_filepath = os.path.join(output_json_filepath,
@@ -186,16 +180,15 @@ class GenMergedInferencer(GenInferencer):
                 num_return_sequences = getattr(self.model, 'generation_kwargs',
                                             {}).get('num_return_sequences', 1)
                 # 5-3. Save current output
-                for prompt, prediction, gold in zip(
-                        parsed_entries, batched(generated, num_return_sequences),
+                for prompt, predictions, gold in zip(
+                        parsed_entries, batched(generated, self.num_return_sequences),
                         golds_per_bs):
-                    if num_return_sequences == 1:
-                        prediction = prediction[0]
-                    output_handler.save_results(prompt,
-                                                prediction,
-                                                index,
-                                                gold=gold)
-                    index = index + 1
+                    for prediction in predictions:
+                        output_handler.save_results(prompt,
+                                                    prediction,
+                                                    index,
+                                                    gold=gold)
+                        index = index + 1
 
                 # 5-4. Save intermediate results
                 if (self.save_every is not None and index % self.save_every == 0

@@ -271,9 +271,26 @@ class LCBCodeGenerationEvaluator(BaseEvaluator):
             num_process_evaluate=self.num_process_evaluate,
             timeout=self.timeout,
         )
+
+        def is_equal(pred, refer):
+            try:
+                if pred == refer or abs(float(pred) - int(refer)) < 1e-6:
+                    return True
+            except Exception:
+                pass
+            return False
+        details = []
+        pass_at_one_detail_dict = metrics.get('detail', {}).get('pass@1', {})
+        for idx in range(len(predictions)):
+            detail = {'correct': False}
+            if is_equal(pass_at_one_detail_dict.get(idx, 0.0), 100.0):
+                detail['correct'] = True
+            details.append(detail)
+            
         results = {
             'extracted_predictions': extracted_predictions,
-            'eval_results': eval_results
+            'eval_results': eval_results,
+            'details': details
         }
         results.update(metrics)
 

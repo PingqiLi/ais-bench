@@ -181,6 +181,7 @@ class BFCLEvaluator(BaseEvaluator):
             category: Dataset category (determines programming language)
             is_fc_model: Whether the model supports function calling format
         """
+        super().__init__()
         self.is_fc_model = is_fc_model
         self.category = category
         # Generate unique model name for tracking

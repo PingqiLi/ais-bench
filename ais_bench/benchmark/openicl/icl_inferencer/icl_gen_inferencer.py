@@ -100,6 +100,8 @@ class GenInferencer(BaseInferencer):
         self.max_out_len = max_out_len
         self.min_out_len = min_out_len
         self.stopping_criteria = stopping_criteria
+        self.num_return_sequences = getattr(self.model, 'generation_kwargs', {}).get('num_return_sequences', 1)
+
         self.dump_timer = kwargs.get('dump_timer', False)
         self.disable_cb = kwargs.get("disable_cb", False)
         self.meta_json_conf = kwargs.get("meta_json_conf", {})
@@ -316,7 +318,6 @@ class GenInferencer(BaseInferencer):
         else:
             logger.info("Use model defined 'max_out_len' to control model max_out_tokens.")
         extra_gen_kwargs = self._build_extra_gen_kwargs()
-        num_return_sequences = getattr(self.model, 'generation_kwargs', {}).get('num_return_sequences', 1)
         all_success = True
         if not self.disable_cb :
             tmp_json_filepath = os.path.join(output_json_filepath,
@@ -335,21 +336,20 @@ class GenInferencer(BaseInferencer):
                 generated = [result['output'] for result in results]
             if len(generated) != len(golds):
                 all_success = False
-            for prediction in batched(results, num_return_sequences):
-                if num_return_sequences == 1:
-                    prediction = prediction[0]
-                if not prediction.get('is_success'):
-                    all_success = False
-                    pred = ""
-                else:
-                    pred = prediction.get('output')
-                data_id = prediction.get('id')
-                if data_id >= len(golds) or data_id < 0:
-                    raise IndexError(f"No gold of output id {data_id}")
-                output_handler.save_results(parsed_entries[data_id],
-                                            pred,
-                                            data_id,
-                                            gold=golds[data_id])
+            for predictions in batched(results, self.num_return_sequences):
+                for prediction in predictions:
+                    if not prediction.get('is_success'):
+                        all_success = False
+                        pred = ""
+                    else:
+                        pred = prediction.get('output')
+                    data_id = prediction.get('id')
+                    if data_id >= len(golds) or data_id < 0:
+                        raise IndexError(f"No gold of output id {data_id}")
+                    output_handler.save_results(parsed_entries[data_id],
+                                                pred,
+                                                data_id,
+                                                gold=golds[data_id])
         else:
             # Create tmp json file for saving intermediate results and future
             # resuming
@@ -377,16 +377,15 @@ class GenInferencer(BaseInferencer):
                     generated = results
 
                 # 5-3. Save current output
-                for prompt, prediction, gold in zip(
-                        parsed_entries, batched(generated, num_return_sequences),
+                for prompt, predictions, gold in zip(
+                        parsed_entries, batched(generated, self.num_return_sequences),
                         golds):
-                    if num_return_sequences == 1:
-                        prediction = prediction[0]
-                    output_handler.save_results(prompt,
-                                                prediction,
-                                                index,
-                                                gold=gold)
-                    index = index + 1
+                    for prediction in predictions:
+                        output_handler.save_results(prompt,
+                                                    prediction,
+                                                    index,
+                                                    gold=gold)
+                        index = index + 1
 
                 # 5-4. Save intermediate results
                 if (self.save_every is not None and index % self.save_every == 0
