@@ -160,10 +160,12 @@ class BaseClient(ABC):
         if not self._is_stream:
             try:
                 res_ = self.process_response(response_raw, start_time)
+                self.update_middle_data(res_, inputs)
             except json.JSONDecodeError:
                 decode_data = response_raw.data.decode(errors="replace")
                 raise_error(f"Failed to decode JSON response. Raw data: {decode_data}", self.lock, self.request_counter)
-            self.update_middle_data(res_, inputs)
+            except RuntimeError as e:
+                raise_error(f"{e}", self.lock, self.request_counter)
         else:
             try:
                 for res_ in self.process_response(response_raw, start_time):

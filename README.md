@@ -86,6 +86,14 @@ pip3 install -e ./ --use-pep517
 pip3 install -r requirements/api.txt
 pip3 install -r requirements/extra.txt
 ```
+🔗 Berkeley Function Calling Leaderboard (BFCL) 测评支持
+
+```shell
+pip3 install -r requirements/bfcl_dependencies.txt --no-deps
+```
+
+**重要提示**：由于 `bfcl_eval` 会自动安装 `pathlib` 库，而 Python 3.5+ 环境已内置该库，为避免版本冲突，请务必使用 `--no-deps` 参数跳过额外依赖的自动安装。
+
 如需进一步配置、使用 CLI 或 Python 脚本发起评测任务，请参考[快速入门指南](#快速入门)。
 ## ❌ 工具卸载
 如需卸载 AISBench Benchmark，可执行以下命令：

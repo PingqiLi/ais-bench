@@ -76,7 +76,7 @@ class BFCLDataset(BaseDataset):
         if not BFCL_INSTALLED:
             raise ImportError(
                 "Missing required package 'bfcl-eval'. To run BFCL evaluation, "
-                "install it via: pip install -r requirements/extra.txt"
+                "install it via: pip3 install -r requirements/bfcl_dependencies.txt --no-deps"
             )
 
         # Use default prompt path if not specified

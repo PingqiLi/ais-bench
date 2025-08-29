@@ -27,15 +27,19 @@ class OpenAIFunctionChatTextClient(BaseClient, ABC):
 
     def update_middle_data(self, res: dict, inputs: MiddleData):
         try:
-            tool_calls = res["choices"][0]["message"]["tool_calls"]
+            tool_calls = res["choices"][0]["message"].get("tool_calls", [])
+            if tool_calls is None:
+                tool_calls = []
             model_responses = [
-                {func_call["function"]["name"]: func_call["function"]["arguments"]}
-                for func_call in tool_calls   
+                {func_call["function"]["name"].strip(): func_call["function"]["arguments"]}
+                for func_call in tool_calls
             ]
             self.tool_call_ids = [
                 func_call["id"] for func_call in tool_calls
             ]
             model_responses = json.dumps(model_responses)
+            if not model_responses:
+                model_responses = res["choices"][0]["message"].get("content", "")
         except Exception as e:
             raise RuntimeError(f"Process response failed and the reason is {e}")
         self.model_responses_message_for_chat_history = res["choices"][0]["message"]

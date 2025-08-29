@@ -17,7 +17,6 @@ from ais_bench.benchmark.clients import (
 )
 from ais_bench.benchmark.utils.results import MiddleData
 from ais_bench.benchmark.utils.build import build_client_from_cfg
-from ais_bench.benchmark.global_consts import MAXIMUM_STEP_LIMIT
 from ais_bench.benchmark.datasets.bfcl.bfcl_dependency import *
 
 PromptType = Union[PromptList, str, dict]
@@ -303,7 +302,7 @@ class VLLMFunctionCallAPIChat(PerformanceAPIModel):
         if not BFCL_INSTALLED:
             raise ImportError(
                 "Missing required package 'bfcl-eval'. To run BFCL evaluation, "
-                "install it via: pip install -r requirements/extra.txt"
+                "install it via: pip3 install -r requirements/bfcl_dependencies.txt --no-deps"
             )
         self.host_ip = host_ip
         self.host_port = host_port

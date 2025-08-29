@@ -22,7 +22,7 @@ BFCL数据集通过Python依赖包的方式集成，数据文件包含在 `bfcl-
 
 ### 安装步骤
 ```bash
-pip install -r requirements/extra.txt
+pip3 install -r requirements/bfcl_dependencies.txt --no-deps
 ```
 
 ✅ **安装完成后，BFCL数据集已随依赖包一同安装到本地环境中，可在离线环境下正常使用。**
@@ -88,46 +88,58 @@ BFCL-v3-simple   542b40    accuracy   gen            0.96 (385/400)
 
 通过 `--datasets` 参数可以灵活选择测试范围，支持以下三种粒度的测试配置：
 
+### 单独测试类别
+
+- [`BFCL_gen_simple`](./BFCL_gen_simple.py) - 简单 Python 函数调用
+- [`BFCL_gen_java`](./BFCL_gen_java.py) - 简单 Java 函数调用
+- [`BFCL_gen_javascript`](./BFCL_gen_javascript.py) - 简单 JavaScript 函数调用
+- [`BFCL_gen_parallel`](./BFCL_gen_parallel.py) - 并行函数调用
+- [`BFCL_gen_multiple`](./BFCL_gen_multiple.py) - 多函数顺序调用
+- [`BFCL_gen_parallel_multiple`](./BFCL_gen_parallel_multiple.py) - 并行与顺序混合调用
+- [`BFCL_gen_irrelevance`](./BFCL_gen_irrelevance.py) - 含无关文档的函数调用
+- [`BFCL_gen_live_simple`](./BFCL_gen_live_simple.py) - 实时：简单函数调用
+- [`BFCL_gen_live_multiple`](./BFCL_gen_live_multiple.py) - 实时：多函数顺序调用
+- [`BFCL_gen_live_parallel`](./BFCL_gen_live_parallel.py) - 实时：并行函数调用
+- [`BFCL_gen_live_parallel_multiple`](./BFCL_gen_live_parallel_multiple.py) - 实时：并行与顺序混合调用
+- [`BFCL_gen_live_irrelevance`](./BFCL_gen_live_irrelevance.py) - 实时：含无关文档的函数调用
+- [`BFCL_gen_live_relevance`](./BFCL_gen_live_relevance.py) - 实时：含相关文档的函数调用
+- [`BFCL_gen_multi_turn_base`](./BFCL_gen_multi_turn_base.py) - 多轮：基础场景
+- [`BFCL_gen_multi_turn_miss_func`](./BFCL_gen_multi_turn_miss_func.py) - 多轮：缺失函数
+- [`BFCL_gen_multi_turn_miss_param`](./BFCL_gen_multi_turn_miss_param.py) - 多轮：缺失参数
+- [`BFCL_gen_multi_turn_long_context`](./BFCL_gen_multi_turn_long_context.py) - 多轮：长上下文
+
 ### 测试组别
 适用于批量测试，一次性运行多个相关测试类别：
 
-| 测试组 | 描述 | 包含内容 |
-|--------|------|----------|
-| [`BFCL_gen_all`](./BFCL_gen_all.py) | 全量测试 | 包含所有测试类别（默认选项） |
-| [`BFCL_gen_single_turn`](./BFCL_gen_single_turn.py) | 单轮对话测试 | 所有单轮函数调用场景 |
-| [`BFCL_gen_multi_turn`](./BFCL_gen_multi_turn.py) | 多轮对话测试 | 所有多轮函数调用场景 |
-| [`BFCL_gen_live`](./BFCL_gen_live.py) | 实时测试 | 用户贡献的最新测试用例 |
-| [`BFCL_gen_non_live`](./BFCL_gen_non_live.py) | 标准测试 | 官方维护的稳定测试用例 |
-
-### 单独测试类别
-适用于针对性评估特定能力：
-
-#### 基础功能测试
-- [`BFCL_gen_simple`](./BFCL_gen_simple.py) - 简单函数调用
-- [`BFCL_gen_parallel`](./BFCL_gen_parallel.py) - 并行函数调用  
-- [`BFCL_gen_multiple`](./BFCL_gen_multiple.py) - 串行函数调用
-- [`BFCL_gen_parallel_multiple`](./BFCL_gen_parallel_multiple.py) - 混合并行串行调用
-
-#### 多语言支持测试
-- [`BFCL_gen_java`](./BFCL_gen_java.py) - Java函数调用
-- [`BFCL_gen_javascript`](./BFCL_gen_javascript.py) - JavaScript函数调用
-
-#### 鲁棒性测试
-- [`BFCL_gen_irrelevance`](./BFCL_gen_irrelevance.py) - 无关文档干扰测试
-
-#### 实时用户贡献测试
-- [`BFCL_gen_live_simple`](./BFCL_gen_live_simple.py) - 用户贡献简单调用
-- [`BFCL_gen_live_multiple`](./BFCL_gen_live_multiple.py) - 用户贡献串行调用
-- [`BFCL_gen_live_parallel`](./BFCL_gen_live_parallel.py) - 用户贡献并行调用
-- [`BFCL_gen_live_parallel_multiple`](./BFCL_gen_live_parallel_multiple.py) - 用户贡献混合调用
-- [`BFCL_gen_live_irrelevance`](./BFCL_gen_live_irrelevance.py) - 用户贡献干扰测试
-- [`BFCL_gen_live_relevance`](./BFCL_gen_live_relevance.py) - 用户贡献相关性测试
-
-#### 多轮对话专项测试
-- [`BFCL_gen_multi_turn_base`](./BFCL_gen_multi_turn_base.py) - 多轮对话基础测试
-- [`BFCL_gen_multi_turn_miss_func`](./BFCL_gen_multi_turn_miss_func.py) - 缺失函数处理测试
-- [`BFCL_gen_multi_turn_miss_param`](./BFCL_gen_multi_turn_miss_param.py) - 缺失参数处理测试
-- [`BFCL_gen_multi_turn_long_context`](./BFCL_gen_multi_turn_long_context.py) - 长上下文处理测试
+- [`BFCL_gen_all`](./BFCL_gen_all.py) - 全量测试：包含所有测试类别
+- [`BFCL_gen_single_turn`](./BFCL_gen_single_turn.py) - 单轮对话测试：
+  - [`BFCL_gen_simple`](./BFCL_gen_simple.py)：简单函数调用（单轮：基础 Python 函数调用）
+  - [`BFCL_gen_irrelevance`](./BFCL_gen_irrelevance.py)：含无关文档（单轮：含无关文档的函数调用）
+  - [`BFCL_gen_parallel`](./BFCL_gen_parallel.py)：并行调用（单轮：并行函数调用）
+  - [`BFCL_gen_multiple`](./BFCL_gen_multiple.py)：多函数顺序调用（单轮：多函数顺序调用）
+  - [`BFCL_gen_parallel_multiple`](./BFCL_gen_parallel_multiple.py)：并行与顺序混合（单轮：并行与顺序混合调用）
+  - [`BFCL_gen_java`](./BFCL_gen_java.py)：Java 函数调用（单轮：基础 Java 函数调用）
+  - [`BFCL_gen_javascript`](./BFCL_gen_javascript.py)：JavaScript 函数调用（单轮：基础 JavaScript 函数调用）
+- [`BFCL_gen_multi_turn`](./BFCL_gen_multi_turn.py) - 多轮对话测试：
+  - [`BFCL_gen_multi_turn_base`](./BFCL_gen_multi_turn_base.py)：多轮：基础场景
+  - [`BFCL_gen_multi_turn_miss_func`](./BFCL_gen_multi_turn_miss_func.py)：多轮：缺失函数
+  - [`BFCL_gen_multi_turn_miss_param`](./BFCL_gen_multi_turn_miss_param.py)：多轮：缺失参数
+  - [`BFCL_gen_multi_turn_long_context`](./BFCL_gen_multi_turn_long_context.py)：多轮：长上下文
+- [`BFCL_gen_live`](./BFCL_gen_live.py) - 实时测试：
+  - [`BFCL_gen_live_simple`](./BFCL_gen_live_simple.py)：实时-简单调用
+  - [`BFCL_gen_live_multiple`](./BFCL_gen_live_multiple.py)：实时-多函数顺序
+  - [`BFCL_gen_live_parallel`](./BFCL_gen_live_parallel.py)：实时-并行调用
+  - [`BFCL_gen_live_parallel_multiple`](./BFCL_gen_live_parallel_multiple.py)：实时-并行与顺序混合
+  - [`BFCL_gen_live_irrelevance`](./BFCL_gen_live_irrelevance.py)：实时-含无关文档
+  - [`BFCL_gen_live_relevance`](./BFCL_gen_live_relevance.py)：实时-含相关文档
+- [`BFCL_gen_non_live`](./BFCL_gen_non_live.py) - 标准测试：
+  - [`BFCL_gen_simple`](./BFCL_gen_simple.py)：简单函数调用
+  - [`BFCL_gen_irrelevance`](./BFCL_gen_irrelevance.py)：含无关文档
+  - [`BFCL_gen_parallel`](./BFCL_gen_parallel.py)：并行调用
+  - [`BFCL_gen_multiple`](./BFCL_gen_multiple.py)：多函数顺序调用
+  - [`BFCL_gen_parallel_multiple`](./BFCL_gen_parallel_multiple.py)：并行与顺序混合
+  - [`BFCL_gen_java`](./BFCL_gen_java.py)：Java 函数调用
+  - [`BFCL_gen_javascript`](./BFCL_gen_javascript.py)：JavaScript 函数调用
 
 ### 精确测试配置
 适用于调试和精确验证特定测试用例：
