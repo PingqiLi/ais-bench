@@ -486,7 +486,7 @@ class GenInferencer(BaseInferencer):
         logger.info("Distribution Summary: ")
         if method == "uniform":
             logger.info(f"--uniform distribution with min_value: {params['min_value']}, max_value: {params['max_value']}")
-            max_token_list = np.random.randint(params["min_value"], params["max_value"] + 1, prompt_length)
+            max_token_list = np.random.randint(int(params["min_value"]), int(params["max_value"]) + 1, prompt_length)
             return [int(token) for token in max_token_list]
         elif method == "percentage":
             max_token_list = []
