@@ -1,6 +1,8 @@
 import ast
 import json
-import multiprocessing
+import subprocess
+import sys
+import os.path as osp
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -17,44 +19,64 @@ from .extract_utils import (extract_code_execution, extract_code_generation,
                             extract_test_output_code)
 from .livecodebench import LCBCodeGenerationDataset
 from .pass_k_utils import compute_metrics_from_results
+from concurrent.futures import ProcessPoolExecutor, TimeoutError as FutureTimeoutError
 
 
 def codegen_check_correctness(sample, generation, timeout, debug=True):
-    """Check correctness of code generation with a global timeout.
+    logger = get_logger()
+    per_case = len(json.loads(sample['input_output'])['inputs'])
+    total_timeout = (timeout + 1) * per_case + 5
 
-    The global timeout is to catch some extreme/rare cases not handled by the
-    timeouts inside `run_test`
-    """
+    payload = {
+        'sample': sample,
+        'generation': generation,
+        'debug': debug,
+        'timeout': timeout
+    }
 
-    def _temp_run(sample, generation, debug, result, metadata_list, timeout):
-        from .testing_util import run_test
-        res, metadata = run_test(sample,
-                                 test=generation,
-                                 debug=debug,
-                                 timeout=timeout)
-        result.append(res)
-        metadata_list.append(metadata)
+    try:
+        # use text=True to get str, capture_output=True capture stdout/stderr
+        current_dir = osp.dirname(osp.abspath(__file__))
+        runner_path = osp.join(current_dir, "test_runner.py")
+        proc = subprocess.run(
+            [sys.executable, runner_path],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            timeout=total_timeout
+        )
+    except subprocess.TimeoutExpired:
+        logger.info('global timeout (subprocess.TimeoutExpired)')
+        # return all failed placeholder results
+        return ([-1] * per_case), {}
+    except Exception:
+        logger.exception('failed to spawn test_runner subprocess')
+        return ([-1] * per_case), {}
 
-    manager = multiprocessing.Manager()
-    result = manager.list()
-    metadata_list = manager.list()
-    p = multiprocessing.Process(
-        target=_temp_run,
-        args=(sample, generation, debug, result, metadata_list, timeout),
-    )
-    p.start()
-    p.join(timeout=(timeout + 1) *
-           len(json.loads(sample['input_output'])['inputs']) + 5)
-    if p.is_alive():
-        p.kill()
-    if not result:
-        in_outs = json.loads(sample['input_output'])
-        # consider that all tests failed
-        result = [[-1 for i in range(len(in_outs['inputs']))]]
-        if debug:
-            logger = get_logger()
-            logger.info('global timeout')
-    return result[0], metadata_list[0]
+    stdout = (proc.stdout or "").strip()
+    stderr = (proc.stderr or "").strip()
+
+    if proc.returncode != 0:
+        logger.warning('test_runner exited with non-zero code %s', proc.returncode)
+        logger.debug('test_runner stdout: %s', stdout)
+        logger.debug('test_runner stderr: %s', stderr)
+        # try to parse JSON from stdout (may contain error field)
+    try:
+        if not stdout:
+            raise ValueError("empty stdout from test_runner")
+        data = json.loads(stdout)
+        # expected structure: {'res': ..., 'meta': ..., 'error': ...}
+        if data.get('error'):
+            logger.warning('test_runner returned error: %s', data.get('error'))
+        res = data.get('res')
+        meta = data.get('meta')
+        if res is None:
+            raise ValueError("result 'res' missing or None")
+        return res, (meta or {})
+    except Exception as e:
+        # parse failed or data illegal
+        logger.info('---- test_runner stdout ----\n%s', stdout)
+        return ([-1] * per_case), {}
 
 
 def evaluate_generations_by_problem(problem_generations: list, sample: list,
