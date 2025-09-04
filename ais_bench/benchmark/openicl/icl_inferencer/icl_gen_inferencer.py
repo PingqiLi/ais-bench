@@ -190,7 +190,6 @@ class GenInferencer(BaseInferencer):
             global_offsets_dict = self.get_global_offsets_dict(
                 total_requests_num=total_requests_num,
                 workers_num=workers_num,
-                model=model,
                 model_cfg=model_cfg,
             )
 
@@ -519,7 +518,6 @@ class GenInferencer(BaseInferencer):
         self,
         total_requests_num: int,
         workers_num: int,
-        model: BaseModel,
         model_cfg: ConfigDict,
         ) -> Dict[int, np.ndarray]:
         """
@@ -531,7 +529,6 @@ class GenInferencer(BaseInferencer):
         Args:
             total_requests_num: Total number of requests to generate
             workers_num: Number of worker processes
-            model: Model instance (for performance scenario detection)
             model_cfg: Model configuration (contains traffic control parameters)
             
         Returns:
@@ -541,7 +538,6 @@ class GenInferencer(BaseInferencer):
         # Generate global timing offsets using vectorized computation
         global_offsets_arr = self._get_sleep_interval_offset_list(
             total_requests_num=total_requests_num,
-            model=model,
             model_cfg=model_cfg,
         )
         
