@@ -3,6 +3,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional, Union, Tuple
+from mmengine.config import ConfigDict
 
 from tqdm import tqdm
 
@@ -30,6 +31,11 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
             this value. Defaults to 2048.
         request_rate (int): The maximum queries allowed per second
             between two consecutive calls of the API. Defaults to 1.
+        traffic_cfg (ConfigDict, optional): control the request traffic rate 
+            "burstiness": Optional[float],    # Burstiness factor controlling interval randomness (≥0, default:0)
+            "ramp_up_strategy": Optional[str],  # Ramp-up strategy type ("linear", "exponential", or None)
+            "ramp_up_start_rps": Optional[float],  # Starting RPS for ramp-up (required with strategy)
+            "ramp_up_end_rps": Optional[float]   # Ending RPS for ramp-up (required with strategy)
         retry (int): Number of retires if the API call fails. Defaults to 2.
         meta_template (Dict, optional): The model's meta prompt
             template if needed, in case the requirement of injecting or
@@ -47,6 +53,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
                  model: str = "",
                  max_seq_len: int = 4096,
                  request_rate: int = 1,
+                 traffic_cfg: Optional[ConfigDict] = None,
                  rpm_verbose: bool = False,
                  retry: int = 2,
                  meta_template: Optional[Dict] = None,
@@ -61,6 +68,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
                          request_rate=request_rate,
+                         traffic_cfg=traffic_cfg,
                          rpm_verbose=rpm_verbose,
                          retry=retry,
                          verbose=verbose,
@@ -207,6 +215,11 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
             this value. Defaults to 2048.
         request_rate (int): The maximum queries allowed per second
             between two consecutive calls of the API. Defaults to 1.
+        traffic_cfg (ConfigDict, optional): control the request traffic rate 
+            "burstiness": Optional[float],    # Burstiness factor controlling interval randomness (≥0, default:0)
+            "ramp_up_strategy": Optional[str],  # Ramp-up strategy type ("linear", "exponential", or None)
+            "ramp_up_start_rps": Optional[float],  # Starting RPS for ramp-up (required with strategy)
+            "ramp_up_end_rps": Optional[float]   # Ending RPS for ramp-up (required with strategy)
         retry (int): Number of retires if the API call fails. Defaults to 2.
         meta_template (Dict, optional): The model's meta prompt
             template if needed, in case the requirement of injecting or
@@ -224,6 +237,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                  model: str = "",
                  max_seq_len: int = 4096,
                  request_rate: int = 1,
+                 traffic_cfg: Optional[ConfigDict] = None,
                  rpm_verbose: bool = False,
                  retry: int = 2,
                  meta_template: Optional[Dict] = None,
@@ -238,6 +252,7 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
                          request_rate=request_rate,
+                         traffic_cfg=traffic_cfg,
                          rpm_verbose=rpm_verbose,
                          retry=retry,
                          generation_kwargs=generation_kwargs,

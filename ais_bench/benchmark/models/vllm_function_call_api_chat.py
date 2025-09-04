@@ -2,6 +2,7 @@ import os
 import uuid
 import json
 from typing import Any, Dict, List, Optional, Union, Tuple
+from mmengine.config import ConfigDict
 
 from openai import OpenAI
 
@@ -276,6 +277,7 @@ class VLLMFunctionCallAPIChat(PerformanceAPIModel):
         model: str = "",
         max_seq_len: int = 4096,
         request_rate: int = 1,
+        traffic_cfg: Optional[ConfigDict] = None,
         rpm_verbose: bool = False,
         retry: int = 2,
         meta_template: Optional[Dict] = None,
@@ -293,6 +295,7 @@ class VLLMFunctionCallAPIChat(PerformanceAPIModel):
             max_seq_len=max_seq_len,
             meta_template=meta_template,
             request_rate=request_rate,
+            traffic_cfg=traffic_cfg,
             rpm_verbose=rpm_verbose,
             retry=retry,
             verbose=verbose,

@@ -36,6 +36,7 @@ rouge_chinese
 rouge_score
 sacrebleu
 scikit_learn==1.5.0
+scipy
 seaborn
 tabulate
 tiktoken

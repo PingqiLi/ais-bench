@@ -9,7 +9,9 @@ import math
 import multiprocessing
 from pathlib import Path
 from multiprocessing import RLock, freeze_support
-from typing import List, Optional, Tuple, Any
+from typing import List, Optional, Tuple, Any, Literal, Dict
+from mmengine.config import ConfigDict
+
 import torch
 import shutil
 import numpy as np
@@ -21,6 +23,7 @@ from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched, build_model_from_cfg
 from ais_bench.benchmark.global_consts import WORKERS_NUM
 from ais_bench.benchmark.utils.types import convert_positive_integers, check_output_config_from_meta_json
+from ais_bench.benchmark.utils.rps_distribution_plot import plot_rps_distribution
 
 from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
@@ -113,6 +116,7 @@ class GenInferencer(BaseInferencer):
         self.tmp_result_ids = []
         self.max_out_lens = []
         self.functioncall_infos = []
+        self.rps_plot_path = ""
 
     def inference_with_multi_process(
         self, model, model_cfg, inputs, golds, **extra_gen_kwargs
@@ -120,8 +124,9 @@ class GenInferencer(BaseInferencer):
         if hasattr(model, "sync_rank") and model.sync_rank:
             inputs = model.sync_inputs(inputs)
         results = []
-        if len(inputs) <= 0:
-            logger.warning(f"Inputs data number is {len(inputs)}, result will be empty")
+        total_requests_num = len(inputs)
+        if total_requests_num <= 0:
+            logger.warning(f"Inputs data number is {total_requests_num}, result will be empty")
             return results
         max_concurrency = extra_gen_kwargs.get("batch_size", 1)
 
@@ -135,23 +140,23 @@ class GenInferencer(BaseInferencer):
                 workers_num = min(WORKERS_NUM, multiprocessing.cpu_count())
         else:
             logger.warning(f"Expected WORKERS_NUM type int, but got {type(WORKERS_NUM)}. Has been reset to {workers_num}")
-        if workers_num > len(inputs):
-            logger.warning(f"Number of processes {workers_num} is greater than the number of inputs {len(inputs)}, has been reset to {len(inputs)}")
-            workers_num = len(inputs)
+        if workers_num > total_requests_num:
+            logger.warning(f"Number of processes {workers_num} is greater than the number of inputs {total_requests_num}, has been reset to {total_requests_num}")
+            workers_num = total_requests_num
         logger.info(f"Concurrency is set to {max_concurrency}, infer with total {workers_num} process")
         q, r = divmod(max_concurrency, workers_num)
         concurrencys = [q + 1] * r + [q] * (workers_num - r)
-        task_data_num = len(inputs) - len(self.tmp_result_ids)
-        if task_data_num != len(inputs):
+        task_data_num = total_requests_num - len(self.tmp_result_ids)
+        if task_data_num != total_requests_num:
             logger.info(f"{len(self.tmp_result_ids)} requests have been completed, requests remaining: {task_data_num}")
-        q, r = divmod(len(inputs), workers_num)
+        q, r = divmod(total_requests_num, workers_num)
         data_bucket_sizes = [q + 1] * r + [q] * (workers_num - r)
         with multiprocessing.Manager() as manager:
             data_buckets = []
             real_data_nums = []
             bucket_index = 0
             data_index = 0
-            while data_index <len(inputs):
+            while data_index < total_requests_num:
                 bucket_size = data_bucket_sizes[bucket_index]
                 mp_queue = manager.Queue(bucket_size + 1)
                 real_data_num = 0
@@ -181,17 +186,21 @@ class GenInferencer(BaseInferencer):
                 mp_queue.put(None)
                 data_buckets.append(mp_queue)
                 real_data_nums.append(real_data_num)
+            
+            global_offsets_dict = self.get_global_offsets_dict(
+                total_requests_num=total_requests_num,
+                workers_num=workers_num,
+                model=model,
+                model_cfg=model_cfg,
+            )
 
-            request_rate = model.request_rate
-            if request_rate < 0.1:
-                logger.info(f"get request_rate {request_rate} small than 0.1, all requests will send together!")
-                request_rate = 0
-            request_rate_mean = request_rate / workers_num
             max_data_bucket_size = max(data_bucket_sizes)
             # Set the timing of token release according to qps, only one request can hold the token at each moment
             freeze_support()
             pool = multiprocessing.Pool(processes=workers_num, initializer=tqdm.set_lock, initargs=(RLock(),))
             async_results = []
+
+            global_start_time = time.perf_counter()
             for i in range(workers_num):
                 new_gen_kwargs = extra_gen_kwargs.copy()
                 new_gen_kwargs.update({
@@ -199,7 +208,8 @@ class GenInferencer(BaseInferencer):
                     "ori_nums":    data_bucket_sizes[i],
                     "data_nums":   real_data_nums[i],
                     "process_id":  i,
-                    "qps":         request_rate_mean * data_bucket_sizes[i] / max_data_bucket_size
+                    "sleep_offsets": global_offsets_dict[i],
+                    "global_start_time": global_start_time,
                 })
                 res = pool.apply_async(func=submit_single_model,
                                         args=(model_cfg, data_buckets[i],),
@@ -214,7 +224,6 @@ class GenInferencer(BaseInferencer):
                 logger.warning(f"Request posting interrupted by User!")
                 logger.warning(f"Detect interruption, waiting for subprocess finish current task ...")
                 # Check whether process is finished
-                import time
                 start_time = time.time()
                 timeout = 300  # 5 min
                 while True:
@@ -291,6 +300,7 @@ class GenInferencer(BaseInferencer):
             output_json_filepath = self.output_json_filepath
         if output_json_filename is None:
             output_json_filename = self.output_json_filename
+        self.rps_plot_path = output_json_filepath
 
         # 2. Get results of retrieval process
         ice_idx_list = retriever.retrieve()
@@ -503,6 +513,220 @@ class GenInferencer(BaseInferencer):
             return max_token_list
         else:
             raise ValueError(f"Unsupport data distribution types: {method}")
+
+
+    def get_global_offsets_dict(
+        self,
+        total_requests_num: int,
+        workers_num: int,
+        model: BaseModel,
+        model_cfg: ConfigDict,
+        ) -> Dict[int, np.ndarray]:
+        """
+        Generate a global sleep offset dictionary for multi-process environments.
+        
+        Computes request timing offsets and distributes them across worker processes
+        to coordinate request scheduling in distributed load testing scenarios.
+        
+        Args:
+            total_requests_num: Total number of requests to generate
+            workers_num: Number of worker processes
+            model: Model instance (for performance scenario detection)
+            model_cfg: Model configuration (contains traffic control parameters)
+            
+        Returns:
+            Dictionary mapping process ID to numpy array of time offsets (seconds)
+        """
+        start_time = time.perf_counter()
+        # Generate global timing offsets using vectorized computation
+        global_offsets_arr = self._get_sleep_interval_offset_list(
+            total_requests_num=total_requests_num,
+            model=model,
+            model_cfg=model_cfg,
+        )
+        
+        # Distribute offsets across worker processes
+        global_offsets_dict = {}
+        for process_id in range(workers_num):
+            global_offsets_dict[process_id] = self._get_process_sleep_offsets(
+                global_offsets_arr,
+                process_id,
+                workers_num
+            ).tolist()
+        
+        logger.info(f"Calculate global_interval_offsets_dict and generate chart time: {(time.perf_counter() - start_time):.4f} s")
+        return global_offsets_dict
+
+
+    def _get_sleep_interval_offset_list(
+        self,
+        total_requests_num: int,
+        model_cfg: ConfigDict
+        ) -> np.ndarray:
+        """
+        Generate global sleep time offsets (seconds) for request scheduling.
+        
+        Implements traffic control features:
+        - Burstiness modeling using Gamma distribution
+        - Ramp-up strategies (linear/exponential)
+        - Uniform distribution baseline
+        
+        Args:
+            total_requests_num: Total number of requests
+            model_cfg: Configuration dictionary with traffic parameters:
+                structure
+                request_rate: float,  # Base request rate (RPS), default 0
+                traffic_cfg =dict(
+                    "burstiness": Optionl[float],    # Burst factor >= 0, default 0
+                    "ramp_up_strategy": Optional[str],  # "linear"/"exponential"
+                    "ramp_up_start_rps": Optional[float],  # Starting RPS
+                    "ramp_up_end_rps": Optional[float]     # Ending RPS
+                )
+            
+        Returns:
+            Numpy array of cumulative time offsets (seconds)
+        """
+        # Extract base request rate from configuration
+        request_rate = model_cfg.get('request_rate', 0.0)
+        
+        # Handle extremely low request rates (all requests sent simultaneously)
+        if request_rate < 0.1:
+            logger.info(f"Request rate {request_rate} < 0.1, sending all requests simultaneously")
+            return np.array([])
+        
+        # Initialize empty array for cumulative delays
+        cumulative_delays = np.array([])
+
+        # constant for minimum reliable time interval (1 millisecond)
+        MIN_RELIABLE_INTERVAL = 0.001
+        
+        # Extract traffic configuration parameters
+        traffic_cfg = getattr(model_cfg, "traffic_cfg", {})
+        burstiness = float(traffic_cfg.get("burstiness", 0.0))
+        ramp_up_strategy = traffic_cfg.get("ramp_up_strategy")
+        ramp_up_start_rps = traffic_cfg.get("ramp_up_start_rps")
+        ramp_up_end_rps = traffic_cfg.get("ramp_up_end_rps")
+        
+        # Validate ramp-up strategy parameters
+        if ramp_up_strategy not in ("linear", "exponential"):
+            ramp_up_strategy = None
+        if ramp_up_strategy and (ramp_up_start_rps is None or ramp_up_end_rps is None):
+            ramp_up_strategy = None
+        
+        try:
+            # Vectorized request rate calculation
+            request_indices = np.arange(total_requests_num)
+            progress = request_indices / max(total_requests_num - 1, 1)
+            
+            if ramp_up_strategy == "linear":
+                request_rates = ramp_up_start_rps + (ramp_up_end_rps - ramp_up_start_rps) * progress
+            elif ramp_up_strategy == "exponential":
+                ratio = ramp_up_end_rps / ramp_up_start_rps
+                request_rates = ramp_up_start_rps * (ratio ** progress)
+            else:
+                request_rates = np.full(total_requests_num, request_rate)
+            
+            # Handle invalid request rates
+            request_rates = np.where(request_rates <= 0, 0, request_rates)
+            
+            # Generate inter-arrival times
+            delays = np.zeros(total_requests_num)
+            non_zero_mask = request_rates > 0
+            
+            if burstiness == 0:
+                # # Use fixed intervals (no randomness)
+                delays[non_zero_mask] = 1.0 / request_rates[non_zero_mask]
+            else:
+                # Generate inter-arrival times using Gamma distribution
+                # Gamma(shape=k, scale=θ) where θ = 1/(λ·k)
+                theta = 1.0 / (request_rates[non_zero_mask] * burstiness)
+                delays[non_zero_mask] = np.random.gamma(
+                    shape=burstiness, 
+                    scale=theta, 
+                    size=np.sum(non_zero_mask)
+                )
+            
+            # Compute cumulative delays
+            cumulative_delays = np.cumsum(delays)
+            
+            # Normalization for uniform distribution cases
+            if ramp_up_strategy is None and cumulative_delays.size > 0 and cumulative_delays[-1] > 0:
+                target_total = total_requests_num / request_rate
+                normalize_factor = target_total / cumulative_delays[-1]
+                cumulative_delays *= normalize_factor
+                
+            # Detect timing anomalies (intervals below minimum reliable threshold)
+            timing_anomaly_mask = delays < MIN_RELIABLE_INTERVAL
+            timing_anomaly_indices = np.where(timing_anomaly_mask)[0]
+            
+            # Calculate expected intervals (without burstiness effect)
+            expected_intervals = np.zeros(total_requests_num)
+            expected_intervals[non_zero_mask] = 1.0 / request_rates[non_zero_mask]
+            
+            # Calculate deviation ratio: |actual - expected| / expected
+            interval_deviations = np.zeros(total_requests_num)
+            interval_deviations[non_zero_mask] = np.abs(delays[non_zero_mask] - expected_intervals[non_zero_mask]) / expected_intervals[non_zero_mask]
+            
+            # Identify points significantly affected by burstiness (deviation > 50%)
+            burstiness_anomaly_mask = interval_deviations > 0.5
+            burstiness_anomaly_indices = np.where(burstiness_anomaly_mask)[0]
+            
+            # Remove duplicates (timing anomalies take precedence)
+            if timing_anomaly_indices.size > 0 and burstiness_anomaly_indices.size > 0:
+                timing_set = set(timing_anomaly_indices.tolist())
+                burstiness_set = set(burstiness_anomaly_indices.tolist())
+
+                intersection = timing_set & burstiness_set
+                burstiness_set = burstiness_set - intersection
+                burstiness_anomaly_indices = np.array(sorted(list(burstiness_set)), dtype=np.int64)
+
+            # If burstiness=0, there should be no burstiness anomalies
+            if burstiness == 0:
+                burstiness_anomaly_indices = np.array([], dtype=np.int64)
+            
+            # Visualization for debugging purposes
+            if cumulative_delays.size > 0:
+                logger.info("Begin to draw RPS distribution plot...")
+
+                plot_rps_distribution(
+                    cumulative_delays=cumulative_delays,
+                    timing_anomaly_indices=timing_anomaly_indices,
+                    burstiness_anomaly_indices=burstiness_anomaly_indices,
+                    request_rate=request_rate,
+                    burstiness=burstiness,
+                    ramp_up_strategy=ramp_up_strategy,
+                    ramp_up_start_rps=ramp_up_start_rps,
+                    ramp_up_end_rps=ramp_up_end_rps,
+                    output_path=osp.join(self.rps_plot_path, "rps_distribution_plot.html")
+                )
+        except Exception as e:
+            logger.error(f"Error generating sleep offsets: {e}")
+        
+        return cumulative_delays
+
+
+    def _get_process_sleep_offsets(
+        self,
+        global_offsets: np.ndarray,
+        process_id: int,
+        total_processes: int
+        ) -> np.ndarray:
+        """
+        Extract process-specific offsets from global offset array.
+        
+        Uses stride-based indexing for efficient distribution of requests
+        across worker processes.
+        
+        Args:
+            global_offsets: Array of cumulative time offsets
+            process_id: Current process ID (0-indexed)
+            total_processes: Total number of processes
+            
+        Returns:
+            Subarray of offsets assigned to the specified process
+        """
+        # Stride-based indexing: [start:stop:step]
+        return global_offsets[process_id::total_processes]
 
 
 @ICL_INFERENCERS.register_module()

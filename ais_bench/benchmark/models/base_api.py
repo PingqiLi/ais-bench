@@ -14,6 +14,7 @@ from queue import Queue
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from time import sleep
 from typing import Dict, List, Optional, Tuple, Union, Any
+from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.utils import get_logger, PRESSURE_TIME_MAX, PRESSURE_TIME_MIN, CONNECTION_ADD_RATE_MIN
 from ais_bench.benchmark.global_consts import PRESSURE_TIME, CONNECTION_ADD_RATE
@@ -32,6 +33,11 @@ class BaseAPIModel(BaseModel):
         path (str): The path to the model.
         request_rate (int): The maximum queries allowed per second
             between two consecutive calls of the API. Defaults to 1.
+        traffic_cfg (ConfigDict, optional): control the request traffic rate 
+                "burstiness": Optional[float],    # Burstiness factor controlling interval randomness (≥0, default:0)
+                "ramp_up_strategy": Optional[str],  # Ramp-up strategy type ("linear", "exponential", or None)
+                "ramp_up_start_rps": Optional[float],  # Starting RPS for ramp-up (required with strategy)
+                "ramp_up_end_rps": Optional[float]   # Ending RPS for ramp-up (required with strategy)
         retry (int): Number of retires if the API call fails. Defaults to 2.
         max_seq_len (int): The maximum sequence length of the model. Defaults
             to 2048.
@@ -47,6 +53,7 @@ class BaseAPIModel(BaseModel):
     def __init__(self,
                  path: str,
                  request_rate: int = 1,
+                 traffic_cfg: Optional[ConfigDict] = None,
                  rpm_verbose: bool = False,
                  retry: int = 2,
                  max_seq_len: int = 2048,
@@ -70,6 +77,7 @@ class BaseAPIModel(BaseModel):
         self.retry = retry
         self.rpm_verbose = rpm_verbose
         self.request_rate = request_rate
+        self.traffic_cfg = traffic_cfg
         self.token_bucket = None
         self.template_parser = APITemplateParser(self.meta_template)
         self.generation_kwargs = generation_kwargs
@@ -262,7 +270,7 @@ class BaseAPIModel(BaseModel):
             max_out_len (int, optional): Maximum length of each generated output (default: 1).
             concurrency (int): Number of worker threads in the pool.
             data_nums (int): Total expected number of items to process (for logging).
-            qps (float): Rate limit in queries per second; if <= 0, no rate limiting is applied.
+            sleep_offsets (list[float]): the sleep interval offsets for each request; if empty, no rate limiting is applied.
             rpm_verbose (bool, optional): Verbosity flag for rate limiter logging (in TokenBucket).
 
         Returns:
@@ -274,10 +282,19 @@ class BaseAPIModel(BaseModel):
         concurrency = extra_gen_kwargs.get("concurrency")
         ori_nums = extra_gen_kwargs.get("ori_nums")
         data_nums = extra_gen_kwargs.get("data_nums")
-        qps = extra_gen_kwargs.get("qps")
         self.log_per_request = max(1, int((ori_nums - data_nums) / 0.01))
-        if qps > 0:
-            self.token_bucket = TokenBucket(qps, self.rpm_verbose)
+
+        sleep_offsets = extra_gen_kwargs.get("sleep_offsets", [])
+        global_start_time = extra_gen_kwargs.get("global_start_time", time.perf_counter())
+
+        if sleep_offsets:
+            self.token_bucket = TokenBucket(
+                sleep_intervals=sleep_offsets, 
+                verbose=self.rpm_verbose,
+                start_time=global_start_time
+            )
+            self.logger.info(f"Process {self.tqdm_pos} using precomputed sleep offsets "
+                       f"with {len(sleep_offsets)} requests")
         else:
             self.token_bucket = None
 
@@ -291,7 +308,7 @@ class BaseAPIModel(BaseModel):
         draw_thread = threading.Thread(target=self.draw_plog, args=(ori_nums, data_nums, self.tqdm_pos,), daemon=True)
         draw_thread.start()
         pool_size = concurrency
-        self.start_time = time.perf_counter()
+        self.start_time = time.perf_counter() if not global_start_time else global_start_time
         self.futures = []
         try:
             with ThreadPoolExecutor(max_workers=pool_size) as executor:
@@ -774,11 +791,15 @@ class TokenBucket:
     """A token bucket for rate limiting.
 
     Args:
-        request_rate (float): The rate of the token bucket.
+        sleep_intervals (List[float]): The sleep intervals of the token bucket.
     """
 
-    def __init__(self, rate, verbose=False):
-        self._rate = rate
+    def __init__(self, sleep_intervals: List[float], verbose=False, start_time=None):
+        self.sleep_intervals = sleep_intervals
+        self.total_intervals = len(self.sleep_intervals)
+        self.current_index = 0
+        self.start_time = start_time
+        
         self._tokens = threading.Semaphore(0)
         self.started = False
         self._request_queue = Queue()
@@ -786,11 +807,28 @@ class TokenBucket:
         self.verbose = verbose
 
     def _add_tokens(self):
-        """Add tokens to the bucket."""
-        while True:
-            if self._tokens._value < self._rate:
-                self._tokens.release()
-            sleep(1 / self._rate)
+        """Add tokens at precise precomputed times"""
+        # Set start time on first call
+        if self.start_time is None:
+            self.start_time = time.perf_counter()
+        
+        while self.current_index < self.total_intervals:
+            # Calculate target time for this token
+            target_time = self.start_time + self.sleep_intervals[self.current_index]
+            
+            # Calculate wait time
+            current_time = time.perf_counter()
+            wait_time = max(0.0, target_time - current_time)
+            
+            # Sleep until target time
+            if wait_time > 0:
+                time.sleep(wait_time)
+            
+            # Release token
+            self._tokens.release()
+            
+            # Move to next interval
+            self.current_index += 1
 
     def get_token(self):
         """Get a token from the bucket."""

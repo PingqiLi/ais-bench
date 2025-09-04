@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 from tqdm import tqdm
 import copy
+from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.utils.results import MiddleData
 from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
@@ -17,6 +18,7 @@ class PerformanceAPIModel(BaseAPIModel):
         self,
         path: str,
         request_rate: int = 1,
+        traffic_cfg: Optional[ConfigDict] = None,
         rpm_verbose: bool = False,
         retry: int = 2,
         max_seq_len: int = 2048,
@@ -28,6 +30,7 @@ class PerformanceAPIModel(BaseAPIModel):
         super().__init__(
             path,
             request_rate,
+            traffic_cfg,
             rpm_verbose,
             retry,
             max_seq_len,

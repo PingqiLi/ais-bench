@@ -8,7 +8,7 @@ from mmengine.config import ConfigDict
 from ais_bench.benchmark.registry import LOAD_DATASET, MODELS, CLIENTS, PERF_METRIC_CALCULATORS
 
 
-def validate_model_cfg(model_cfg: dict) -> dict:
+def validate_model_cfg(model_cfg: ConfigDict) -> dict:
     errors = {}
 
     def check(condition, key, message):
@@ -54,6 +54,35 @@ def validate_model_cfg(model_cfg: dict) -> dict:
         if validator:
             valid, msg = validator(value)
             check(valid, key, msg)
+
+    traffic_field_validators = {
+        "burstiness": (
+            lambda v: v is None or v == "" or (isinstance(v, (int, float)) and v >= 0),
+            "must be None, empty string '' or non-negative number"
+        ),
+        "ramp_up_strategy": (
+            lambda v: v in [None, "", "linear", "exponential"],
+            "must be None, empty string '', 'linear', or 'exponential'"
+        ),
+        "ramp_up_start_rps": (
+            lambda v: v is None or v == "" or (isinstance(v, (int, float)) and v >= 0),
+            "must be None, empty string or non-negative number"
+        ),
+        "ramp_up_end_rps": (
+            lambda v: v is None or v == "" or (isinstance(v, (int, float)) and v >= 0),
+            "must be None, empty string '' or non-negative number"
+        )
+    }
+
+    if "traffic_cfg" in model_cfg:
+        traffic_cfg = model_cfg["traffic_cfg"]
+        if not isinstance(traffic_cfg, dict):
+            errors["traffic_cfg"] = "must be a dictionary"
+        else:
+            for field, (validator, error_msg) in traffic_field_validators.items():
+                if field in traffic_cfg:
+                    if not validator(traffic_cfg[field]):
+                        errors[f"traffic_cfg.{field}"] = error_msg
 
     return errors
 
