@@ -22,7 +22,7 @@ from tqdm import tqdm
 from ais_bench.benchmark.summarizers import DefaultSubjectiveSummarizer
 from ais_bench.benchmark.summarizers.default_subjective import \
     model_abbr_from_cfg_used_in_summarizer
-from ais_bench.benchmark.utils import (LarkReporter, dataset_abbr_from_cfg,
+from ais_bench.benchmark.utils import (dataset_abbr_from_cfg,
                                get_infer_output_path, get_logger,
                                model_abbr_from_cfg)
 from ais_bench.benchmark.utils.prompt import get_prompt_hash

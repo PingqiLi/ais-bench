@@ -7,7 +7,6 @@ from ais_bench.benchmark.utils.dependency import *  # noqa
 from ais_bench.benchmark.utils.dict_postprocessors import *  # noqa
 from ais_bench.benchmark.utils.file import *  # noqa
 from ais_bench.benchmark.utils.fileio import *  # noqa
-from ais_bench.benchmark.utils.lark import *  # noqa
 from ais_bench.benchmark.utils.logging import *  # noqa
 from ais_bench.benchmark.utils.menu import *  # noqa
 from ais_bench.benchmark.utils.model_postprocessors import *  # noqa

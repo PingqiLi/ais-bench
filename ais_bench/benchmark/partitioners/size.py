@@ -191,7 +191,7 @@ class SizePartitioner(BasePartitioner):
         """Get the computational cost of inferring on the dataset.
 
         Args:
-            dataset (ConfigDict): The dataset config.
+            dataset (ConfigDict): The dataset config. 
             get_raw_factors (bool): If True, the raw factors of computational
                 cost will be returned.
 

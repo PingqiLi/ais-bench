@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 
 from mmengine.config import Config, ConfigDict
 
-from ais_bench.benchmark.utils import LarkReporter, get_logger
+from ais_bench.benchmark.utils import get_logger
 
 
 class BaseRunner:
@@ -19,14 +19,9 @@ class BaseRunner:
 
     def __init__(self,
                  task: ConfigDict,
-                 debug: bool = False,
-                 lark_bot_url: str = None):
+                 debug: bool = False):
         self.task_cfg = Config(task)
         self.debug = debug
-        if lark_bot_url:
-            self.lark_reporter = LarkReporter(lark_bot_url)
-        else:
-            self.lark_reporter = None
 
     def __call__(self, tasks: List[Dict[str, Any]]):
         """Launch multiple tasks and summarize the results.
@@ -63,22 +58,3 @@ class BaseRunner:
             if code != 0:
                 get_logger().error(f'{_task} failed with code {code}')
                 failed_logs.append(_task)
-        if self.lark_reporter:
-            num_succeeded = len(status) - len(failed_logs)
-            if len(failed_logs) > 0:
-                content = f'{getpass.getuser()} \'s '
-                content += f'{self.task_cfg.type} tasks finished. '
-                content += f'{num_succeeded} tasks succeeded, '
-                content += f'{len(failed_logs)} tasks failed. Failed tasks are'
-                content += ':\n' + '\n'.join(failed_logs)
-                self.lark_reporter.post(title=f'Bad news: {len(failed_logs)} '
-                                        'failed.',
-                                        content=content)
-            else:
-                content = f'{getpass.getuser()}\'s '
-                content += f'{self.task_cfg.type} tasks finished. '
-                content += f'{num_succeeded} tasks succeeded.\n'
-                content += '\n'.join([task for task, _ in status])
-                self.lark_reporter.post(title='Great news: all tasks '
-                                        'finished!',
-                                        content=content)

@@ -463,27 +463,6 @@ class BaseAPIModel(BaseModel):
         if hasattr(self, 'tokens'):
             self.tokens.release()
 
-    @abstractmethod
-    def get_ppl(self,
-                inputs: List[PromptType],
-                mask_length: Optional[List[int]] = None) -> List[float]:
-        """Get perplexity scores given a list of inputs.
-
-        Args:
-            inputs (List[PromptType]): A list of strings.
-            mask_length (Optional[List[int]]): A list of mask lengths. If
-                provided, the perplexity scores will be calculated with the
-                first mask_length[i] tokens masked out. It's okay to skip
-                its implementation if advanced features in PPLInfernecer is
-                not needed.
-
-        Returns:
-            List[float]: A list of perplexity scores.
-        """
-        raise NotImplementedError(f'{self.__class__.__name__} does not support'
-                                  ' ppl-based evaluation yet, try gen-based '
-                                  'instead.')
-
     def get_token_len(self, prompt: str) -> int:
         """Get lengths of the tokenized string. Only English and Chinese
         characters are counted for now. Users are encouraged to override this

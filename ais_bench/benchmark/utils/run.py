@@ -8,7 +8,7 @@ import tabulate
 from mmengine.config import Config
 
 from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
-from ais_bench.benchmark.partitioners import NaivePartitioner, NumWorkerPartitioner, PerformancePartitioner
+from ais_bench.benchmark.partitioners import NaivePartitioner, PerformancePartitioner
 from ais_bench.benchmark.runners import LocalAPIRunner, LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLInferTask, OpenICLPerfTask, OpenICLInferMergedTask, OpenICLEvalMergedTask
 from ais_bench.benchmark.openicl.icl_inferencer import (GenPerfInferencer, GenInferencer, GenMergedInferencer,
