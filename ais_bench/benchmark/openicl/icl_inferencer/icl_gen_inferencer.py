@@ -23,7 +23,7 @@ from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched, build_model_from_cfg
 from ais_bench.benchmark.global_consts import WORKERS_NUM
 from ais_bench.benchmark.utils.types import convert_positive_integers, check_output_config_from_meta_json
-from ais_bench.benchmark.utils.rps_distribution_plot import plot_rps_distribution
+from ais_bench.benchmark.utils.rps_distribution_plot import plot_rps_distribution, add_actual_rps_to_chart
 
 from ..icl_prompt_template import PromptTemplate
 from ..icl_retriever import BaseRetriever
@@ -50,6 +50,25 @@ def submit_single_model(model_cfg, mp_queue, **extra_gen_kwargs):
     if model.interrupted:
         return model.get_performance_data_backup()
     return model.get_performance_data()
+
+
+def _count_elements(nested_list: list) -> int:
+    """Count the number of elements in arbitrarily nested lists."""
+    count = 0
+    stack = [iter(nested_list)]
+    
+    while stack:
+        current = stack[-1]
+        try:
+            item = next(current)
+            if isinstance(item, list):
+                stack.append(iter(item))
+            else:
+                count += 1
+        except StopIteration:
+            stack.pop()
+    
+    return count
 
 
 @ICL_INFERENCERS.register_module()
@@ -125,6 +144,8 @@ class GenInferencer(BaseInferencer):
             inputs = model.sync_inputs(inputs)
         results = []
         total_requests_num = len(inputs)
+        total_requests_size = _count_elements(inputs)
+
         if total_requests_num <= 0:
             logger.warning(f"Inputs data number is {total_requests_num}, result will be empty")
             return results
@@ -188,7 +209,7 @@ class GenInferencer(BaseInferencer):
                 real_data_nums.append(real_data_num)
             
             global_offsets_dict = self.get_global_offsets_dict(
-                total_requests_num=total_requests_num,
+                total_requests_num=total_requests_size,
                 workers_num=workers_num,
                 model_cfg=model_cfg,
             )
@@ -238,6 +259,8 @@ class GenInferencer(BaseInferencer):
 
             iterables = [res for res in async_results]
             results = list(itertools.chain.from_iterable(res.get() for res in iterables))
+            post_time_list: list = [(each.get("start_time") - global_start_time) for each in results]
+            add_actual_rps_to_chart(self.rps_plot_path, post_time_list)
         return results
 
     def extract_data(self, ds_reader, datum: Any) -> Tuple[List, List]:
@@ -299,7 +322,7 @@ class GenInferencer(BaseInferencer):
             output_json_filepath = self.output_json_filepath
         if output_json_filename is None:
             output_json_filename = self.output_json_filename
-        self.rps_plot_path = output_json_filepath
+        self.rps_plot_path = os.path.join(output_json_filepath, output_json_filename)
 
         # 2. Get results of retrieval process
         ice_idx_list = retriever.retrieve()
@@ -550,7 +573,7 @@ class GenInferencer(BaseInferencer):
                 workers_num
             ).tolist()
         
-        logger.info(f"Calculate global_interval_offsets_dict and generate chart time: {(time.perf_counter() - start_time):.4f} s")
+        logger.info(f"Calculate global interval offsets time: {(time.perf_counter() - start_time):.4f} s")
         return global_offsets_dict
 
 
@@ -608,7 +631,9 @@ class GenInferencer(BaseInferencer):
             ramp_up_strategy = None
         if ramp_up_strategy and (ramp_up_start_rps is None or ramp_up_end_rps is None):
             ramp_up_strategy = None
-        
+        if ramp_up_strategy and (ramp_up_start_rps > ramp_up_end_rps):
+            ramp_up_strategy = None
+
         try:
             # Vectorized request rate calculation
             request_indices = np.arange(total_requests_num)
@@ -683,20 +708,27 @@ class GenInferencer(BaseInferencer):
             # Visualization for debugging purposes
             if cumulative_delays.size > 0:
                 logger.info("Begin to draw RPS distribution plot...")
-
-                plot_rps_distribution(
-                    cumulative_delays=cumulative_delays,
-                    timing_anomaly_indices=timing_anomaly_indices,
-                    burstiness_anomaly_indices=burstiness_anomaly_indices,
-                    request_rate=request_rate,
-                    burstiness=burstiness,
-                    ramp_up_strategy=ramp_up_strategy,
-                    ramp_up_start_rps=ramp_up_start_rps,
-                    ramp_up_end_rps=ramp_up_end_rps,
-                    output_path=osp.join(self.rps_plot_path, "rps_distribution_plot.html")
-                )
+                rps_plot_path = self.rps_plot_path if self.rps_plot_path else os.getcwd()
+                rps_plot_path, _ = os.path.splitext(rps_plot_path)
+                self.rps_plot_path = str(rps_plot_path) + "_rps_distribution_plot.html"
+                try:
+                    plot_rps_distribution(
+                        cumulative_delays=cumulative_delays,
+                        timing_anomaly_indices=timing_anomaly_indices,
+                        burstiness_anomaly_indices=burstiness_anomaly_indices,
+                        request_rate=request_rate,
+                        burstiness=burstiness,
+                        ramp_up_strategy=ramp_up_strategy,
+                        ramp_up_start_rps=ramp_up_start_rps,
+                        ramp_up_end_rps=ramp_up_end_rps,
+                        output_path=self.rps_plot_path,
+                    )
+                except Exception as e:
+                    logger.error(f"Error drawing RPS distribution plot: {e}")
         except Exception as e:
             logger.error(f"Error generating sleep offsets: {e}")
+            logger.warning("Sending all requests simultaneously")
+            return np.array([])
         
         return cumulative_delays
 
@@ -745,6 +777,7 @@ class GLMChoiceInferencer(GenInferencer):
             output_json_filepath = self.output_json_filepath
         if output_json_filename is None:
             output_json_filename = self.output_json_filename
+        self.rps_plot_path = os.path.join(output_json_filepath, output_json_filename)
 
         # 2. Get results of retrieval process
         ice_idx_list = retriever.retrieve()

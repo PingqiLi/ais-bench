@@ -116,7 +116,7 @@ class GenPerfInferencer(GenInferencer):
         output_handler = GenInferencerOutputHandler()
         output_filepath = output_filepath or self.output_json_filepath
         output_filename = output_filename or self.output_json_filename
-        self.rps_plot_path = output_filepath
+        self.rps_plot_path = os.path.join(output_filepath, output_filename)
 
         logger.info("Starting performance inference process...")
         start_time_stamp = time.perf_counter()
