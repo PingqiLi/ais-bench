@@ -604,20 +604,19 @@ class GenInferencer(BaseInferencer):
             
         Returns:
             Numpy array of cumulative time offsets (seconds)
+        
+        Notice:
+            If ramp-up params are valid, ramp_up_end_rps will cover request_rate as the final rps.
         """
+        # Constants
+        FINAL_RPS_MINIMUM_THRESHOLD = 0.1 # minimum acceptable RPS
+        MIN_RELIABLE_INTERVAL = 0.001 # minimum reliable time interval (1 millisecond)
+
         # Extract base request rate from configuration
         request_rate = model_cfg.get('request_rate', 0.0)
         
-        # Handle extremely low request rates (all requests sent simultaneously)
-        if request_rate < 0.1:
-            logger.info(f"Request rate {request_rate} < 0.1, sending all requests simultaneously")
-            return np.array([])
-        
         # Initialize empty array for cumulative delays
         cumulative_delays = np.array([])
-
-        # constant for minimum reliable time interval (1 millisecond)
-        MIN_RELIABLE_INTERVAL = 0.001
         
         # Extract traffic configuration parameters
         traffic_cfg = getattr(model_cfg, "traffic_cfg", {})
@@ -627,12 +626,40 @@ class GenInferencer(BaseInferencer):
         ramp_up_end_rps = traffic_cfg.get("ramp_up_end_rps")
         
         # Validate ramp-up strategy parameters
-        if ramp_up_strategy not in ("linear", "exponential"):
+        valid_strategies = ("linear", "exponential")
+        if ramp_up_strategy not in valid_strategies:
+            if ramp_up_strategy:
+                logger.warning(
+                    f"Invalid ramp_up_strategy: '{ramp_up_strategy}'. "
+                    f"Valid options are {valid_strategies}. "
+                    "Disabling ramp-up strategy."
+                )
             ramp_up_strategy = None
         if ramp_up_strategy and (ramp_up_start_rps is None or ramp_up_end_rps is None):
+            logger.warning(
+                f"Ramp-up strategy '{ramp_up_strategy}' requires both "
+                "ramp_up_start_rps and ramp_up_end_rps parameters. "
+                "Disabling ramp-up strategy due to missing parameters."
+            )
             ramp_up_strategy = None
         if ramp_up_strategy and (ramp_up_start_rps > ramp_up_end_rps):
+            logger.warning(
+                f"Invalid ramp-up parameters: ramp_up_start_rps ({ramp_up_start_rps}) "
+                f"is greater than ramp_up_end_rps ({ramp_up_end_rps}). "
+                "Ramp-up should start from lower to higher RPS. "
+                "Disabling ramp-up strategy."
+            )
             ramp_up_strategy = None
+
+        if ramp_up_strategy is None:
+            logger.info("The ramp-up strategy will not be adopted.")
+        
+        # Handle extremely low request rates (all requests sent simultaneously)
+        rate_to_check = ramp_up_end_rps if ramp_up_strategy is not None else request_rate
+        if rate_to_check < FINAL_RPS_MINIMUM_THRESHOLD:
+            info_msg = f"Request rate ({request_rate})" if ramp_up_strategy is None else f"Ramp-up end rps ({ramp_up_end_rps})" + f" < {FINAL_RPS_MINIMUM_THRESHOLD}"
+            logger.info(f"{info_msg}, sending all requests simultaneously")
+            return np.array([])
 
         try:
             # Vectorized request rate calculation

@@ -1085,68 +1085,61 @@ def add_actual_rps_to_chart(
         logger.info(f"Updated chart with actual RPS saved to {output_path}")
 
 
-def _is_valid_chart_html_file(file_path: Optional[str]) -> bool:
-    if not file_path:
-        return False
-    if not file_path.lower().endswith('.html'):
-        return False
-    if not os.path.exists(file_path):
-        return False
-    return True
-
-
 def _determine_output_path(
     base_chart: Union[str, go.Figure, dict],
     output_name: Optional[str]
 ) -> str:
     """
-    Intelligently determine the output path for saving chart files
-
+    Smart output path resolver with path existence check
+    
     Rules:
-    1. If output_name is provided:
-        - Automatically appends '.html' if output_name lacks it
-        - If base_chart is a valid HTML file path:
-            Output to base_chart's directory with output_name
-        - Else:
-            Output to base_chart if it's a directory, else to base_chart's parent directory (if exists), else current directory
+    - output_name provided: 
+        Auto-add .html if missing
+        If contains path:
+            - Path exists: use as-is
+            - Path doesn't exist: use filename with cwd
+        Else: combine with determined directory
+    - No output_name: 
+        Generate name from base_chart or use default
+        Combine with determined directory
     
-    2. If output_name is not provided:
-        - If base_chart is a valid HTML file path:
-            Output to base_chart's directory with "[original_basename]_with_actual_rps.html"
-        - Else:
-            Output to base_chart if it's a directory, else to base_chart's parent directory (if exists), else current directory
-            with "rps_distribution_plot_with_actual_rps.html"
+    Directory rules:
+    - base_chart is dir: use it
+    - base_chart is file: use parent dir (if exists) or cwd
+    - Non-string base_chart: use cwd
     """
-    if not output_name:
-        if _is_valid_chart_html_file(base_chart):
+    if output_name:
+        if not output_name.lower().endswith('.html'):
+            output_name += '.html'
 
-            dir_name = os.path.dirname(base_chart)
-            base_name = os.path.basename(base_chart)
-            base_name, _ = os.path.splitext(base_name) # _is_valid_chart_html_file makes sure base_name must .endswith('.html')
-            
-            new_name = f"{base_name}_with_actual_rps.html"
-            return os.path.join(dir_name, new_name)
-        else:
-            if os.path.isdir(base_chart):
-                base_dir = base_chart
+        dir_part = os.path.dirname(output_name)
+        if dir_part:
+            if os.path.exists(dir_part):
+                return output_name
             else:
-                base_dir = os.path.dirname(base_chart)
-                base_dir = base_dir if os.path.isdir(base_dir) else os.getcwd()
-            return os.path.join(base_dir, "rps_distribution_plot_with_actual_rps.html")
-    
-    if not output_name.lower().endswith('.html'):
-        output_name += '.html'
-    
-    if _is_valid_chart_html_file(base_chart):
-        dir_name = os.path.dirname(base_chart)
-        return os.path.join(dir_name, output_name)
+                filename = os.path.basename(output_name)
+                return os.path.join(os.getcwd(), filename)
+
+        filename = output_name
     else:
+        if isinstance(base_chart, str):
+            base_name, extension = os.path.splitext(os.path.basename(base_chart))
+            if extension != ".html":
+                base_name += "_rps_distribution_plot"
+            filename = f"{base_name}_with_actual_rps.html"
+        else:
+            filename = "rps_distribution_plot_with_actual_rps.html"
+    
+    if isinstance(base_chart, str):
         if os.path.isdir(base_chart):
             base_dir = base_chart
         else:
-            base_dir = os.path.dirname(base_chart)
-            base_dir = base_dir if os.path.isdir(base_dir) else os.getcwd()
-        return os.path.join(base_dir, output_name)
+            parent_dir = os.path.dirname(base_chart)
+            base_dir = parent_dir if os.path.exists(parent_dir) else os.getcwd()
+    else:
+        base_dir = os.getcwd()
+    
+    return os.path.join(base_dir, filename)
 
 
 def _create_time_rps_trace(
