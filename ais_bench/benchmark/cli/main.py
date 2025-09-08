@@ -151,7 +151,7 @@ def main():
     from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
     from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
     from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
-    from ais_bench.benchmark.utils import LarkReporter, get_logger
+    from ais_bench.benchmark.utils import get_logger
     from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
     from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg,
         fill_merged_infer_cfg, fill_merged_eval_cfg, function_call_task_check, get_config_type)

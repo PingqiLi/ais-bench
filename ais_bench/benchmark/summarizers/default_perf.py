@@ -15,7 +15,7 @@ import mmengine
 import tabulate
 from mmengine import ConfigDict
 
-from ais_bench.benchmark.utils import (LarkReporter, dataset_abbr_from_cfg, get_infer_merged_output_path,
+from ais_bench.benchmark.utils import (dataset_abbr_from_cfg, get_infer_merged_output_path,
                                get_infer_output_path, get_logger, merged_dataset_abbr_from_class,
                                model_abbr_from_cfg, plot_sorted_request_timelines)
 from ais_bench.benchmark.utils.prompt import get_prompt_hash

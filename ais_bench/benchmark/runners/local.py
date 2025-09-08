@@ -47,7 +47,6 @@ class LocalRunner(BaseRunner):
         max_workers_per_gpu (int): Max number of workers to run for one GPU.
             Defaults to 1.
         debug (bool): Whether to run in debug mode.
-        lark_bot_url (str): Lark bot url.
     """
 
     def __init__(self,
@@ -55,10 +54,9 @@ class LocalRunner(BaseRunner):
                  max_num_workers: int = 16,
                  debug: bool = False,
                  max_workers_per_gpu: int = 1,
-                 lark_bot_url: str = None,
                  keep_tmp_file: bool = False,
                  **kwargs):
-        super().__init__(task=task, debug=debug, lark_bot_url=lark_bot_url)
+        super().__init__(task=task, debug=debug)
         self.max_num_workers = max_num_workers
         self.max_workers_per_gpu = max_workers_per_gpu
         self.keep_tmp_file = keep_tmp_file

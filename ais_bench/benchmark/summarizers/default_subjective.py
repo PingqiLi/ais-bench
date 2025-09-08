@@ -12,7 +12,7 @@ import mmengine
 import tabulate
 from mmengine import ConfigDict
 
-from ais_bench.benchmark.utils import (LarkReporter, dataset_abbr_from_cfg,
+from ais_bench.benchmark.utils import (dataset_abbr_from_cfg,
                                get_infer_output_path, get_logger,
                                model_abbr_from_cfg)
 from ais_bench.benchmark.utils.prompt import get_prompt_hash
@@ -53,11 +53,6 @@ class DefaultSubjectiveSummarizer:
         if prompt_db:
             self.logger.warning('prompt_db is deprecated and no longer used. '
                                 'Please remove it from your config.')
-
-        # Enable lark bot if lark_url is presented
-        self.lark_reporter = None
-        if self.cfg.get('lark_bot_url', None):
-            self.lark_reporter = LarkReporter(self.cfg['lark_bot_url'])
 
         self.model_cfgs = self.cfg['models']
         self.dataset_cfgs = self.cfg['datasets']
@@ -400,8 +395,3 @@ class DefaultSubjectiveSummarizer:
 
             # output to .text / .csv files
             self._output_to_file(output_path, time_str, table, raw_txts, judge_abbr)
-
-            if self.lark_reporter:
-                content = f'{getpass.getuser()} 的'
-                content += f'详细评测汇总已输出至 {osp.abspath(output_path)}'
-                self.lark_reporter.post(content)

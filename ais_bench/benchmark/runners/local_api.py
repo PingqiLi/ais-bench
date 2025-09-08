@@ -243,7 +243,6 @@ class LocalAPIRunner(BaseRunner):
         max_num_workers (int): Max number of workers to run in parallel.
             Defaults to 16.
         debug (bool): Whether to run in debug mode.
-        lark_bot_url (str): Lark bot url.
     """
 
     def __init__(self,
@@ -251,9 +250,8 @@ class LocalAPIRunner(BaseRunner):
                  max_num_workers: int = 16,
                  num_prompts: int = None,
                  debug: bool = False,
-                 disable_cb: bool = False,
-                 lark_bot_url: str = None):
-        super().__init__(task=task, debug=debug, lark_bot_url=lark_bot_url)
+                 disable_cb: bool = False):
+        super().__init__(task=task, debug=debug)
         self.max_num_workers = max_num_workers
         self.num_prompts = num_prompts
         self.disable_cb = disable_cb
