@@ -100,6 +100,9 @@ class GenPressureInferencer(GenPerfInferencer):
                 workers_num = min(WORKERS_NUM, multiprocessing.cpu_count())
         else:
             logger.warning(f"Expected WORKERS_NUM type int, but got {type(WORKERS_NUM)}. Has been reset to {workers_num}")
+        if isinstance(model_cfg, dict) and getattr(model_cfg, "traffic_cfg", {}):
+            logger.warning("Traffic request rate control parameters are not supported in pressure inference scenarios, would be ignored.")
+
         logger.info(f"Concurrency is set to {max_concurrency}, infer with total {workers_num} process")
         q, r = divmod(max_concurrency, workers_num)
         concurrencys = [q + 1] * r + [q] * (workers_num - r)

@@ -114,6 +114,7 @@ class GenMergedInferencer(GenInferencer):
         extra_gen_kwargs = self._build_extra_gen_kwargs()
         all_success = True
         if not self.disable_cb :
+            self.rps_plot_path = os.path.join(output_json_filepath, output_json_filename)
             tmp_json_filepath = os.path.join(output_json_filepath,
                 'tmp_' + output_json_filename.split('.')[0])
             output_handler.load_tmp_result(tmp_json_filepath)
