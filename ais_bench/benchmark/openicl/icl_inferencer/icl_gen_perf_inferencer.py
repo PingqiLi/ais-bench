@@ -177,7 +177,6 @@ class GenPerfInferencer(GenInferencer):
             k: [
                 pred.get(k)
                 for pred in results
-                if pred.get("is_success") and not pred.get("is_empty")
             ]
             for k in keys
         }
