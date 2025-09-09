@@ -90,7 +90,7 @@ class GenMergedInferencer(GenInferencer):
                                                                             len(prompt_list))
         else:
             logger.info("Use model defined 'max_out_len' to control model max_out_tokens.")
-        
+
         entry, golds = self.extract_data(ds_reader, prompt_list)
         return entry, golds
 
@@ -237,7 +237,6 @@ class GenMergedInferencer(GenInferencer):
             k: [
                 pred.get(k)
                 for pred in results
-                if pred.get("is_success") and not pred.get("is_empty")
             ]
             for k in keys
         }
