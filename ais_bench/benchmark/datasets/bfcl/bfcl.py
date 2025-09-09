@@ -54,7 +54,7 @@ class BFCLDataset(BaseDataset):
     """
 
     @staticmethod
-    def load(path: str, category: str, test_ids: list[str] = None):
+    def load(path: str, category: str, test_ids: list[str] = []):
         """
         Load BFCL dataset from specified path and category.
         
@@ -78,7 +78,10 @@ class BFCLDataset(BaseDataset):
                 "Missing required package 'bfcl-eval'. To run BFCL evaluation, "
                 "install it via: pip3 install -r requirements/bfcl_dependencies.txt --no-deps"
             )
-
+            
+        if not isinstance(test_ids, list):
+            raise ValueError(f"Test ids must be a list of strings, but got {type(test_ids)}")
+        
         # Use default prompt path if not specified
         if not path:
             real_path = PROMPT_PATH
@@ -156,11 +159,18 @@ class BFCLDataset(BaseDataset):
         
         # Log warnings for missing test IDs and info about used IDs
         if test_ids:
+            if len(dataset) > 4:
+                expect_ids = [dataset[0]["id"], dataset[1]["id"], "...", dataset[-2]["id"], dataset[-1]["id"]]
+            else:
+                expect_ids = [d["id"] for d in dataset]
+            if used_ids:
+                logger.info(f"[BFCL] Selected test case IDs for category {category}: {used_ids}")
+            else:
+                raise ValueError(f"No matching test IDs found in the {category} BFCL dataset. Input test_ids: {test_ids}; example available IDs: {expect_ids}")
             if len(test_case_ids_to_generate) != 0:
                 logger.warning(
-                    f"Test ids not all exist in the dataset: {test_case_ids_to_generate}"
+                    f"[BFCL] These test IDs do not exist in the {category} dataset and were ignored: {test_case_ids_to_generate}; example available IDs: {expect_ids}"
                 )
-            logger.info(f"Experimenting on test ids of {category}: {used_ids}")
             
         return Dataset.from_list(data)
 
