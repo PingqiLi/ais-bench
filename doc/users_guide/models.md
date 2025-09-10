@@ -64,7 +64,8 @@ models = [
 | `path` | String | Tokenizer 路径，通常与模型路径相同，使用 `AutoTokenizer.from_pretrained(path)` 加载。指定可访问的本地路径，例如：`/weight/DeepSeek-R1` |
 | `model` | String | 服务端可访问的模型名称，必须与服务化部署时指定的名称一致 |
 | `model_name` | String | 仅适用于 Triton 服务，拼接为 endpoint 的 URI `/v2/models/{modelname}/{infer、generate、generate_stream}`，应与部署时名称一致 |
-| `request_rate` | Float | 请求发送速率（单位：秒），每隔 `1/request_rate` 秒发送一个请求；若小于 0.1 则自动合并为批量发送。合法范围：[0, 64000] |
+| `request_rate` | Float | 请求发送速率（单位：秒），每隔 `1/request_rate` 秒发送一个请求；若小于 0.1 则自动合并为批量发送。合法范围：[0, 64000]。当`traffic_cfg`项配置启用时，该项功能可能被覆盖 （具体原因请参考 🔗 [请求速率(RPS)分布控制及可视化说明中的参数解读章节](rps_distribution.md#参数解读)）|
+| `traffic_cfg` | Dict | 请求发送速率波动控制参数（具体使用说明请参考 🔗 [请求速率(RPS)分布控制及可视化说明](rps_distribution.md)），不填写此项默认不启用该功能。 |
 | `retry` | Int | 连接服务端失败后的最大重试次数。合法范围：[0, 1000] |
 | `host_ip` | String | 服务端 IP 地址，支持合法 IPv4 或 IPv6，例如：`127.0.0.1` |
 | `host_port` | Int | 服务端端口号，应与服务化部署指定的端口一致 |
@@ -76,6 +77,7 @@ models = [
 
 **注意事项：**
 - `request_rate` 受硬件性能影响，可通过增加  📚 [WORKERS_NUM](./cli_args.md#配置常量文件参数) 提高并发能力。
+- `request_rate` 功能可能被`traffic_cfg`项覆盖，具体原因请参考 🔗 [请求速率(RPS)分布控制及可视化说明中的参数解读章节](rps_distribution.md#参数解读)。
 - `batch_size` 设置过大可能导致 CPU 占用过高，请根据硬件条件合理配置。
 - 服务化推理评测 API 默认使用的服务地址为 `localhost:8080`。实际使用时需根据实际部署修改为服务化后端的 IP 和端口。
 
