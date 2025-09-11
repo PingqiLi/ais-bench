@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union, TypeVar, Type
+from typing import Any, Dict, List, Union, TypeVar, Type, Callable, Optional
 from decimal import Decimal
 from datasets import Dataset, DatasetDict
 from mmengine.config import Config
@@ -206,3 +206,43 @@ def convert_positive_integers(str_list:List[str], list_name:str = "") -> List[in
         except ValueError:
             raise ValueError(f"Invalid {list_name} value in datasets: index: {idx}, with value: {s}.")
     return converted
+
+
+def safe_convert(
+    value: Any,
+    expected_type: Type,
+    default_value: Any,
+    param_name: Optional[str] = None,
+    logger: Optional[Callable] = logger.warning
+) -> Any:
+    """
+    Safely convert value to specified type, return default on failure.
+    
+    Args:
+        value: Input value to convert
+        expected_type: Target type (e.g., float, int)
+        default_value: Fallback value if conversion fails
+        param_name: Optional parameter name for detailed logging
+        logger: Optional logging function
+    
+    Returns:
+        Converted value or default_value
+    """
+    if isinstance(value, expected_type):
+        return value
+    
+    # Create descriptive prefix for logs
+    log_prefix = f"Parameter '{param_name}'" if param_name else "Value"
+    
+    if value is None:
+        if logger:
+            logger(f"{log_prefix} is None. Using default: {default_value}")
+        return default_value
+    
+    try:
+        return expected_type(value)
+    except (TypeError, ValueError) as e:
+        if logger:
+            logger(f"Failed to convert {log_prefix} {value!r} to {expected_type.__name__}: {e}. "
+                   f"Using default: {default_value}")
+        return default_value

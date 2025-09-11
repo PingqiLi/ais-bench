@@ -22,7 +22,7 @@ from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils import batched, build_model_from_cfg
 from ais_bench.benchmark.global_consts import WORKERS_NUM
-from ais_bench.benchmark.utils.types import convert_positive_integers, check_output_config_from_meta_json
+from ais_bench.benchmark.utils.types import convert_positive_integers, check_output_config_from_meta_json, safe_convert
 from ais_bench.benchmark.utils.rps_distribution_plot import plot_rps_distribution, add_actual_rps_to_chart
 
 from ..icl_prompt_template import PromptTemplate
@@ -620,10 +620,11 @@ class GenInferencer(BaseInferencer):
         
         # Extract traffic configuration parameters
         traffic_cfg = getattr(model_cfg, "traffic_cfg", {})
-        burstiness = float(traffic_cfg.get("burstiness", 0.0))
-        ramp_up_strategy = traffic_cfg.get("ramp_up_strategy")
-        ramp_up_start_rps = traffic_cfg.get("ramp_up_start_rps")
-        ramp_up_end_rps = traffic_cfg.get("ramp_up_end_rps")
+        
+        burstiness = safe_convert(traffic_cfg.get("burstiness"), float, 0.0, param_name="burstiness")
+        ramp_up_strategy = safe_convert(traffic_cfg.get("ramp_up_strategy"), str, None, param_name="ramp_up_strategy")
+        ramp_up_start_rps = safe_convert(traffic_cfg.get("ramp_up_start_rps"), float, None, param_name="ramp_up_start_rps")
+        ramp_up_end_rps = safe_convert(traffic_cfg.get("ramp_up_end_rps"), float, None, param_name="ramp_up_end_rps")
         
         # Validate ramp-up strategy parameters
         valid_strategies = ("linear", "exponential")
