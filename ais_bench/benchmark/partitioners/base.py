@@ -99,6 +99,8 @@ class BasePartitioner:
             self.logger.info(f'Partitioned into {len(tasks)} tasks.')
             for i, task in enumerate(tasks):
                 self.logger.debug(f'Task {i}: {task_abbr_from_cfg(task)}')
+        for task in tasks:
+            task['cli_args'] = cfg.get('cli_args', {})
         return tasks
 
     def parse_model_dataset_args(self, cfg: ConfigDict):
