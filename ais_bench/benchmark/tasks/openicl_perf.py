@@ -110,7 +110,7 @@ class OpenICLPerfTask(BaseTask):
                 self.model_cfg = model_cfg
                 self.dataset_cfg = dataset_cfg
                 self.infer_cfg = self.dataset_cfg["infer_cfg"]
-                if self.dataset_cfg.get('type', None) in ["ais_bench.benchmark.datasets.SyntheticDataset", 
+                if self.dataset_cfg.get('type', None) in ["ais_bench.benchmark.datasets.SyntheticDataset",
                                                           "ais_bench.benchmark.datasets.ShareGPTDataset"]:
                     self.dataset = build_dataset_from_cfg_with_model_path(self.dataset_cfg, self.model_cfg)
                 else:
