@@ -1,9 +1,12 @@
 import os
+import csv
 import json
 import zipfile
 import hashlib
 import urllib.request
 import random
+
+from typing import List, Any, Optional, Callable, Dict, Union, Type, Tuple
 
 from .logging import get_logger
 logger = get_logger()
@@ -69,3 +72,86 @@ def get_sample_data(data_list: list, sample_mode: str = "default", request_count
         return shuffle_data
     else:
         raise ValueError(f"Sample mode: {sample_mode} is not supported!")
+
+
+def safe_load_json_file(
+    path: str, 
+    encoding: str = 'utf-8-sig', 
+    expected_types: Union[Type, Tuple[Type, ...]] = (dict,)
+) -> List[Any]:
+    data: List[Any] = []
+    try:
+        with open(path, 'r', encoding=encoding) as f:
+            for line_number, line in enumerate(f, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    parsed = json.loads(line)
+                    if not isinstance(parsed, expected_types):
+                        type_names = "or".join(t.__name__ for t in expected_types)
+                        raise TypeError(
+                            f"Expected {type_names}, got {type(parsed).__name__}"
+                        )
+                    data.append(parsed)
+                except (json.JSONDecodeError, TypeError) as e:
+                    err_msg = (
+                        f"JSON parse error at line {line_number}: {e}\n"
+                        f"Problematic content: {line!r}"
+                    )
+                    raise ValueError(err_msg) from e
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {path}")
+    except Exception as e:
+        raise ValueError(f"Unexpected error reading {path}: {e}")
+    return data
+
+
+def safe_load_csv_file(
+    path: str, 
+    encoding: str = 'utf-8-sig', 
+    expected_types: Union[Type, Tuple[Type, ...]] = (str,)
+) -> List[Dict[str, str]]:
+    data: List[Dict[str, str]] = []
+    try:
+        with open(path, 'r', encoding=encoding) as f:
+            reader = csv.reader(f)
+            try:
+                header = next(reader)
+                header = [col.strip() for col in header]
+            except StopIteration:
+                return data
+            for row_number, row in enumerate(reader, 2):
+                if not any(field.strip() for field in row):
+                    continue # skip empty rows (all fields are empty or whitespace)
+                try:
+                    if len(row) != len(header):
+                        raise ValueError(
+                            f"Column count mismatch: expected {len(header)} columns, "
+                            f"found {len(row)} columns"
+                        )
+                    row_dict = dict(zip(header, row))
+                    for key, value in row_dict.items():
+                        if not isinstance(value, expected_types):
+                            type_names = "or".join(t.__name__ for t in expected_types)
+                            actual_type = type(value).__name__
+                            raise TypeError(
+                                f"Value '{value}' for key '{key}' "
+                                f"expected type {type_names}, got {actual_type}"
+                            )
+                    data.append(row_dict)
+                except (ValueError, TypeError) as e:
+                    err_msg = (
+                        f"CSV processing error at line {row_number}: {e}\n"
+                        f"Problematic row: {row!r}"
+                    )
+                    raise ValueError(err_msg) from e
+    
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File not found: {path}")
+    except csv.Error as e:
+        raise ValueError(f"CSV format error: {e}")
+    except Exception as e:
+        raise ValueError(f"Unexpected error reading {path}: {e}")
+    
+    return data

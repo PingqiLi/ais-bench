@@ -12,7 +12,7 @@ from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.registry import LOAD_DATASET
 from ais_bench.benchmark.utils import get_data_path
-from ais_bench.benchmark.utils.datasets import get_sample_data
+from ais_bench.benchmark.utils.datasets import get_sample_data, safe_load_json_file, safe_load_csv_file
 from ais_bench.benchmark.utils.types import check_meta_json_dict
 
 from .base import BaseDataset
@@ -93,13 +93,9 @@ class CustomDataset(BaseDataset):
         if file_name is not None:
             path = os.path.join(path, file_name)
         if path.endswith('.jsonl'):
-            with open(path, 'r', encoding='utf-8-sig') as f:
-                data = [json.loads(line) for line in f]
+            data = safe_load_json_file(path, expected_types=(dict))
         elif path.endswith('.csv'):
-            with open(path, 'r', encoding='utf-8-sig') as f:
-                reader = csv.reader(f)
-                header = next(reader)
-                data = [dict(zip(header, row)) for row in reader]
+            data = safe_load_csv_file(path, expected_types=(str))
         else:
             raise ValueError(f'Unsupported file format: {path}')
         if meta_json_conf is not None:
