@@ -1,4 +1,4 @@
-name: 🔧 Bug 报告
+name: 🔧 Bug&报错&异常报告
 description: 提交程序中的错误或异常
 title: "[Bug] "
 labels: ["bug", "待处理"]
@@ -48,15 +48,24 @@ body:
     id: tool_version
     attributes:
       label: AISBench工具版本
-      placeholder: 例：最新代码（请给出具体的commit id），某个tag/release版本（请给出链接）
+      description: 请附上工具版本文本
+      placeholder: 例:3.0.20250814(通过pip3 show ais_bench_benchmark命令查看)
+    validations:
+      required: true
+  - type: input
+    id: input_cmd
+    attributes:
+      label: AISBench执行命令
+      description: 请附上执行命令文本
+      placeholder: 例:ais_bench --models vllm_api_stream_chat --datasets synthetic_gen --mode perf
     validations:
       required: true
   - type: textarea
-    id: steps
+    id: cfg_content
     attributes:
-      label: 重现步骤
-      description: 清晰描述如何复现问题
-      placeholder: 1. 附上ais_bench命令。2. 附上这些命令执行时的使用的配置文件的内容(通过在 ais_bench命令基础上加上 --search执行可以得到实际执行的配置文件路径)。
+      label: 模型配置文件或自定义配置文件内容
+      description: 请附上配置文件内容文本
+      placeholder: 例:通过执行ais_bench --models vllm_api_stream_chat --search可以查看vllm_api_stream_chat模型任务的配置文件
     validations:
       required: true
   - type: textarea
@@ -69,7 +78,7 @@ body:
     id: actual
     attributes:
       label: 实际行为
-      description: 附错误日志或截图（可拖拽上传）
+      description: 附错误日志文本(若截图请确保完成上传！）
     validations:
       required: true
   - type: checkboxes
