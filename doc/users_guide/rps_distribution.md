@@ -44,11 +44,11 @@ models = [
     dict(
         ... # 其他参数
         request_rate = 100,     # 已有的参数
-        traffic_cfg=dict(       # 新增的 traffic_cfg 参数项
-            burstiness=0.5,
+        traffic_cfg = dict(       # 新增的 traffic_cfg 参数项
+            burstiness = 0.5,
             ramp_up_strategy = "linear",
             ramp_up_start_rps = 10,
-            ramp_up_end_rps= 200,
+            ramp_up_end_rps = 200,
         ),
         ... # 其他参数
     )
@@ -65,7 +65,7 @@ models = [
 | **参数名称** | **参数含义** | **处理逻辑** |
 | ----------- | ----------- | ------------ |
 | **burstiness** | 突发性因子($\beta$)，即Gamma分布的形状参数 <br /> 可与`ramp_up_*`三个影响爬升行为的参数协同影响请求发送速率的分布情况 | 该项赋值为`None`、`""`时，均视作**不启用**突变行为 <br /> 取值范围为非负数值（**其它值将被视作异常**）<br /><br /> `burstiness = 0`（或赋值为`None`、`""`）：无突发性（默认值）<br /> `burstiness ∈ (0, 1)`：Gamma分布（高突发性）   <br /> `burstiness = 1`：泊松分布   <br /> `burstiness > 1`：均匀分布（低突发性）<br /><br /> 在request_rate生效或爬升行为生效的情况下才会影响所有请求间隔分布 <br /> 该项配置不同数值时的突变性差异可视化样例请参考 📚 [burstiness](#burstiness) |
-| **ramp_up_strategy**  | RPS增长时的方式 | 该项赋值为`None`、`""`时，均视作**不启用**爬升行为 <br /> 当该项赋值为`"linear"`或`"exponential"`，则启用爬升行为。(**其它值将被视作异常**) <br /><br /> 请求发送速率增长计算公式：   <br /> **线性增长(赋值为`linear`)**：$RPS_{current} = RPS_{start} + (RPS_{end} - 起始RPS)×进度$ <br /> **指数增长(赋值为`exponential`)**：$RPS_{current} = RPS_{start} × (增长比例)^{进度}$ |
+| **ramp_up_strategy**  | RPS增长时的方式 | 该项赋值为`None`、`""`时，均视作**不启用**爬升行为 <br /> 当该项赋值为`"linear"`或`"exponential"`，则启用爬升行为。(**其它值将被视作异常**) <br /><br /> 请求发送速率增长计算公式：   <br /> **线性增长(赋值为`linear`)**：$RPS_{current} = RPS_{start} + (RPS_{end} - RPS_{start})×进度$ <br /> **指数增长(赋值为`exponential`)**：$RPS_{current} = RPS_{start} × (增长比例)^{进度}$ |
 | **ramp_up_start_rps** | RPS增长时的起始值 | 该项赋值为`None`、`""`时，均视作**不启用**爬升行为 <br /> 取值范围为非负数值（**其它值将被视作异常**）。<br /><br /> 必须与`ramp_up_strategy`和`ramp_up_end_rps`配合使用。<br /> 不满足$ramp\_up\_end\_rps ≥ ramp\_up\_start\_rps$时，视为禁用爬升行为 <br /> 若启用爬升行为，则作为开始时的请求发送速率（$请求条数/秒$），即`起始速率` |
 | **ramp_up_end_rps**   | RPS增长时的终止值 | 该项赋值为`None`、`""`时，均视作**不启用**爬升行为 <br /> 取值范围为非负数值（**其它值将被视作异常**）。<br /><br /> 必须与`ramp_up_strategy`和`ramp_up_start_rps`配合使用。<br /> 不满足$ramp\_up\_end\_rps ≥ ramp\_up\_start\_rps$时，视为禁用爬升行为 <br /> 若启用爬升行为，则作为结束时的请求发送速率（$请求条数/秒$），即`目标速率` |
 
@@ -76,7 +76,7 @@ models = [
 > - **约束关系**
 >   - 启用爬升行为需**同时满足**以下两点，否则爬升行为不生效:
 >     - `ramp_up_strategy`为`"linear"`或`"exponential"`
->     - $ramp\_up\_start\_rps > 0$ 且 $ramp\_up\_end\_rps > 0.1$ 且 $ramp\_up\_end\_rps > ramp\_up\_start\_rps$
+>     - $ramp\_up\_start\_rps > 0$ 且 $ramp\_up\_end\_rps > 0.1$ 且 $ramp\_up\_end\_rps ≥ ramp\_up\_start\_rps$
 > - **目标速率**
 >   - **定义**：最终期望的请求发送速率
 >   - **用词详解**
@@ -96,7 +96,6 @@ models = [
 
 在$目标速率 ≥ 0.1$时（`目标速率`定义请参考[`参数解读.表格摘要.目标速率`](#参数解读)），该可视化文件落盘于：
 
-- 精度测评：`output/default/{时间戳}/predictions/{model_api名称}/`
 - 性能测评：`output/default/{时间戳}/performances/{model_api名称}/`
 
 >
@@ -104,7 +103,7 @@ models = [
 >
 > - 该图产生于`infer`阶段的`请求发送`前，计算的数据均为**预期的请求发送速率**
 > - 当为瞬发场景时($目标速率 < 0.1$)，该文件的三个图无参考意义，**此时不产生该可视化文件**
->
+> - *精度测评场景下不进行可视化*
 
 ### 图表内容详解
 
@@ -295,6 +294,8 @@ $\lambda_i = \lambda_{\text{start}} \times \left(\frac{\lambda_{end}}{\lambda_{s
 
 ## 可视化: {datasetname}_rps_distribution_plot_with_actual_rps.html
 
+> - *精度测评场景下不进行可视化*
+
 ### 图表示例
 
 **新增部分**
@@ -344,8 +345,8 @@ $\lambda_i = \lambda_{\text{start}} \times \left(\frac{\lambda_{end}}{\lambda_{s
 
     ```python
             request_rate = 100,
-            traffic_cfg=dict(
-                burstiness=0,
+            traffic_cfg = dict(
+                burstiness = 0,
             ),
     ```
 
@@ -359,8 +360,8 @@ $\lambda_i = \lambda_{\text{start}} \times \left(\frac{\lambda_{end}}{\lambda_{s
 
     ```python
             request_rate = 100,
-            traffic_cfg=dict(
-                burstiness=0.5,
+            traffic_cfg = dict(
+                burstiness = 0.5,
             ),
     ```
 
@@ -374,8 +375,8 @@ $\lambda_i = \lambda_{\text{start}} \times \left(\frac{\lambda_{end}}{\lambda_{s
 
     ```python
             request_rate = 100,
-            traffic_cfg=dict(
-                burstiness=1,
+            traffic_cfg = dict(
+                burstiness = 1,
             ),
     ```
 
@@ -389,8 +390,8 @@ $\lambda_i = \lambda_{\text{start}} \times \left(\frac{\lambda_{end}}{\lambda_{s
 
     ```python
             request_rate = 100,
-            traffic_cfg=dict(
-                burstiness=10,
+            traffic_cfg = dict(
+                burstiness = 10,
             ),
     ```
 

@@ -211,6 +211,7 @@ class GenInferencer(BaseInferencer):
             global_offsets_dict = self.get_global_offsets_dict(
                 total_requests_num=total_requests_size,
                 workers_num=workers_num,
+                model=model,
                 model_cfg=model_cfg,
             )
 
@@ -259,8 +260,9 @@ class GenInferencer(BaseInferencer):
 
             iterables = [res for res in async_results]
             results = list(itertools.chain.from_iterable(res.get() for res in iterables))
-            post_time_list: list = [(each.get("start_time") - global_start_time) for each in results]
-            add_actual_rps_to_chart(self.rps_plot_path, post_time_list)
+            if getattr(model, "do_performance", False):
+                post_time_list: list = [(each.get("start_time") - global_start_time) for each in results]
+                add_actual_rps_to_chart(self.rps_plot_path, post_time_list)
         return results
 
     def extract_data(self, ds_reader, datum: Any) -> Tuple[List, List]:
@@ -541,6 +543,7 @@ class GenInferencer(BaseInferencer):
         self,
         total_requests_num: int,
         workers_num: int,
+        model: BaseModel,
         model_cfg: ConfigDict,
         ) -> Dict[int, np.ndarray]:
         """
@@ -552,6 +555,7 @@ class GenInferencer(BaseInferencer):
         Args:
             total_requests_num: Total number of requests to generate
             workers_num: Number of worker processes
+            model: Determine if do_performance
             model_cfg: Model configuration (contains traffic control parameters)
             
         Returns:
@@ -561,6 +565,7 @@ class GenInferencer(BaseInferencer):
         # Generate global timing offsets using vectorized computation
         global_offsets_arr = self._get_sleep_interval_offset_list(
             total_requests_num=total_requests_num,
+            model=model,
             model_cfg=model_cfg,
         )
         
@@ -580,6 +585,7 @@ class GenInferencer(BaseInferencer):
     def _get_sleep_interval_offset_list(
         self,
         total_requests_num: int,
+        model: BaseModel,
         model_cfg: ConfigDict
         ) -> np.ndarray:
         """
@@ -592,6 +598,7 @@ class GenInferencer(BaseInferencer):
         
         Args:
             total_requests_num: Total number of requests
+            model: Determine if do_performance
             model_cfg: Configuration dictionary with traffic parameters:
                 structure
                 request_rate: float,  # Base request rate (RPS), default 0
@@ -620,7 +627,7 @@ class GenInferencer(BaseInferencer):
         
         # Extract traffic configuration parameters
         traffic_cfg = getattr(model_cfg, "traffic_cfg", {})
-        
+
         burstiness = safe_convert(traffic_cfg.get("burstiness"), float, 0.0, param_name="burstiness")
         ramp_up_strategy = safe_convert(traffic_cfg.get("ramp_up_strategy"), str, None, param_name="ramp_up_strategy")
         ramp_up_start_rps = safe_convert(traffic_cfg.get("ramp_up_start_rps"), float, None, param_name="ramp_up_start_rps")
@@ -734,7 +741,7 @@ class GenInferencer(BaseInferencer):
                 burstiness_anomaly_indices = np.array([], dtype=np.int64)
             
             # Visualization for debugging purposes
-            if cumulative_delays.size > 0:
+            if cumulative_delays.size > 0 and getattr(model, "do_performance", False):
                 logger.info("Begin to draw RPS distribution plot...")
                 rps_plot_path = self.rps_plot_path if self.rps_plot_path else os.getcwd()
                 rps_plot_path, _ = os.path.splitext(rps_plot_path)
