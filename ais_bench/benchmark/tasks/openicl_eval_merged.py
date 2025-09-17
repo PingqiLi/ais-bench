@@ -175,8 +175,19 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
                                           role.get('end', None))
                         for pred in pred_strs
                     ]
-
-            # Postprocess predictions if necessary
+            # Postprocess predictions in model cfg
+            if 'pred_postprocessor' in self.model_cfg:
+                kwargs = copy.deepcopy(self.model_cfg['pred_postprocessor'])
+                proc = kwargs.pop('type')
+                if isinstance(proc, str):
+                    proc = TEXT_POSTPROCESSORS.get(proc)
+                if pred_list_flag:
+                    pred_strs = [[proc(s, **kwargs) for s in preds]
+                                for preds in pred_strs]
+                else:
+                    pred_strs = [proc(s, **kwargs) for s in pred_strs]
+                    
+            # Postprocess predictions in eval cfg
             if 'pred_postprocessor' in self.eval_cfg:
                 kwargs = self.eval_cfg['pred_postprocessor']
                 proc = kwargs.pop('type')
@@ -260,8 +271,6 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
                         pred_strs, model_pred_strs,
                         test_set[self.output_column], details, model_details,
                         pred_dicts)
-                    self.logger.warning(
-                        f"result['details'] : {result['details']}"),
                     result['type'] = result['details'].pop('type', None)
                     if self.cal_extract_rate:
                         # Calculate the extraction success rate for prediction

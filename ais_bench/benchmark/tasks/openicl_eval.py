@@ -268,8 +268,6 @@ class OpenICLEvalTask(BaseTask):
                         pred_strs, model_pred_strs,
                         test_set[self.output_column], details, model_details,
                         pred_dicts)
-                    self.logger.warning(
-                        f"result['details'] : {result['details']}"),
                     result['type'] = result['details'].pop('type', None)
                     if self.cal_extract_rate:
                         # Calculate the extraction success rate for prediction
