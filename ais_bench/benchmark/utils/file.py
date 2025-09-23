@@ -1,10 +1,68 @@
 import fnmatch
 import tabulate
 import os
+import json
+
 from typing import List, Tuple, Union
 from ais_bench.benchmark.utils.logging import get_logger
 
 logger = get_logger()
+
+
+def write_status(file_path, status):
+    # read existing content
+    existing_data = []
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, 'r') as f:
+                existing_data = json.load(f)
+        except (json.JSONDecodeError, IOError):
+            # if file is corrupted or unreadable, clear and start over
+            existing_data = []
+
+    # add new status
+    existing_data.append(status)
+
+    # write to file
+    try:
+        with open(file_path, 'w') as f:
+            json.dump(existing_data, f)
+        return True
+    except IOError:
+        return False
+
+
+def read_and_clear_statuses(tmp_file_dir, tmp_file_name_list):
+    """
+    读取所有进程状态并清空临时文件
+
+    返回:
+        包含所有进程状态的列表，如果出错则返回空列表
+    """
+
+    if not os.path.exists(tmp_file_dir):
+        return []
+
+    abs_path_list = [os.path.join(tmp_file_dir, tmp_file_name) for tmp_file_name in tmp_file_name_list]
+    all_status = []
+    for tmp_file in abs_path_list:
+        try:
+            # read existing content
+            with open(tmp_file, 'r') as f:
+                data = json.load(f)
+            all_status.extend(data)
+            # clear file content
+            with open(tmp_file, 'w') as f:
+                json.dump([], f)
+
+        except (json.JSONDecodeError, IOError):
+            # if file is corrupted or unreadable, clear and continue
+            try:
+                with open(tmp_file, 'w') as f:
+                    json.dump([], f)
+            except IOError:
+                pass
+    return all_status
 
 
 def match_files(path: str,
