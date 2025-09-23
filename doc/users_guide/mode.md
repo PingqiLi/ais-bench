@@ -156,4 +156,4 @@ ais_bench --models vllm_api_general_stream --datasets synthetic_gen --mode perf_
 ```
 > **说明**：`perf_viz` 将读取最近一次实验文件夹内的 `syntheticdataset.csv` 与 `syntheticdataset.json`，并根据 性能指标介绍 生成可视化结果。
 
-性能测评结果参考：[性能指标介绍](./performance_mertic.md#性能测评结果说明)
+性能测评结果参考：[性能指标介绍](./performance_metric.md#性能测评结果说明)
