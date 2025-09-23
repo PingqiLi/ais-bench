@@ -1,6 +1,7 @@
 import argparse
 import copy
 import fnmatch
+import threading
 import math
 import os
 import os.path as osp
@@ -23,6 +24,8 @@ from ais_bench.benchmark.utils import (build_dataset_from_cfg, dataset_abbr_from
                                task_abbr_from_cfg)
 
 from ais_bench.benchmark.utils.types import _check_type
+from ais_bench.benchmark.tasks.base import TaskStateManager
+from ais_bench.benchmark.utils.abbr import task_name_from_cfg
 
 
 @TASKS.register_module()
@@ -87,7 +90,7 @@ class OpenICLEvalTask(BaseTask):
         num_return_sequences = getattr(self.model_cfg, 'generation_kwargs', {}).get('num_return_sequences', 1)
         k = self.dataset_cfg.get('k', num_return_sequences)
         n = self.dataset_cfg.get('n', num_return_sequences)
-        
+
         _check_type(k, int)
         assert k > 0, f"k expected a positive integer, but got {k}"
         _check_type(n, int)
@@ -216,7 +219,7 @@ class OpenICLEvalTask(BaseTask):
                 pred_strs = [
                     Counter(s).most_common(1)[0][0] for s in pred_strs
                 ]
-                
+
             #TODO Configure eval in a more elegant way
             if 'returns_tool_calls' in self.model_cfg.keys():
                 self.eval_cfg['evaluator'].update({'is_fc_model':self.model_cfg.get('returns_tool_calls')})
@@ -455,8 +458,40 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     cfg = Config.fromfile(args.config)
+    task_state_manager = TaskStateManager(
+        tmp_path=os.path.join(cfg["work_dir"], "status_tmp"),
+        task_name=task_name_from_cfg(cfg),
+        is_debug=cfg["cli_args"]["debug"],
+    )
+    manager_t = threading.Thread(
+        target=task_state_manager.launch,
+        args=()
+    )
+    manager_t.start()
+    task_state_manager.update_task_state(
+        {
+            "status": "start",
+            "task_log_path": os.path.join("log/eval/", f"{task_name_from_cfg(cfg)}.out"),
+        }
+    )
     start_time = time.perf_counter()
-    inferencer = OpenICLEvalTask(cfg)
-    inferencer.run()
+    try:
+        inferencer = OpenICLEvalTask(cfg)
+        inferencer.run()
+    except Exception as e:
+        task_state_manager.update_task_state(
+            {
+                "status": "error",
+            }
+        )
+        raise e
+
     end_time = time.perf_counter()
     get_logger().info(f'time elapsed: {end_time - start_time:.2f}s')
+    task_state_manager.update_task_state(
+        {
+            "status": "finish",
+        }
+    )
+    manager_t.join()
+

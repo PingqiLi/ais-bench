@@ -5,6 +5,7 @@ import math
 import os
 import os.path as osp
 import statistics
+import threading
 import sys
 import time
 from collections import Counter
@@ -24,6 +25,8 @@ from ais_bench.benchmark.utils import (build_dataset_from_cfg, dataset_abbr_from
                                task_abbr_from_cfg)
 from ais_bench.benchmark.tasks.openicl_eval import OpenICLEvalTask
 from ais_bench.benchmark.utils.types import _check_type
+from ais_bench.benchmark.tasks.base import TaskStateManager
+from ais_bench.benchmark.utils.abbr import task_name_from_cfg
 
 
 @TASKS.register_module()
@@ -57,7 +60,7 @@ class OpenICLEvalMergedTask(OpenICLEvalTask):
                 merged_ds_abbr = dataset_cfg.get('type').split('.')[-1].lower()
                 if self.merge_datasets_cfgs.get(merged_ds_abbr) is None:
                     self.merge_datasets_cfgs[merged_ds_abbr] = []
-                    
+
                 k = dataset_cfg.get('k', num_return_sequences)
                 n = dataset_cfg.get('n', num_return_sequences)
                 _check_type(k, int)
@@ -319,7 +322,38 @@ if __name__ == '__main__':
     args = parse_args()
     cfg = Config.fromfile(args.config)
     start_time = time.perf_counter()
-    inferencer = OpenICLEvalMergedTask(cfg)
-    inferencer.run()
+    task_state_manager = TaskStateManager(
+        tmp_path=os.path.join(cfg["work_dir"], "status_tmp"),
+        task_name=task_name_from_cfg(cfg),
+        is_debug=cfg["cli_args"]["debug"],
+    )
+    manager_t = threading.Thread(
+        target=task_state_manager.launch,
+        args=()
+    )
+    manager_t.start()
+    task_state_manager.update_task_state(
+        {
+            "status": "start",
+            "task_log_path": os.path.join("log/eval/", f"{task_name_from_cfg(cfg)}.out"),
+        }
+    )
+    try:
+        inferencer = OpenICLEvalMergedTask(cfg)
+        inferencer.run()
+    except Exception as e:
+        task_state_manager.update_task_state(
+            {
+                "status": "error",
+            }
+        )
+        raise e
+
     end_time = time.perf_counter()
     get_logger().info(f'time elapsed: {end_time - start_time:.2f}s')
+    task_state_manager.update_task_state(
+        {
+            "status": "finish",
+        }
+    )
+    manager_t.join()

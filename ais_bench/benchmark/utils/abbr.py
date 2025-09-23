@@ -41,6 +41,14 @@ def task_abbr_from_cfg(task: Dict) -> str:
     ]) + ']'
 
 
+def task_name_from_cfg(task: Dict) -> str:
+    if len(task['datasets'][0]) > 1:
+        name = f"{task['models'][0]['abbr']}/{task['datasets'][0][0].get('type').split('.')[-1].lower()}"
+    else:
+        name = f"{task['models'][0]['abbr']}/{task['datasets'][0][0]['abbr']}"
+    return name
+
+
 def get_infer_output_path(model_cfg: ConfigDict,
                           dataset_cfg: ConfigDict,
                           root_path: str = None,

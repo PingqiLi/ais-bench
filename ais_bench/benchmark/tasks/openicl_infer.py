@@ -2,6 +2,7 @@ import argparse
 import os
 import os.path as osp
 import random
+import threading
 import sys
 import time
 from typing import Any, List
@@ -16,6 +17,9 @@ from ais_bench.benchmark.utils import (build_dataset_from_cfg, build_model_from_
                                get_infer_output_path, get_logger,
                                model_abbr_from_cfg, task_abbr_from_cfg)
 from ais_bench.benchmark.utils.types import _check_type
+from ais_bench.benchmark.tasks.base import TaskStateManager
+from ais_bench.benchmark.utils.abbr import task_name_from_cfg
+
 
 
 @TASKS.register_module()
@@ -93,12 +97,12 @@ class OpenICLInferTask(BaseTask):
             for dataset_cfg in dataset_cfgs:
                 self.model_cfg = model_cfg
                 self.dataset_cfg = dataset_cfg
-                
+
                 if 'n' not in self.dataset_cfg:
                     self.dataset_cfg['n'] = num_return_sequences
                 _check_type(self.dataset_cfg['n'], int)
                 assert self.dataset_cfg['n'] > 0, f"n expected a positive integer, but got {self.dataset_cfg['n']}"
-                
+
                 self.infer_cfg = self.dataset_cfg['infer_cfg']
                 self.dataset = build_dataset_from_cfg(self.dataset_cfg)
                 self.sub_cfg = {
@@ -180,8 +184,39 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     cfg = Config.fromfile(args.config)
+    task_state_manager = TaskStateManager(
+        tmp_path=os.path.join(cfg["work_dir"], "status_tmp"),
+        task_name=task_name_from_cfg(cfg),
+        is_debug=cfg["cli_args"]["debug"],
+    )
+    manager_t = threading.Thread(
+        target=task_state_manager.launch,
+        args=()
+    )
+    manager_t.start()
+    task_state_manager.update_task_state(
+        {
+            "status": "start",
+            "task_log_path": os.path.join("log/infer/", f"{task_name_from_cfg(cfg)}.out"),
+        }
+    )
     start_time = time.perf_counter()
-    inferencer = OpenICLInferTask(cfg)
-    inferencer.run()
+    try:
+        inferencer = OpenICLInferTask(cfg)
+        inferencer.run()
+    except Exception as e:
+        task_state_manager.update_task_state(
+            {
+                "status": "error",
+            }
+        )
+        raise e
+
     end_time = time.perf_counter()
     get_logger().info(f'time elapsed: {end_time - start_time:.2f}s')
+    task_state_manager.update_task_state(
+        {
+            "status": "finish",
+        }
+    )
+    manager_t.join()

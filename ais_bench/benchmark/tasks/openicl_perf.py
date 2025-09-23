@@ -2,12 +2,15 @@ import argparse
 import os
 import os.path as osp
 import random
+import threading
 import sys
 import time
 from typing import Any
 
 from mmengine.config import Config, ConfigDict
 from mmengine.utils import mkdir_or_exist
+from ais_bench.benchmark.tasks.base import TaskStateManager
+from ais_bench.benchmark.utils.abbr import task_name_from_cfg
 
 from ais_bench.benchmark.registry import (
     ICL_INFERENCERS,
@@ -225,8 +228,39 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     cfg = Config.fromfile(args.config)
+    task_state_manager = TaskStateManager(
+        tmp_path=os.path.join(cfg["work_dir"], "status_tmp"),
+        task_name=task_name_from_cfg(cfg),
+        is_debug=cfg["cli_args"]["debug"],
+    )
+    manager_t = threading.Thread(
+        target=task_state_manager.launch,
+        args=()
+    )
+    manager_t.start()
+    task_state_manager.update_task_state(
+        {
+            "status": "start",
+            "task_log_path": os.path.join("log/performances/", f"{task_name_from_cfg(cfg)}.out"),
+        }
+    )
     start_time = time.perf_counter()
-    inferencer = OpenICLPerfTask(cfg)
-    inferencer.run()
+    try:
+        inferencer = OpenICLPerfTask(cfg)
+        inferencer.run()
+    except Exception as e:
+        task_state_manager.update_task_state(
+            {
+                "status": "error",
+            }
+        )
+        raise e
+
     end_time = time.perf_counter()
     get_logger().info(f"time elapsed: {end_time - start_time:.2f}s")
+    task_state_manager.update_task_state(
+        {
+            "status": "finish",
+        }
+    )
+    manager_t.join()

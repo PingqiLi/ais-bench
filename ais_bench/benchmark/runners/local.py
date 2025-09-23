@@ -2,6 +2,7 @@ import os
 import os.path as osp
 import re
 import subprocess
+import multiprocessing
 import sys
 import time
 import torch
@@ -17,7 +18,9 @@ from mmengine.device import is_npu_available
 from tqdm import tqdm
 
 from ais_bench.benchmark.registry import RUNNERS, TASKS
-from ais_bench.benchmark.utils import get_logger, model_abbr_from_cfg
+from ais_bench.benchmark.utils import get_logger, task_name_from_cfg
+from ais_bench.benchmark.runners.base import TasksMonitor
+
 
 from .base import BaseRunner
 
@@ -75,8 +78,17 @@ class LocalRunner(BaseRunner):
         Returns:
             list[tuple[str, int]]: A list of (task name, exit code).
         """
+        task_names = [task_name_from_cfg(task) for task in tasks]
 
-        status = []
+        def monitor_process(task_names, output_path, is_debug, refresh_interval=0.5, run_in_background=False):
+            tasks_monitor = TasksMonitor(task_names, output_path, is_debug, refresh_interval, run_in_background)
+            tasks_monitor.launch_state_board()
+        monitor_p = multiprocessing.Process(
+            target=monitor_process,
+            args=(task_names, tasks[0]['work_dir'], self.debug, 0.5, tasks[0]['cli_args']['run_in_background'])
+
+        )
+        monitor_p.start()
 
         if is_npu_available():
             visible_devices = 'ASCEND_RT_VISIBLE_DEVICES'
@@ -93,9 +105,11 @@ class LocalRunner(BaseRunner):
             all_gpu_ids = list(range(device_nums))
 
         if self.debug:
-            return self._run_debug(tasks, all_gpu_ids)
+            status = self._run_debug(tasks, all_gpu_ids)
         else:
-            return self._run_normal(tasks, all_gpu_ids)
+            status = self._run_normal(tasks, all_gpu_ids)
+        monitor_p.join()
+        return status
 
     def _run_debug(self, tasks: List[Dict[str, Any]], all_gpu_ids: List[int]):
         """Launch multiple tasks.
@@ -163,7 +177,6 @@ class LocalRunner(BaseRunner):
         else:
             gpus = np.array([], dtype=np.uint)
 
-        pbar = tqdm(total=len(tasks))
         lock = Lock()
 
         def submit(task, index):
@@ -181,14 +194,7 @@ class LocalRunner(BaseRunner):
                 lock.release()
                 time.sleep(1)
 
-            if num_gpus > 0:
-                tqdm.write(f'launch {task.name} on GPU ' +
-                            ','.join(map(str, gpu_ids)))
-            else:
-                tqdm.write(f'launch {task.name} on CPU ')
-
             res = self._launch(task, gpu_ids, index)
-            pbar.update()
 
             with lock:
                 gpus[gpu_ids] += 1

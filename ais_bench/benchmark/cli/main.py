@@ -1,11 +1,23 @@
 # flake8: noqa
 # yapf: disable
+import sys
 import argparse
 import copy
 import getpass
 import os
 import os.path as osp
 from datetime import datetime
+
+
+def is_running_in_background():
+    # check whether stdin and stdout are connected to TTY
+    stdin_is_tty = sys.stdin.isatty()
+    stdout_is_tty = sys.stdout.isatty()
+
+    # if stdin and stdout are not connected to TTY, the script is running in background
+    return not (stdin_is_tty and stdout_is_tty)
+
+
 def get_current_time_str():
     return datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -137,6 +149,7 @@ def parse_custom_dataset_args(custom_dataset_parser):
 
 def main():
     args = parse_args()
+    args.run_in_background = is_running_in_background()
 
     if args.dry_run:
         args.debug = True
@@ -200,7 +213,7 @@ def main():
 
     # check if the tasks all function call tasks
     function_call_task_check(cfg, args.merge_ds)
-    
+
     if args.mode == 'perf':
         fill_perf_cfg(cfg, args)
         cfg.infer.partitioner['out_dir'] = osp.join(cfg['work_dir'],

@@ -1,4 +1,6 @@
 import copy
+import time
+import json
 import os
 import re
 from abc import abstractmethod
@@ -7,7 +9,7 @@ from typing import List, Optional
 from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.utils import get_infer_output_path, task_abbr_from_cfg
-
+from ais_bench.benchmark.utils.file import write_status
 
 def extract_role_pred(s: str, begin_str: Optional[str],
                       end_str: Optional[str]) -> str:
@@ -119,3 +121,39 @@ class BaseTask:
                         os.path.join(self.work_dir, self.output_subdir),
                         file_extension))
         return output_paths
+
+
+class TaskStateManager:
+    def __init__(self, tmp_path: str, task_name: str, is_debug: bool, refresh_interval: int = 0.5):
+        self.tmp_file = os.path.join(tmp_path, f"tmp_{task_name.replace('/', '_')}.json")
+        if os.path.exists(self.tmp_file):
+            os.remove(self.tmp_file)
+        with open(self.tmp_file, 'w') as f:
+            json.dump([], f)
+
+        self.task_state = {"task_name": task_name, "process_id": os.getpid()}
+        self.is_debug = is_debug
+        self.refresh_interval = refresh_interval
+
+    def launch(self):
+        self.task_state["start_time"] = time.time()
+        if self.is_debug:
+            print("debug mode, print progress directly")
+            self._display_task_state()
+        else:
+            self._post_task_state()
+
+    def update_task_state(self, task_state: dict):
+        self.task_state.update(task_state)
+
+    def _post_task_state(self):
+        while(True):
+            write_status(self.tmp_file, self.task_state)
+            if self.task_state.get("status") == "error":
+                break
+            elif self.task_state.get("status") == "finish":
+                break
+            time.sleep(self.refresh_interval)
+
+    def _display_task_state(self):
+        pass
