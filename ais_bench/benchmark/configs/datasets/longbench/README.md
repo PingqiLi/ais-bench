@@ -71,3 +71,15 @@ LongBench包含14个英文任务、5个中文任务和2个代码任务，大部�
 |longbench_trec_gen|longbench_trec_gen|准确率(accuracy)|0-shot|对话格式|[longbench_trec_gen.py](longbenchtrec/longbench_trec_gen.py)|
 |longbench_triviaqa_gen|longbench_triviaqa_gen|准确率(accuracy)|0-shot|对话格式|[longbench_triviaqa_gen.py](longbenchtriviaqa/longbench_triviaqa_gen.py)|
 |longbench_vcsum_gen|longbench_vcsum_gen|准确率(accuracy)|0-shot|对话格式|[longbench_vcsum_gen.py](longbenchvcsum/longbench_vcsum_gen.py)|
+
+## 测评命令样例
+```bash
+ais_bench --models vllm_api_general_chat --datasets longbench
+```
+！注意：执行上述命令时会默认从HuggingFace下载数据集文件，若无网络或者遇到网络问题，可通过以下方式从本地加载数据集。
+修改LongBench文件夹（在数据集部署环节通过HuggingFace下载）下的LongBench.py文件：
+```python
+     def _split_generators(self, dl_manager):
+-        data_dir = dl_manager.download_and_extract(_URL) # 删除行，不通过hf下载数据集
++        data_dir = self.config.data_dir # 新增行，加载本地数据集
+```
