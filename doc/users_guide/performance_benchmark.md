@@ -319,7 +319,7 @@ ais_bench --models vllm_api_general_stream vllm_api_stream_chat --datasets gsm8k
 ```bash
 ais_bench --models vllm_api_stream_chat --datasets synthetic_gen -m perf
 ```
-如果想要针对特定的输入长度分布进行性能测试，需要先配置`synthetic_gen`的分布配置文件[synthetic_config.py](ais_bench/datasets/synthetic_config.py)。配置内容如下所示：
+如果想要针对特定的输入长度分布进行性能测试，需要先配置`synthetic_gen`的分布配置文件[synthetic_config.py](../../ais_bench/datasets/synthetic/synthetic_config.py)。配置内容如下所示：
 ```python
 synthetic_config = {
     "Type": "string",
