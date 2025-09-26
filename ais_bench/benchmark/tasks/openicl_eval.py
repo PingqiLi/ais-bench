@@ -11,6 +11,8 @@ import time
 from collections import Counter
 from inspect import signature
 from typing import List, Iterable
+import mmap
+import orjson
 
 import mmengine
 from mmengine.config import Config, ConfigDict
@@ -25,7 +27,7 @@ from ais_bench.benchmark.utils import (build_dataset_from_cfg, dataset_abbr_from
 
 from ais_bench.benchmark.utils.types import _check_type
 from ais_bench.benchmark.tasks.base import TaskStateManager
-from ais_bench.benchmark.utils.abbr import task_name_from_cfg
+from ais_bench.benchmark.utils.abbr import task_abbr_from_cfg
 
 
 @TASKS.register_module()
@@ -45,7 +47,7 @@ class OpenICLEvalTask(BaseTask):
         self.logger = get_logger()
         self.num_gpus = max(
             c.get('eval_cfg', {}).get('num_gpus', 0)
-            for c in sum(self.dataset_cfgs, []))
+            for c in sum([self.dataset_cfgs], []))
         self.dump_details = cfg.get('eval', {}).get('runner', {}).get(
             'task', {}).get('dump_details', False)
         self.cal_extract_rate = cfg.get('eval', {}).get('runner', {}).get(
@@ -59,32 +61,29 @@ class OpenICLEvalTask(BaseTask):
         return template.format(task_cmd=command)
 
     def run(self):
-        for model_cfg, dataset_cfgs in zip(self.model_cfgs, self.dataset_cfgs):
-            for dataset_cfg in dataset_cfgs:
-                self.model_cfg = model_cfg
-                self.dataset_cfg = dataset_cfg
+        for dataset_cfg in self.dataset_cfgs:
+            self.dataset_cfg = dataset_cfg
+            # Load Dataset
+            self.eval_cfg = self.dataset_cfg.get('eval_cfg')
+            self.output_column = dataset_cfg['reader_cfg']['output_column']
 
-                # Load Dataset
-                self.eval_cfg = self.dataset_cfg.get('eval_cfg')
-                self.output_column = dataset_cfg['reader_cfg']['output_column']
+            # overwrite postprocessor if the model has specified one
+            ds_abbr = dataset_abbr_from_cfg(self.dataset_cfg)
+            model_postprocessors = self.model_cfg.get(
+                'pred_postprocessor', {})
+            for pattern in model_postprocessors.keys():
+                if fnmatch.fnmatch(ds_abbr, pattern):
+                    self.eval_cfg[
+                        'pred_postprocessor'] = model_postprocessors[
+                            pattern]  # noqa
+                    break
 
-                # overwrite postprocessor if the model has specified one
-                ds_abbr = dataset_abbr_from_cfg(self.dataset_cfg)
-                model_postprocessors = self.model_cfg.get(
-                    'pred_postprocessor', {})
-                for pattern in model_postprocessors.keys():
-                    if fnmatch.fnmatch(ds_abbr, pattern):
-                        self.eval_cfg[
-                            'pred_postprocessor'] = model_postprocessors[
-                                pattern]  # noqa
-                        break
-
-                out_path = get_infer_output_path(
-                    self.model_cfg, self.dataset_cfg,
-                    osp.join(self.work_dir, 'results'))
-                if osp.exists(out_path):
-                    self.logger.warning(f'Output file {out_path} already exists and will be overwritten.')
-                self._score()
+            out_path = get_infer_output_path(
+                self.model_cfg, self.dataset_cfg,
+                osp.join(self.work_dir, 'results'))
+            if osp.exists(out_path):
+                self.logger.warning(f'Output file {out_path} already exists and will be overwritten.')
+            self._score()
 
     def _score(self):
         num_return_sequences = getattr(self.model_cfg, 'generation_kwargs', {}).get('num_return_sequences', 1)
@@ -118,21 +117,23 @@ class OpenICLEvalTask(BaseTask):
         # Load predictions
         filename = get_infer_output_path(
             self.model_cfg, self.dataset_cfg,
-            osp.join(self.work_dir, 'predictions'))
+            osp.join(self.work_dir, 'predictions'),'jsonl')
         # in case the prediction is partial
         root, ext = osp.splitext(filename)
         partial_filename = root + '_0' + ext
 
         # Get sc_size if use Self-Consistency
         sc_size = self.eval_cfg.get('sc_size')
-
         if not osp.exists(osp.realpath(filename)) and not osp.exists(
                 osp.realpath(partial_filename)):
             result = {'error': 'No predictions found.'}
         else:
             if osp.exists(osp.realpath(filename)):
-                preds = mmengine.load(filename)
-                preds = list(preds.values())
+                preds = []
+                with open(filename, "rb") as f: 
+                        mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+                        for line in iter(mm.readline, b""):
+                            preds.extend(list(orjson.loads(line).values()))
             else:
                 filename = partial_filename
                 preds = []
@@ -460,7 +461,7 @@ if __name__ == '__main__':
     cfg = Config.fromfile(args.config)
     task_state_manager = TaskStateManager(
         tmp_path=os.path.join(cfg["work_dir"], "status_tmp"),
-        task_name=task_name_from_cfg(cfg),
+        task_name=task_abbr_from_cfg(cfg),
         is_debug=cfg["cli_args"]["debug"],
     )
     manager_t = threading.Thread(
@@ -471,13 +472,13 @@ if __name__ == '__main__':
     task_state_manager.update_task_state(
         {
             "status": "start",
-            "task_log_path": os.path.join("log/eval/", f"{task_name_from_cfg(cfg)}.out"),
+            "task_log_path": os.path.join("logs/eval/", f"{task_abbr_from_cfg(cfg)}.out"),
         }
     )
     start_time = time.perf_counter()
     try:
-        inferencer = OpenICLEvalTask(cfg)
-        inferencer.run()
+        evaluator = OpenICLEvalTask(cfg)
+        evaluator.run()
     except Exception as e:
         task_state_manager.update_task_state(
             {

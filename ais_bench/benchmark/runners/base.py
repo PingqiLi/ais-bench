@@ -95,7 +95,7 @@ class TasksMonitor:
             self.tasks_state_map[task_name]['process_id'] = status.get('process_id')
             self.tasks_state_map[task_name]['finish_count'] = status.get('finish_count')
             self.tasks_state_map[task_name]['total_count'] = status.get('total_count')
-            self.tasks_state_map[task_name]['progress_discription'] = status.get('progress_discription')
+            self.tasks_state_map[task_name]['progress_description'] = status.get('progress_description')
             if status.get('status'):
                 self.tasks_state_map[task_name]['status'] = status['status']
             self.tasks_state_map[task_name]['other_kwargs'] = status.get('other_kwargs')
@@ -110,7 +110,7 @@ class TasksMonitor:
                 [
                     task_name, # name
                     state.get("process_id"), # process id
-                    create_progress_bar(state.get("finish_count"), state.get("total_count"), state.get("progress_discription")), # progress
+                    create_progress_bar(state.get("finish_count"), state.get("total_count"), state.get("progress_description")), # progress
                     format_time(time.time() - state.get("start_time")) if state.get("start_time") else "NA", # time
                     state.get("status"), # task status
                     state.get("task_log_path"), # log path

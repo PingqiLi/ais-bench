@@ -9,10 +9,10 @@ from typing import List, Optional
 from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.utils import get_infer_output_path, task_abbr_from_cfg
+from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils.file import write_status
 
-def extract_role_pred(s: str, begin_str: Optional[str],
-                      end_str: Optional[str]) -> str:
+def extract_role_pred(s: str, begin_str: Optional[str], end_str: Optional[str]) -> str:
     """Extract the role prediction from the full prediction string. The role
     prediction may be the substring between the begin and end string.
 
@@ -27,12 +27,12 @@ def extract_role_pred(s: str, begin_str: Optional[str],
     start = 0
     end = len(s)
 
-    if begin_str and re.match(r'\s*', begin_str) is None:
+    if begin_str and re.match(r"\s*", begin_str) is None:
         begin_idx = s.find(begin_str)
         if begin_idx != -1:
             start = begin_idx + len(begin_str)
 
-    if end_str and re.match(r'\s*', end_str) is None:
+    if end_str and re.match(r"\s*", end_str) is None:
         # TODO: Support calling tokenizer for the accurate eos token
         # and avoid such hardcode
         end_idx = s.find(end_str, start)
@@ -62,11 +62,20 @@ class BaseTask:
     def __init__(self, cfg: ConfigDict):
         cfg = copy.deepcopy(cfg)
         self.cfg = cfg
-        self.model_cfgs = cfg['models']
-        self.dataset_cfgs = cfg['datasets']
-        self.work_dir = cfg['work_dir']
-        self.num_prompts = cfg['cli_args']['num_prompts'] if 'num_prompts' in cfg['cli_args'].keys() else None
-
+        if len(cfg["models"]) > 1:
+            raise ValueError(
+                "OpenICLApiInferTask only supports one model, but got {len(cfg['models'])}"
+            )
+        self.model_cfg = cfg["models"][0]
+        self.dataset_cfgs = cfg["datasets"][0]
+        self.work_dir = cfg["work_dir"]
+        self.cli_args = cfg["cli_args"]
+        self.num_prompts = (
+            self.cli_args["num_prompts"]
+            if "num_prompts" in self.cli_args.keys()
+            else None
+        )
+        #TODO: Check if all the inferencer are the same
 
     @abstractmethod
     def run(self):
@@ -85,15 +94,13 @@ class BaseTask:
     @property
     def name(self) -> str:
         return self.name_prefix + task_abbr_from_cfg(
-            {
-                'models': self.model_cfgs,
-                'datasets': self.dataset_cfgs
-            })
+            {"models": [self.model_cfg], "datasets": [self.dataset_cfgs]}
+        )
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}({self.cfg})'
+        return f"{self.__class__.__name__}({self.cfg})"
 
-    def get_log_path(self, file_extension: str = 'json') -> str:
+    def get_log_path(self, file_extension: str = "json") -> str:
         """Get the path to the log file.
 
         Args:
@@ -101,10 +108,13 @@ class BaseTask:
                 Default: 'json'.
         """
         return get_infer_output_path(
-            self.model_cfgs[0], self.dataset_cfgs[0][0],
-            os.path.join(self.work_dir, self.log_subdir), file_extension)
+            self.model_cfg,
+            self.dataset_cfgs[0],
+            os.path.join(self.work_dir, self.log_subdir),
+            file_extension,
+        )
 
-    def get_output_paths(self, file_extension: str = 'json') -> List[str]:
+    def get_output_paths(self, file_extension: str = "json") -> List[str]:
         """Get the paths to the output files. Every file should exist if the
         task succeeds.
 
@@ -117,9 +127,12 @@ class BaseTask:
             for dataset in datasets:
                 output_paths.append(
                     get_infer_output_path(
-                        model, dataset,
+                        model,
+                        dataset,
                         os.path.join(self.work_dir, self.output_subdir),
-                        file_extension))
+                        file_extension,
+                    )
+                )
         return output_paths
 
 

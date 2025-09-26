@@ -145,7 +145,7 @@ class TestTasksMonitor(unittest.TestCase):
                 "process_id": 1234,
                 "finish_count": 50,
                 "total_count": 100,
-                "progress_discription": "Running",
+                "progress_description": "Running",
                 "status": "running",
                 "task_log_path": "/path/to/log",
                 "other_kwargs": {"key": "value"}
@@ -161,7 +161,7 @@ class TestTasksMonitor(unittest.TestCase):
         self.assertEqual(task_state["process_id"], 1234)
         self.assertEqual(task_state["finish_count"], 50)
         self.assertEqual(task_state["total_count"], 100)
-        self.assertEqual(task_state["progress_discription"], "Running")
+        self.assertEqual(task_state["progress_description"], "Running")
         self.assertEqual(task_state["status"], "running")
         self.assertEqual(task_state["task_log_path"], "/path/to/log")
         self.assertEqual(task_state["other_kwargs"], {"key": "value"})
@@ -187,7 +187,7 @@ class TestTasksMonitor(unittest.TestCase):
         self.tasks_monitor.tasks_state_map["task1"]["process_id"] = 1234
         self.tasks_monitor.tasks_state_map["task1"]["finish_count"] = 50
         self.tasks_monitor.tasks_state_map["task1"]["total_count"] = 100
-        self.tasks_monitor.tasks_state_map["task1"]["progress_discription"] = "Running"
+        self.tasks_monitor.tasks_state_map["task1"]["progress_description"] = "Running"
         self.tasks_monitor.tasks_state_map["task1"]["status"] = "running"
         self.tasks_monitor.tasks_state_map["task1"]["task_log_path"] = "/path/to/log"
         self.tasks_monitor.tasks_state_map["task1"]["other_kwargs"] = {"key": "value"}
