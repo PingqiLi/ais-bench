@@ -10,7 +10,6 @@ from ais_bench.benchmark.datasets.drop_simple_eval import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.synthetic import *
 from ais_bench.benchmark.datasets.mmlu_pro import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.humaneval import * # noqa: F401, F403
-from ais_bench.benchmark.datasets.custom import *
 from ais_bench.benchmark.datasets.livecodebench import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.mgsm import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.piqa import *  # noqa: F401, F403

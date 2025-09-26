@@ -1,4 +1,3 @@
-import inspect
 import os
 import os.path as osp
 from typing import List, Optional, Tuple
@@ -8,12 +7,11 @@ from tqdm import tqdm
 
 from ais_bench.benchmark.models.base import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
-
-from ..icl_prompt_template import PromptTemplate
-from ..icl_retriever import BaseRetriever
-from ..utils.logging import get_logger
 from ais_bench.benchmark.utils.results import dump_results_dict
-from .icl_gen_inferencer import GenInferencer
+from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
+from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
+from ais_bench.benchmark.openicl.utils.logging import get_logger
+from ais_bench.benchmark.openicl.icl_inferencer.icl_gen_inferencer import GenInferencer
 
 logger = get_logger(__name__)
 
@@ -58,8 +56,12 @@ class GenModelPerfInferencer(GenInferencer):
         ice_template: Optional[PromptTemplate] = None,
         prompt_template: Optional[PromptTemplate] = None,
     ) -> Tuple[List, List]:
-        """
-        Retrieves and processes data for inference.
+        """Retrieve and process data for inference.
+        
+        Args:
+            retriever: The retriever instance to get data from
+            ice_template: Optional template for in-context examples
+            prompt_template: Optional template for prompts
         """
         ice_idx_list = retriever.retrieve()
         prompt_list = self.get_generation_prompt_list_from_retriever_indices(
@@ -88,9 +90,14 @@ class GenModelPerfInferencer(GenInferencer):
         golds: List[Optional[str]],
         output_filepath: Optional[str] = None,
         output_filename: Optional[str] = None,
-    ) -> List[str]:
-        """
-        Runs inference on the given entries and logs performance metrics.
+    ) :
+        """Run inference on the given entries and log performance metrics.
+        
+        Args:
+            entry: List of input prompts for inference
+            golds: List of ground truth answers (can be None)
+            output_filepath: Optional custom output directory path
+            output_filename: Optional custom output filename
         """
         if self.is_synthetic:
             self.model.set_synthetic()
@@ -114,14 +121,12 @@ class GenModelPerfInferencer(GenInferencer):
                         data, **extra_gen_kwargs)
         perf_results = self.model.handle_perf_result(output_filepath, output_filename)
 
-        #Save performance results
+        # Save performance results
         if self.is_main_process:
             os.makedirs(output_filepath, exist_ok=True)
             dump_results_dict(
                 perf_results,
                 osp.join(output_filepath, output_filename + ".json"),
             )
-        #Summary
-        logger.info(f"Performance results is {perf_results}")
         logger.info(f"Performance task finished, results saved in {output_filepath}")
         return

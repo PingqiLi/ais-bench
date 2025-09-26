@@ -445,7 +445,6 @@ def check_testcase_output(testcase_str, expected_output):
         print(e)
         global_result = False
         # print("Failed to eval testcase output", testcase_output_str)
-        # breakpoint()
 
     try:
         expected_output_eval = json.loads(expected_output)
