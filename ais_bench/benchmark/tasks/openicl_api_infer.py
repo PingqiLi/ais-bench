@@ -1,0 +1,457 @@
+import argparse
+import os
+import sys
+import threading
+import time
+from typing import Any, List
+from multiprocessing import Event, Process, Queue, shared_memory, BoundedSemaphore
+
+import multiprocessing as mp
+import pickle
+from mmengine.config import Config, ConfigDict
+
+from ais_bench.benchmark.global_consts import WORKERS_NUM
+from ais_bench.benchmark.registry import ICL_INFERENCERS, TASKS, ICL_RETRIEVERS
+from ais_bench.benchmark.tasks.base import BaseTask, TaskStateManager
+from ais_bench.benchmark.tasks.utils import (
+    check_virtual_memory_usage,
+    create_message_share_memory,
+    ProgressBar,
+    TokenProducer,
+)
+from ais_bench.benchmark.utils import (
+    get_logger,
+    task_abbr_from_cfg,
+    build_dataset_from_cfg,
+)
+from ais_bench.benchmark.utils.abbr import task_abbr_from_cfg
+
+CONCURRENCY_PER_PROCESS = 800
+MAX_WORKERS_NUM = mp.cpu_count() * 0.8
+
+
+def run_single_inferencer(
+    model_cfg: Config,
+    inferencer_cfg: Config,
+    shm_name: str,
+    message_shm_name: str,
+    max_concurrency: int,
+    index_queue: Queue,
+    token_producer: Queue = None,
+):
+    """Run a single inferencer that reads samples from shared memory.
+
+    Args:
+        model_cfg: API model configuration
+        inferencer_cfg: API inferencer configuration. Must implement `inference_with_shm`
+        shm_name: The name of the shared memory block containing pickled samples
+        max_concurrency: Maximum concurrent requests in this process
+        index_queue: Queue yielding (index, offset, length) for items in shared memory
+        token_producer: Token generator; inferencer must acquire tokens before inference
+    """
+    inferencer_cfg["model_cfg"] = model_cfg
+    inferencer_cfg["batch_size"] = max_concurrency
+    inferencer = ICL_INFERENCERS.build(inferencer_cfg)
+
+    inferencer.inference_with_shm(
+        shm_name,
+        message_shm_name,
+        index_queue,
+        token_producer,
+    )
+
+
+@TASKS.register_module()
+class OpenICLApiInferTask(BaseTask):
+    """OpenICL API Inference Task.
+
+    Runs API inference with one or more inferencer workers in parallel.
+    """
+
+    name_prefix = "OpenICLInfer"
+    log_subdir = "logs/infer"
+    output_subdir = "predictions"
+
+    def __init__(self, cfg: ConfigDict):
+        super().__init__(cfg)
+        self.concurrency = self.model_cfg.get("batch_size", 1)
+        self.pressure = self.cli_args.get("pressure", False)
+        self.inferencer_cfg = self.dataset_cfgs[0]["infer_cfg"]["inferencer"]
+        self.inferencer_cfg["model_cfg"] = self.model_cfg
+        self.inferencer_cfg["mode"] = self.cli_args.get("mode", "infer")
+        self.inferencer_cfg["batch_size"] = self.model_cfg.get("batch_size", 1)
+        self.inferencer_cfg["output_json_filepath"] = self.work_dir
+        self.logger = get_logger()
+        # Control switch for async tasks within process
+        self.stop_evt = Event()
+        self.stop_evt.set()
+
+    def get_command(self, cfg_path, template):
+        """Build the CLI command to execute this task.
+
+        Args:
+            cfg_path (str): Path to the task config file.
+            template (str): Template string containing '{task_cmd}' placeholder.
+        """
+        sys.path.append(os.getcwd())
+        script_path = __file__
+        python = sys.executable
+        command = f"{python} {script_path} {cfg_path}"
+
+        return template.format(task_cmd=command)
+
+    def _get_workers_num(self):
+        """Calculate the number of worker processes.
+
+        Returns:
+            int: Number of worker processes
+        """
+        if isinstance(WORKERS_NUM, int):
+            if WORKERS_NUM > 0:
+                return min(WORKERS_NUM, MAX_WORKERS_NUM)
+        work_num = self.concurrency // CONCURRENCY_PER_PROCESS
+        return min(work_num + 1, MAX_WORKERS_NUM)
+
+    def _get_data_list(self):
+        """Retrieve data from the inferencer and return a picklable dataset list.
+
+        Supports datasets with different retrievers and prompt templates.
+
+        Returns:
+            List: List of pickled dataset items
+        """
+        pickled_dataset = []
+        if not hasattr(self.inferencer, "get_data_list"):
+            raise ValueError("Inferencer must implement get_data_list method")
+        for dataset_cfg in self.dataset_cfgs:
+            infer_cfg = dataset_cfg["infer_cfg"]
+            dataset = build_dataset_from_cfg(dataset_cfg)
+            retriever_cfg = infer_cfg["retriever"].copy()
+            retriever_cfg["dataset"] = dataset
+            retriever_cfg["prompt_template"] = infer_cfg.get("prompt_template", None)
+            retriever_cfg["ice_template"] = infer_cfg.get("ice_template", None)
+            retriever = ICL_RETRIEVERS.build(retriever_cfg)
+            infer_data_list = self.inferencer.get_data_list(retriever)
+            for data in infer_data_list:
+                pickled_dataset.append(pickle.dumps(data))
+        return pickled_dataset
+
+    def _dump_dataset_to_share_memory(self):
+        """Dump the serialized dataset into a shared memory block.
+
+        Returns:
+            tuple: (dataset_size, dataset_shm, index_queue)
+                - dataset_size: Number of items in the dataset
+                - dataset_shm: The shared memory region
+                - index_queue: Queue yielding (index, offset, length)
+        """
+        pickled_dataset = self._get_data_list()
+        # Dump dataset to shared memory
+        lengths = [len(b) for b in pickled_dataset]
+        dataset_bytes = sum(lengths)
+
+        # Check virtual memory usage and raise exception if exceeds 80%
+        check_virtual_memory_usage(dataset_bytes=dataset_bytes, threshold_percent=80)
+
+        dataset_shm = shared_memory.SharedMemory(create=True, size=dataset_bytes)
+
+        buf = dataset_shm.buf
+        index_queue_size = len(pickled_dataset) + 1
+        # In pressure mode, queue length maintains max concurrency + 1,
+        # ensuring each coroutine can get at least one data, avoiding blocking
+        if self.pressure:
+            index_queue_size = max(index_queue_size, self.concurrency + 1)
+        index_queue = mp.Queue(maxsize=index_queue_size)
+        index = 0
+        offset = 0
+        for data, length in zip(pickled_dataset, lengths):
+            buf[offset : offset + length] = data
+            index_queue.put((index, offset, length))
+            offset += length
+            index += 1
+        index_queue.put(None)
+        return len(pickled_dataset), dataset_shm, index_queue
+
+    def _deliver_concurrency_for_workers(self):
+        """Split total concurrency across worker processes as evenly as possible.
+
+        Returns:
+            List[int]: List of concurrency values for each worker process
+        """
+        # Allow _get_workers_num to return float, but normalize to positive integer
+        workers_num_raw = self._get_workers_num()
+        # Convert workers_num to nearest integer and ensure at least 1
+        workers_num = int(round(workers_num_raw)) if workers_num_raw is not None else 0
+        workers_num = max(1, workers_num)
+        # Ensure total concurrency is integer and non-negative
+        total_concurrency = int(self.concurrency) if self.concurrency is not None else 0
+        if total_concurrency < 0:
+            raise ValueError(f"Invalid concurrency: {self.concurrency}")
+
+        q, r = divmod(total_concurrency, workers_num)
+        per_worker_concurrency = [q + 1] * r + [q] * (workers_num - r)
+
+        self.logger.info(
+            f"Total concurrency: {total_concurrency}, Per worker concurrency: {per_worker_concurrency}"
+        )
+        return per_worker_concurrency
+
+    def _run_debug(
+        self,
+        dataset_shm: shared_memory.SharedMemory,
+        message_shm: shared_memory.SharedMemory,
+        index_queue: Queue,
+        token_bucket: Queue,
+    ):
+        """Run single-process debug mode; may be insufficient for high concurrency.
+
+        Args:
+            dataset_shm: Shared memory containing dataset
+            message_shm: Shared memory for message passing
+            index_queue: Queue for data indices
+            token_bucket: Token bucket for rate limiting
+        """
+        if self.concurrency > CONCURRENCY_PER_PROCESS:
+            self.logger.warning(
+                f"Concurrency exceeds the default per-process limit ({CONCURRENCY_PER_PROCESS}). "
+                "This may limit throughput. Consider unsetting `--debug` to enable multi-process mode."
+            )
+        else:
+            self.logger.info(f"Running with concurrency: {self.concurrency}")
+        self.inferencer.inference_with_shm(
+            dataset_shm.name,
+            message_shm.name,
+            index_queue,
+            token_bucket,
+        )
+
+    def _run_multi_process(
+        self,
+        dataset_shm: shared_memory.SharedMemory,
+        index_queue: Queue,
+        token_bucket: BoundedSemaphore,
+        message_shms: List[shared_memory.SharedMemory],
+    ):
+        """Launch multiple worker processes and create per-worker shared memory.
+
+        Args:
+            dataset_shm: Shared memory containing dataset
+            index_queue: Queue for data indices
+            token_bucket: Token bucket for rate limiting
+            message_shms: List to store message shared memory objects (mutated)
+
+        Returns:
+            List[Process]: List of started worker processes
+        """
+        per_worker_concurrency = self._deliver_concurrency_for_workers()
+        if not per_worker_concurrency:
+            return []
+
+        processes = []
+
+        for i, concurrency in enumerate(per_worker_concurrency):
+            try:
+                # Create named shared memory for this worker's message/status
+                message_shm = create_message_share_memory()
+
+                # Prepare process arguments
+                # NOTE: run_single_inferencer must be importable at module top-level (spawn-safe)
+                p = Process(
+                    target=run_single_inferencer,
+                    args=(
+                        self.model_cfg,
+                        self.inferencer_cfg,
+                        dataset_shm.name,
+                        message_shm.name,
+                        concurrency,
+                        index_queue,
+                        token_bucket,
+                    ),
+                )
+
+                p.start()  # may raise
+                # p.pid should be set after start()
+                pid = p.pid
+
+                # Store mapping: pid -> SharedMemory object (parent retains handle)
+                if pid in message_shms:
+                    raise ValueError(f"pid {pid} already exists in message_shms")
+                message_shms[pid] = message_shm
+                processes.append(p)
+
+            except Exception as exc:
+                # Any error creating shm or starting process -> clean up message_shm if created
+                self.logger.exception("Failed to start worker %d: %s", i, exc)
+                # Cleanup any shm created for this iteration
+                if pid in message_shms and message_shms[pid] is not None:
+                    message_shm = message_shms[pid]
+                    self._cleanup_shms(message_shm)
+        return processes
+
+    def run(self, task_state_manager: TaskStateManager):
+        self.logger.info(f"Task [{task_abbr_from_cfg(self.cfg)}]")
+        debug = self.cli_args.get("debug", False)
+        self.inferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
+
+        dataset_size, dataset_shm, index_queue = self._dump_dataset_to_share_memory()
+        # In pressure mode, treat the first `concurrency` requests as the dataset size
+        request_num = dataset_size if not self.pressure else self.concurrency
+
+        # Create token producer
+        token_producer = TokenProducer(
+            self.model_cfg.pop("request_rate", 0),
+            self.model_cfg.pop("traffic_cfg", None),
+            request_num,
+            self.pressure,
+        )
+        token_thread = threading.Thread(
+            target=token_producer.produce_token,
+            args=(self.stop_evt,),
+            daemon=True,
+        )
+        # Message queue collecting per-process request state; polled periodically
+        message_shms = {}
+
+        try:
+            processes = []
+            if debug:
+                message_shm = create_message_share_memory()
+                message_shms[os.getpid()] = message_shm
+                # Create progress bar
+                pb = ProgressBar(
+                    message_shms, self.stop_evt, request_num, debug, self.pressure
+                )
+                # Start display progress
+                pb_thread = threading.Thread(
+                    target=pb.display, args=(task_state_manager,), daemon=True
+                )
+                pb_thread.start()
+                # Start produce tokens
+                token_thread.start()
+                self._run_debug(
+                    dataset_shm,
+                    message_shm,
+                    index_queue,
+                    token_producer.token_bucket,
+                )
+
+            # Run inference with multiple processes
+            else:
+                processes = self._run_multi_process(
+                    dataset_shm,
+                    index_queue,
+                    token_producer.token_bucket,
+                    message_shms,
+                )
+                # Start ProgressBar after getting process IDs in multi-process mode
+                # Create progress bar
+                pb = ProgressBar(
+                    message_shms, self.stop_evt, request_num, debug, self.pressure
+                )
+                # Start display progress
+                pb_thread = threading.Thread(
+                    target=pb.display, args=(task_state_manager,), daemon=True
+                )
+                pb_thread.start()
+                # Start produce tokens
+                token_thread.start()
+            if processes:
+                while True:
+                    alive = any(p.is_alive() for p in processes)
+                    if not alive:
+                        break
+                    time.sleep(1)
+        except KeyboardInterrupt:
+            self.logger.warning("Interrupted by user (Ctrl+C).")
+            self.logger.warning("Waiting for subprocesses to finish...")
+            # Wait for all subprocesses to finish, timeout 1 minute and force terminate
+            self.stop_evt.set()
+            pb_thread.join()
+            pb.set_message_flag(1)
+            if processes:
+                for p in processes:
+                    p.join(timeout=60)
+                # Check if any process is still alive, force terminate
+                for p in processes:
+                    if p.is_alive():
+                        self.logger.warning(
+                            f"Process {p.pid} timed out and tried to force terminate."
+                        )
+                        p.terminate()
+                        p.join(timeout=60)
+        finally:
+            self.stop_evt.set()
+            pb_thread.join()
+            pb.set_message_flag(1)
+            token_thread.join()
+            for pid, shm in message_shms.items():
+                self._cleanup_shms(shm)
+            self._cleanup_shms(dataset_shm)
+
+    def _cleanup_shms(self, shm: shared_memory.SharedMemory):
+        """Clean up shared memory object.
+
+        Args:
+            shm: Shared memory object to clean up
+        """
+        shm.close()
+        shm.unlink()
+
+    def _set_default_value(self, cfg: ConfigDict, key: str, value: Any):
+        """Set default value for configuration key if not present.
+
+        Args:
+            cfg: Configuration dictionary
+            key: Configuration key
+            value: Default value to set
+        """
+        if key not in cfg:
+            cfg[key] = value
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Model Inferencer")
+    parser.add_argument("config", help="Config file path")
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    cfg = Config.fromfile(args.config)
+    task_state_manager = TaskStateManager(
+        tmp_path=os.path.join(cfg["work_dir"], "status_tmp"),
+        task_name=task_abbr_from_cfg(cfg),
+        is_debug=cfg["cli_args"]["debug"],
+    )
+    manager_t = threading.Thread(target=task_state_manager.launch, args=())
+    manager_t.start()
+    task_state_manager.update_task_state(
+        {
+            "status": "start",
+            "process_id": os.getpid(),
+            "task_log_path": os.path.join(
+                "logs/infer/", f"{task_abbr_from_cfg(cfg)}.out"
+            ),
+        }
+    )
+    start_time = time.perf_counter()
+    try:
+        inferencer = OpenICLApiInferTask(cfg)
+        inferencer.run(task_state_manager)
+    except Exception as e:
+        task_state_manager.update_task_state(
+            {
+                "status": "error",
+            }
+        )
+        raise e
+
+    end_time = time.perf_counter()
+    get_logger().info(f"Time elapsed: {end_time - start_time:.2f}s")
+    task_state_manager.update_task_state(
+        {
+            "status": "finish",
+        }
+    )
+    manager_t.join()
