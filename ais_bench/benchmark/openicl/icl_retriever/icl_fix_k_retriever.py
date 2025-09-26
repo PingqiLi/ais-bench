@@ -1,6 +1,6 @@
 """Random Retriever."""
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from tqdm import trange
 
@@ -34,10 +34,12 @@ class FixKRetriever(BaseRetriever):
     def __init__(self,
                  dataset,
                  fix_id_list: List[int],
+                 ice_template: Optional[Dict] = None,
+                 prompt_template: Optional[Dict] = None,
                  ice_separator: Optional[str] = '\n',
                  ice_eos_token: Optional[str] = '\n',
                  ice_num: Optional[int] = 1) -> None:
-        super().__init__(dataset, ice_separator, ice_eos_token, ice_num)
+        super().__init__(dataset, ice_template, prompt_template, ice_separator, ice_eos_token, ice_num)
         self.fix_id_list = fix_id_list
 
     def retrieve(self):

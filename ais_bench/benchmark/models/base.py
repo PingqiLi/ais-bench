@@ -131,9 +131,8 @@ class BaseModel:
             max_out_len (int): The maximum length of the output.
         """
         inputs = self.parse_template(templates, mode='gen')
-        if hasattr(self, 'sync_rank') and self.sync_rank:
-            inputs = self.sync_inputs(inputs)
-        return self.generate(inputs, **kwargs)
+        max_out_lens = kwargs.get("max_out_lens", [None] * len(templates))
+        return self.generate(inputs, max_out_lens, **kwargs)
 
     def get_token_len_from_template(
             self,
