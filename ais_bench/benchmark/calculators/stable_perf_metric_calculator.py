@@ -18,8 +18,8 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         self._get_legal_stats_list(stats_list)
 
 
-    def _init_datas(self, perf_details: dict):
-        self.max_concurrency = perf_details["task"]["max_concurrency"]
+    def _init_datas(self, perf_details: dict, max_concurrency: int):
+        self.max_concurrency = max_concurrency
         self.stage_section = [0, 0]
         if sum(perf_details["requests"]["is_success"]) == 0:
             self.logger.error("All requests failed, can't calculate performance results. Please check the ERROR log from every responses!")

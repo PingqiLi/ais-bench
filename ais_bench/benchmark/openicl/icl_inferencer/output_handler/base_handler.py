@@ -1,0 +1,372 @@
+import json
+import os
+import queue
+import shutil
+import traceback
+import uuid
+from abc import abstractmethod
+from collections import defaultdict
+from multiprocessing import Event
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+import h5py
+import numpy as np
+
+from ais_bench.benchmark.models.output import Output
+from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.results import safe_write
+
+logger = get_logger(__name__)
+
+H5_REF_KEY = "__h5_ref__"
+ARRAYS_GROUP_NAME = "arrays"
+H5_DATA_DIR = "h5_data"
+
+
+class BaseInferencerOutputHandler:
+    """
+    Base class for handling inferencer output results.
+
+    This class provides the foundation for managing inference results, including
+    caching, serialization, and file operations. It supports both performance
+    and accuracy modes with different data handling strategies.
+
+    Attributes:
+        results_dict (defaultdict): Dictionary to store results by data abbreviation
+        model: The model instance being used for inference
+        cache_queue (queue.Queue): Queue for caching results before writing
+        all_success (bool): Flag indicating if all operations were successful
+    """
+
+    def __init__(self, model: Any) -> None:
+        """
+        Initialize the base output handler.
+
+        Args:
+            model: The model instance for inference operations
+
+        Raises:
+            TypeError: If model is None or invalid
+        """
+        self.results_dict = defaultdict(dict)
+        self.model = model
+        self.cache_queue = queue.Queue()
+        self.all_success = True
+
+    @abstractmethod
+    def save_results(
+        self,
+        index: int,
+        data_abbr: str,
+        input: Union[str, List[str]],
+        output: Union[str, Output],
+        gold: Optional[str] = None,
+    ) -> None:
+        """
+        Save the results to the results_dict.
+
+        This is an abstract method that must be implemented by subclasses
+        to define how results are stored and processed.
+
+        Args:
+            index (int): The index of the current result
+            data_abbr (str): Abbreviation for the dataset
+            input (Union[str, List[str]]): Input data for the inference
+            output (Union[str, Output]): Output result from inference
+            gold (Optional[str]): Ground truth data for comparison
+
+        Raises:
+            NotImplementedError: If not implemented by subclass
+        """
+
+        raise NotImplementedError("Method hasn't been implemented yet")
+
+    def write_to_json(self, save_dir: str, perf_mode: bool) -> None:
+        """
+        Write results to JSON files.
+
+        Saves results to JSONL files based on data_abbr to avoid process conflicts.
+        Uses fcntl for file locking to ensure thread safety.
+
+        Args:
+            save_dir (str): Directory path to save the JSON files
+            perf_mode (bool): If True, saves detailed performance data;
+                            if False, saves basic result data
+
+        Raises:
+            OSError: If unable to create directory or write files
+            ValueError: If save_dir is invalid
+        """
+        if not save_dir or not isinstance(save_dir, str):
+            raise ValueError("save_dir must be a non-empty string")
+
+        try:
+            # Ensure directory exists
+            Path(save_dir).mkdir(parents=True, exist_ok=True)
+
+            for data_abbr, results_dict in self.results_dict.items():
+                if not results_dict:
+                    continue
+
+                if not perf_mode:
+                    raw_data_name = data_abbr + ".jsonl"
+                else:
+                    raw_data_name = data_abbr + "_details.jsonl"
+
+                file_path = Path(save_dir) / raw_data_name
+                safe_write(results_dict, file_path)
+        except Exception as e:
+            raise
+
+    def report_cache_info(
+        self,
+        index: int,
+        input: Union[List[str], str],
+        output: Union[Output, str],
+        data_abbr: str,
+        gold: Optional[str] = None,
+    ) -> bool:
+        """
+        Synchronously and non-blockingly add a record to the queue.
+
+        Supports asyncio.Queue, queue.Queue, multiprocessing.Queue (if they implement
+        put_nowait / put(block=False)). Returns True if successfully queued (or
+        scheduled for queuing), False if failed (e.g., full queue or unable to schedule).
+
+        Args:
+            index (int): The index of the current result
+            input (Union[List[str], str]): Input data for the inference
+            output (Union[Output, str]): Output result from inference
+            data_abbr (str): Abbreviation for the dataset
+            gold (Optional[str]): Ground truth data for comparison
+
+        Returns:
+            bool: True if successfully queued, False otherwise
+
+        Raises:
+            queue.Full: If queue is full and cannot accept new items
+        """
+        try:
+            item = (index, data_abbr, input, output, gold)
+            self.cache_queue.put_nowait(item)
+            return True
+        except queue.Full:
+            return False
+        except Exception as e:
+            return False
+
+    def _extract_and_write_arrays(
+        self,
+        obj: Any,
+        group: h5py.Group,
+        compression: str = "gzip",
+        chunks: bool = True,
+    ) -> Any:
+        """
+        Recursively scan obj and immediately write numpy.ndarray objects to HDF5.
+
+        Returns a JSON-serializable replacement object where array positions are
+        replaced with {"__h5_ref__": "<h5_path>"} placeholders.
+
+        Args:
+            obj: Object to scan for arrays
+            group (h5py.Group): HDF5 group to write arrays to
+            compression (str): Compression algorithm for HDF5 datasets (default: "gzip")
+            chunks (bool): Whether to enable chunking for HDF5 datasets (default: True)
+
+        Returns:
+            Any: JSON-serializable object with array references replaced
+
+        Raises:
+            ValueError: If obj cannot be processed
+            RuntimeError: If HDF5 operations fail
+        """
+
+        try:
+            # Atomic types return directly
+            if obj is None or isinstance(obj, (bool, int, float, str, list, tuple)):
+                return obj
+
+            # If numpy array -> write to HDF5 and return reference
+            if isinstance(obj, np.ndarray):
+                arr = np.asarray(obj)
+                unique = str(uuid.uuid4()).split("-")[0]
+
+                try:
+                    group.create_dataset(
+                        unique, data=arr, compression=compression, chunks=chunks
+                    )
+
+                    # Return serializable placeholder
+                    return {H5_REF_KEY: unique}
+                except Exception as e:
+                    raise RuntimeError(f"Failed to write array to HDF5: {str(e)}")
+
+            # dict -> recursively process values
+            if isinstance(obj, dict):
+                # Use dict comprehension for better performance
+                out = {
+                    str(k): self._extract_and_write_arrays(
+                        v, group, compression, chunks
+                    )
+                    for k, v in obj.items()
+                }
+                return out
+
+            # Other types: try JSON serialization, otherwise convert to string
+            try:
+                json.dumps(obj)
+                return obj
+            except Exception as json_error:
+                try:
+                    str_obj = str(obj)
+                    return str_obj
+                except Exception as str_error:
+                    logger.error(
+                        f"Failed to convert object to string: {str(str_error)}"
+                    )
+                    return None
+
+        except Exception as e:
+            logger.error(f"Error in _extract_and_write_arrays: {str(e)}")
+            logger.error(f"Exception details: {traceback.format_exc()}")
+            raise
+
+    def run_cache_consumer(
+        self,
+        save_dir: str,
+        file_name: str,
+        perf_mode: bool,
+        stop_event: Event,
+        save_every: int = 1,
+    ) -> None:
+        """
+        Run the cache consumer to process queued results.
+
+        Processes items from the cache queue, saves results, and handles
+        HDF5 file operations for array data. Manages file cleanup based on
+        performance mode and success status.
+
+        Args:
+            save_dir (str): Directory to save output files
+            file_name (str): Name of the output file
+            perf_mode (bool): Whether in performance mode
+            stop_event (Event): Event to signal when to stop processing
+            save_every (int): Number of items to batch before writing (default: 1)
+
+        Raises:
+            OSError: If file operations fail
+            ValueError: If parameters are invalid
+        """
+
+        try:
+            h5_path = Path(save_dir) / (Path(file_name).stem + ".h5")
+            h5_name = h5_path.name.replace("tmp_", "")
+            json_path = Path(save_dir) / file_name
+
+            # Ensure directories exist
+            Path(save_dir).mkdir(parents=True, exist_ok=True)
+
+            with open(json_path, "a", encoding="utf-8") as f:
+                with h5py.File(h5_path, "a") as hf:
+                    group = hf.create_group(ARRAYS_GROUP_NAME)
+                    cache_data = []
+                    processed_count = 0
+
+                    while not stop_event.is_set():
+                        try:
+                            item = self.cache_queue.get(timeout=1)
+                        except queue.Empty:
+                            continue
+
+                        if item is None:
+                            break
+                        try:
+                            self.save_results(*item)
+                            index, data_abbr = item[0], item[1]
+
+                            # Extract and write arrays to HDF5
+                            data_wo_arrays = self._extract_and_write_arrays(
+                                self.results_dict[data_abbr][str(index)], group
+                            )
+
+                            if perf_mode:
+                                data_wo_arrays["h5_name"] = h5_name
+
+                            self.results_dict[data_abbr][str(index)] = data_wo_arrays
+
+                            # Prepare JSON data (optimize by pre-computing JSON string)
+                            json_data = {
+                                "data_abbr": data_abbr,
+                                "index": index,
+                                "cache_data": data_wo_arrays,
+                            }
+
+                            # Pre-compute JSON string to avoid repeated serialization
+                            json_str = json.dumps(json_data) + "\n"
+                            cache_data.append(json_str)
+                            processed_count += 1
+
+                            # Write batch if reached save_every threshold
+                            if len(cache_data) == save_every:
+                                f.writelines(cache_data)
+                                f.flush()  # Ensure data is written
+                                cache_data = []
+
+                        except Exception as e:
+                            # Continue processing other items
+                            continue
+
+                    # Write remaining cache data
+                    if cache_data:
+                        f.writelines(cache_data)
+                        f.flush()
+
+            # Handle H5 file based on performance mode
+            if not perf_mode:
+                if h5_path.exists():
+                    os.remove(h5_path)
+            else:
+                dest = h5_path.parent.parent / H5_DATA_DIR
+                dest.mkdir(exist_ok=True)
+                if h5_path.exists():
+                    shutil.move(str(h5_path), str(dest / h5_name))
+
+            # Clean up JSON file if all operations were successful
+            if self.all_success:
+                if json_path.exists():
+                    os.remove(json_path)
+            else:
+                logger.warning(
+                    f"Not all items were successful, keeping JSON file for debugging: {json_path}"
+                )
+
+            # Clean up empty directories
+            if json_path.exists() and json_path.parent.exists():
+                try:
+                    empty = next(Path(json_path.parent).iterdir(), None) is None
+                    if empty:
+                        shutil.rmtree(json_path.parent)
+                except Exception as e:
+                    logger.warning(
+                        f"Could not clean up directory {json_path.parent}: {str(e)}"
+                    )
+
+        except Exception as e:
+            raise
+
+    def stop_cache_consumer(self) -> None:
+        """
+        Stop the cache consumer by sending a stop signal.
+
+        This method signals the cache consumer to stop processing by
+        adding a None item to the queue, which serves as a stop signal.
+        """
+        try:
+            self.cache_queue.put(None)
+            logger.debug("Stop signal sent to cache consumer")
+        except Exception as e:
+            logger.error(f"Error sending stop signal to cache consumer: {str(e)}")
+            logger.error(f"Exception details: {traceback.format_exc()}")
+            raise

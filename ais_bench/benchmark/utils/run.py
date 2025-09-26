@@ -7,27 +7,16 @@ from typing import List, Tuple, Union
 import tabulate
 from mmengine.config import Config
 
-from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
-from ais_bench.benchmark.partitioners import NaivePartitioner, PerformancePartitioner
+from ais_bench.benchmark.partitioners import NaivePartitioner
 from ais_bench.benchmark.runners import LocalRunner
-from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLInferTask, OpenICLPerfTask, OpenICLInferMergedTask, OpenICLEvalMergedTask
-from ais_bench.benchmark.openicl.icl_inferencer import (GenPerfInferencer, GenInferencer, GenMergedInferencer,
-        GenPressureInferencer, GenModelPerfInferencer)
+from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLInferTask, OpenICLApiInferTask
+from ais_bench.benchmark.openicl.icl_inferencer import  GenInferencer, GenModelPerfInferencer
 from ais_bench.benchmark.utils import get_logger, match_cfg_file
 
 logger = get_logger()
 
 def try_fill_in_custom_cfgs(config):
-    for i, dataset in enumerate(config['datasets']):
-        if 'type' not in dataset:
-            config['datasets'][i] = make_custom_dataset_config(dataset)
-    if 'model_dataset_combinations' not in config:
-        return config
-    for mdc in config['model_dataset_combinations']:
-        for i, dataset in enumerate(mdc['datasets']):
-            if 'type' not in dataset:
-                mdc['datasets'][i] = make_custom_dataset_config(dataset)
-    return config
+    return None
 
 def get_config_from_arg(args) -> Config:
     """Get the config object given args.
@@ -156,54 +145,6 @@ def get_models_attr(cfg):
     return attr_list[0]
 
 
-def fill_perf_cfg(cfg, args):
-    models_attr = get_models_attr(cfg)
-    new_cfg = dict(infer=dict(
-        partitioner=dict(type=get_config_type(PerformancePartitioner)),
-        runner=dict(
-            max_num_workers=args.max_num_workers,
-            max_workers_per_gpu=args.max_workers_per_gpu,
-            debug=args.debug,
-            task=dict(type=get_config_type(OpenICLPerfTask)),
-            type=get_config_type(LocalRunner)
-        )), )
-    if models_attr == "service":
-        if args.disable_cb:
-            logger.warning("disable_cb is not supported in perf mode, it will be ignored.")
-
-        for data_config in cfg['datasets']:
-            if args.pressure:
-                data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenPressureInferencer)
-            else:
-                data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenPerfInferencer)
-    else:
-        for data_config in cfg['datasets']:
-            data_config['infer_cfg']['inferencer']['disable_cb'] = True
-            data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenModelPerfInferencer)
-
-    cfg.merge_from_dict(new_cfg)
-
-
-def fill_merged_infer_cfg(cfg, args):
-    new_cfg = dict(infer=dict(
-        partitioner=dict(type=get_config_type(PerformancePartitioner)),
-        runner=dict(
-            max_num_workers=args.max_num_workers,
-            max_workers_per_gpu=args.max_workers_per_gpu,
-            debug=args.debug,
-            task=dict(type=get_config_type(OpenICLInferMergedTask)),
-            type=get_config_type(LocalRunner)
-        )), )
-    if args.disable_cb:
-        for data_config in cfg['datasets']:
-            data_config['infer_cfg']['inferencer']['disable_cb'] = True
-
-    for data_config in cfg['datasets']:
-        data_config['infer_cfg']['inferencer']['type'] = get_config_type(GenMergedInferencer)
-
-    cfg.merge_from_dict(new_cfg)
-
-
 def fill_infer_cfg(cfg, args):
     new_cfg = dict(infer=dict(
         partitioner=dict(type=get_config_type(NaivePartitioner)),
@@ -211,12 +152,16 @@ def fill_infer_cfg(cfg, args):
             max_num_workers=args.max_num_workers,
             max_workers_per_gpu=args.max_workers_per_gpu,
             debug=args.debug,
-            task=dict(type=get_config_type(OpenICLInferTask)),
+            task=dict(type=get_config_type(OpenICLApiInferTask)),
             type=get_config_type(LocalRunner),
         )), )
-    if args.disable_cb:
-        for data_config in cfg['datasets']:
-            data_config['infer_cfg']['inferencer']['disable_cb'] = True
+    for data_config in cfg['datasets']:
+        retriever_cfg = data_config['infer_cfg']['retriever']
+        infer_cfg = data_config['infer_cfg']
+        if "prompt_template" in infer_cfg:
+            retriever_cfg["prompt_template"] = infer_cfg["prompt_template"]
+        if "ice_template" in infer_cfg:
+            retriever_cfg["ice_template"] = infer_cfg["ice_template"]
 
     cfg.merge_from_dict(new_cfg)
 
@@ -228,19 +173,6 @@ def fill_eval_cfg(cfg, args):
             max_num_workers=args.max_num_workers,
             debug=args.debug,
             task=dict(type=get_config_type(OpenICLEvalTask)),
-        )), )
-
-    new_cfg['eval']['runner']['type'] = get_config_type(LocalRunner)
-    new_cfg['eval']['runner']['max_workers_per_gpu'] = args.max_workers_per_gpu
-    cfg.merge_from_dict(new_cfg)
-
-def fill_merged_eval_cfg(cfg, args):
-    new_cfg = dict(eval=dict(
-        partitioner=dict(type=get_config_type(PerformancePartitioner)),
-        runner=dict(
-            max_num_workers=args.max_num_workers,
-            debug=args.debug,
-            task=dict(type=get_config_type(OpenICLEvalMergedTask)),
         )), )
 
     new_cfg['eval']['runner']['type'] = get_config_type(LocalRunner)

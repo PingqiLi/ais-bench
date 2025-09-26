@@ -5,7 +5,7 @@ from typing import List, Tuple, Optional, Dict, Any
 import numpy as np
 import time
 
-# ================== 常量配置 ==================
+# ================== Constants ==================
 WEBGL_CONFIG = {
     'scrollZoom': True,
     'plotGlPixelRatio': 1,
@@ -23,18 +23,18 @@ AXIS_CONFIG = dict(
     linecolor='black',
 )
 
-# ================== 分块渲染配置 ==================
-MAX_POINTS_PER_TRACE = 10000  # 每个轨迹渲染的最大点数
-TIMELINE_POINTS_PER_REQUEST = 3  # 每个请求在时间线图中占3个点（起始、末尾、断开）
+# ================== Chunk rendering configuration ==================
+MAX_POINTS_PER_TRACE = 10000  # maximum number of points per trace
+TIMELINE_POINTS_PER_REQUEST = 3  # each request takes 3 points in the timeline chart (start, end, break)
 
-# ================== 辅助函数 ==================
+# ================== Helper functions ==================
 def validate_input_data(
     start_time_list: List[float],
     prefill_latency_list: List[float],
     end_time_list: List[float],
     decode_token_latencies_list: List[List[float]],
 ) -> bool:
-    """验证输入数据是否合法"""
+    """Validate input data"""
     logger = get_logger()
     n_requests = len(start_time_list)
     if n_requests == 0:
@@ -55,7 +55,7 @@ def is_non_streaming_scenario(
     prefill_latency_list: List[float],
     decode_token_latencies_list: List[List[float]]
 ) -> bool:
-    """判断是否是非流式场景"""
+    """Check if it is a non-streaming scenario"""
     return all(p == 0.0 for p in prefill_latency_list)
 
 def preprocess_data(
@@ -65,22 +65,22 @@ def preprocess_data(
     decode_token_latencies_list: List[List[float]],
 ) -> Tuple[Optional[np.ndarray], np.ndarray, np.ndarray, bool]:
     """
-    数据预处理
+    Data preprocessing
     返回: (first_token_times, adjusted_starts, adjusted_ends, is_non_streaming)
     """
     start = np.asarray(start_time_list, dtype=np.float64)
-    prefill = np.asarray(prefill_latency_list, dtype=np.float64) / 1000  # prefill数据单位为ms，而其他数据均为s
+    prefill = np.asarray(prefill_latency_list, dtype=np.float64)  # prefill data is in ms, while other data is in s
     end = np.asarray(end_time_list, dtype=np.float64)
 
-    # 检测是否是非流式场景
+    # Check if it is a non-streaming scenario
     is_non_streaming = is_non_streaming_scenario(prefill_latency_list, decode_token_latencies_list)
 
-    # 计算首token时间
+    # Calculate the first token time
     first_token_times = (start + prefill) if not is_non_streaming else None
 
-    # 对每条请求是否含有非首token时延判断请求索引对应的end_time是否需要更新，
-    # 因为end_time_list因为打点位置会有误差，需用first_token_time_list的值修正
-    # 仅在非流式场景修正结束时间
+    # For each request, check if it contains non-first token delay. If so, update the end_time of the request.
+    # Because the end_time_list has errors due to the timing of the points, we need to use the value of first_token_time_list to correct it.
+    # Only correct the end time in non-streaming scenarios
     if not is_non_streaming:
         no_decode_indices = [i for i, lst in enumerate(decode_token_latencies_list) if not lst.any()]
         if no_decode_indices:
@@ -88,10 +88,10 @@ def preprocess_data(
             get_logger().debug(f"Adjusted {len(no_decode_indices)} requests with no decode tokens")
             del no_decode_indices
 
-    # 计算全局最小时间
+    # Calculate the global minimum time
     global_x_min = np.min(start) if len(start) > 0 else 0.0
 
-    # 计算相对时间
+    # Calculate the relative time
     adjusted_starts = start - global_x_min
     adjusted_first_tokens = (first_token_times - global_x_min) if not is_non_streaming else None
     adjusted_ends = end - global_x_min
@@ -105,7 +105,7 @@ def generate_timeline_traces(
     multiturn_group_id_list: list,
     unit: str
 ) -> List[go.Scattergl]:
-    """生成请求时间线图的轨迹"""
+    """Generate the trajectory of the request timeline chart"""
     n_requests = len(adjusted_starts)
     if n_requests == 0:
         return []
@@ -118,37 +118,35 @@ def generate_timeline_traces(
             unique_ids.append(val)
         index_map.append(first_index_lookup[val])
 
-    # unique_ids, index_map = np.unique(multiturn_group_id_list, return_inverse=True)
     is_multiturn = True if unique_ids[0] else False
     if is_multiturn:
         get_logger().info("Visualization in multi-turn conversations")
     y_values = np.array(index_map) + 1
-    # 预分配内存
+    # Pre-allocate memory
     red_x = np.full(TIMELINE_POINTS_PER_REQUEST * n_requests, np.nan, dtype=np.float32)
     red_y = np.full_like(red_x, np.nan)
     blue_x = np.full_like(red_x, np.nan)
     blue_y = np.full_like(red_x, np.nan)
     hover_text = np.full(TIMELINE_POINTS_PER_REQUEST * n_requests, None, dtype=object)
     sorted_indices = np.argsort(adjusted_starts)
-
     for sorted_pos, orig_idx in enumerate(sorted_indices):
-        # 获取当前请求的关键时间点
+        # Get the key time points of the current request
         start_t = adjusted_starts[orig_idx]
         first_token_t = adjusted_first_tokens[orig_idx]
         end_t = adjusted_ends[orig_idx]
         y = y_values[orig_idx]
 
-        # 计算数组中的位置
+        # Calculate the position in the array
         arr_idx = sorted_pos * 3
 
-        # 红线段（TTFT）：从开始到第一个token
+        # Red line (TTFT): from start to the first token
         red_x[arr_idx] = start_t
         red_x[arr_idx + 1] = first_token_t
         red_y[arr_idx:arr_idx + 2] = y if is_multiturn else sorted_pos + 1
 
         blue_content_data = "NaN"
 
-        # 蓝线段（Decode）：从第一个token到结束
+        # Blue line (Decode): from the first token to the end
         if end_t > first_token_t:
             blue_x[arr_idx] = first_token_t
             blue_x[arr_idx + 1] = end_t
@@ -156,7 +154,7 @@ def generate_timeline_traces(
             decode_time = end_t - first_token_t
             blue_content_data = f"{first_token_t:.2f}→{end_t:.2f}={decode_time:.2f}"
 
-        # 悬停文本，触发点在红线段起点
+        # Hover text, the trigger point is on the start of the red line
         ttft = first_token_t - start_t
         e2e = end_t - start_t
 
@@ -165,7 +163,7 @@ def generate_timeline_traces(
         e2e_content = f"E2E({unit}): {start_t:.2f}→{end_t:.2f}={e2e:.2f}"
         hover_text[arr_idx] = red_content + blue_content + e2e_content
 
-    # 分块生成轨迹
+    # Generate traces in chunks
     traces = []
     n_points = len(red_x)
     chunk_size = min(n_points, MAX_POINTS_PER_TRACE)
@@ -176,7 +174,7 @@ def generate_timeline_traces(
         end_idx = min((i + 1) * chunk_size, n_points)
         chunk = slice(start_idx, end_idx)
 
-        # 红线段
+        # Red line
         if np.any(~np.isnan(red_x[chunk])):
             traces.append(go.Scattergl(
                 x=red_x[chunk],
@@ -189,7 +187,7 @@ def generate_timeline_traces(
                 connectgaps=False
             ))
 
-        # 蓝线段
+        # Blue line
         if np.any(~np.isnan(blue_x[chunk])):
             traces.append(go.Scattergl(
                 x=blue_x[chunk],
@@ -209,7 +207,7 @@ def generate_concurrency_traces(
     adjusted_ends: np.ndarray,
     unit: str
 ) -> List[go.Scattergl]:
-    """生成并发图的轨迹"""
+    """Generate the trajectory of the concurrency chart"""
     # 过滤零长度请求
     valid_mask = adjusted_starts < adjusted_ends
     if not np.any(valid_mask):
@@ -220,18 +218,18 @@ def generate_concurrency_traces(
     valid_ends = adjusted_ends[valid_mask]
     n_events = len(valid_starts) * 2
 
-    # 生成事件数组
+    # Generate the event array
     events = np.empty((n_events, 2), dtype=np.float32)
     events[:len(valid_starts), 0] = valid_starts
-    events[:len(valid_starts), 1] = 1  # 开始事件
+    events[:len(valid_starts), 1] = 1  # Start event
     events[len(valid_starts):, 0] = valid_ends
-    events[len(valid_starts):, 1] = -1  # 结束事件
+    events[len(valid_starts):, 1] = -1  # End event
 
-    # 稳定排序（时间相同则开始事件优先）
+    # Stable sorting (start event priority if time is the same)
     sort_indices = np.lexsort((events[:, 1], events[:, 0]))
     events = events[sort_indices]
 
-    # 计算并发数
+    # Calculate the concurrency
     unique_times, inverse_indices = np.unique(events[:, 0], return_inverse=True)
     delta_per_time = np.bincount(inverse_indices, weights=events[:, 1])
     cumulative = np.cumsum(delta_per_time)
@@ -239,13 +237,13 @@ def generate_concurrency_traces(
     conc_times = unique_times
     conc_counts = cumulative
 
-    # 创建悬停文本
+    # Create hover text
     conc_hover_text = [
         f"Time: {t:.4f}{unit}<br>Concurrency: {c:.0f}"
         for t, c in zip(conc_times, conc_counts)
     ]
 
-    # 分块渲染
+    # Render in chunks
     traces = []
     n_points = len(conc_times)
     chunk_size = min(n_points, MAX_POINTS_PER_TRACE)
@@ -256,7 +254,7 @@ def generate_concurrency_traces(
         end_idx = min((i + 1) * chunk_size, n_points)
 
         if i > 0:
-            start_idx = max(0, start_idx - 1)  # 确保连续
+            start_idx = max(0, start_idx - 1)  # Ensure continuous
 
         chunk = slice(start_idx, end_idx)
 
@@ -273,7 +271,7 @@ def generate_concurrency_traces(
             connectgaps=True
         ))
 
-    # 清理大数组释放内存
+    # Clean up large arrays and release memory
     del events, sort_indices, unique_times, inverse_indices, delta_per_time, cumulative
     del conc_times, conc_counts, conc_hover_text
     return traces
@@ -283,7 +281,7 @@ def create_plot_layout(
     unit: str,
     has_timeline: bool
 ) -> Dict[str, Any]:
-    """创建图表布局配置"""
+    """Create the layout configuration of the chart"""
     xaxis_config = dict(
         **AXIS_CONFIG,
         showspikes=True,
@@ -304,7 +302,7 @@ def create_plot_layout(
     )
 
     if has_timeline:
-        # 双图模式
+        # Double chart mode
         return dict(
             height=1200,
             plot_bgcolor='white',
@@ -331,7 +329,7 @@ def create_plot_layout(
             hovermode='closest',
         )
     else:
-        # 单图模式（只有并发图）
+        # Single chart mode (only concurrency chart)
         return dict(
             height= 600,
             plot_bgcolor='white',
@@ -347,7 +345,7 @@ def create_plot_layout(
             hovermode='closest',
         )
 
-# ================== 对文件外使用的主函数 ==================
+# ================== Main function for external use ==================
 def plot_sorted_request_timelines(
     start_time_list: List[float],
     prefill_latency_list: List[float],
@@ -357,18 +355,18 @@ def plot_sorted_request_timelines(
     output_file: str = "timeline.html",
     unit: str = "s"
 ) -> None:
-    """绘制请求时间线和并发图表"""
+    """Plot the request timeline and concurrency chart"""
     logger = get_logger()
     start_timestamp = time.perf_counter()
 
-    # ===== 1. 数据验证和预处理 =====
+    # ===== 1. Data validation and preprocessing =====
     logger.info("Starting request timeline processing...")
 
-    # 验证输入数据
+    # Validate input data
     if not validate_input_data(start_time_list, prefill_latency_list, end_time_list, decode_token_latencies_list):
         return False
 
-    # 数据预处理
+    # Data preprocessing
     preprocess_start = time.perf_counter()
     adjusted_first_token_times, adjusted_starts, adjusted_ends, is_non_streaming = preprocess_data(
         start_time_list, prefill_latency_list, end_time_list, decode_token_latencies_list
@@ -383,7 +381,7 @@ def plot_sorted_request_timelines(
 
     logger.info(f"Data preprocessing completed in {time.perf_counter() - preprocess_start:.4f}s")
 
-    # ===== 2. 生成时间线图轨迹（仅流式场景下） =====
+    # ===== 2. Generate timeline chart trajectory (only in streaming scenario) =====
     timeline_traces = []
     if has_timeline:
         logger.info(f"Generating timeline traces for {n_requests} requests...")
@@ -393,21 +391,21 @@ def plot_sorted_request_timelines(
         )
         logger.info(f"Generated timeline trace chunks in {time.perf_counter() - timeline_start:.4f}s")
 
-    # ===== 3. 生成并发图轨迹 =====
+    # ===== 3. Generate concurrency chart trajectory =====
     logger.info("Generating concurrency traces...")
     concurrency_start = time.perf_counter()
     concurrency_traces = generate_concurrency_traces(adjusted_starts, adjusted_ends, unit)
 
     logger.info(f"Generated concurrency trace chunks in {time.perf_counter() - concurrency_start:.4f}s")
 
-    # ===== 4. 创建图表 =====
+    # ===== 4. Create chart =====
     logger.info("Creating figure layout...")
     figure_start = time.perf_counter()
 
-    # 创建布局配置
+    # Create layout configuration
     layout = create_plot_layout(max_time, unit, has_timeline)
 
-    # 创建图表对象
+    # Create chart object
     if has_timeline:
         fig = make_subplots(
             rows=2,
@@ -424,12 +422,12 @@ def plot_sorted_request_timelines(
         for trace in concurrency_traces:
             fig.add_trace(trace)
 
-    # 应用布局配置
+    # Apply layout configuration
     fig.update_layout(layout)
 
     logger.info(f"Figure layout created in {time.perf_counter() - figure_start:.4f}s")
 
-    # ===== 5. 输出HTML =====
+    # ===== 5. Output HTML =====
     logger.info(f"Writing to {output_file}...")
     write_start = time.perf_counter()
 

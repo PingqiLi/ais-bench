@@ -8,7 +8,7 @@ from ais_bench.benchmark.utils import get_logger
 from ais_bench.benchmark.calculators.base_perf_metric_calculator import BasePerfMetricCalculator
 from ais_bench.benchmark.registry import PERF_METRIC_CALCULATORS
 from ais_bench.benchmark.calculators.base_perf_metric_calculator import is_legal_percentage_str, DEFAULT_STATS, MAX_STATS_LEN
-
+from ais_bench.benchmark.calculators.base_perf_metric_calculator import SECONDE_TO_MILLISECONDE
 
 @PERF_METRIC_CALCULATORS.register_module()
 class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
@@ -16,28 +16,27 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         self.logger = get_logger()
         self._get_legal_stats_list(stats_list)
 
-    def _init_datas(self, perf_details: dict):
-        if sum(perf_details["requests"]["is_success"]) == 0:
+    def _init_datas(self, perf_details: dict , max_concurrency: int):
+        if sum(perf_details["success"]) == 0:
             self.logger.error("All requests failed, can't calculate performance results. Please check the ERROR log from every responses!")
             raise ValueError("All requests failed!")
         self.stage_dict = {
             "total": self._get_requests_id(perf_details)
         }
         self.result = {}
-        self.max_concurrency = perf_details["task"]["max_concurrency"]
+        self.max_concurrency = max_concurrency
         self.data_count = {}
         self.decode_latencies = {}
         self.success_count = {}
-        self.empty_count = {}
         self.infer_time = {}
         self.metrics = {}
         self.common_metrics = {}
 
         for stage_name, _ in self.stage_dict.items():
-            self._process_result(perf_details.get("requests"), stage_name)
+            self._process_result(perf_details, stage_name)
 
     def _get_requests_id(self, perf_details):
-        return list(range(len(perf_details["requests"]["id"])))
+        return list(range(len(perf_details["id"])))
 
     def _get_legal_stats_list(self, stats_list):
         if len(stats_list) > MAX_STATS_LEN:
@@ -59,21 +58,11 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
         for k, v in full_result.items():
             if v is not None:
                 result[k] = [v[i] for i in id_list]
-        self.data_count[stage_name] = len(full_result["is_success"])
-        self.decode_latencies[stage_name] = result["decode_token_latencies"]
-        self.success_count[stage_name] = sum(full_result["is_success"])
-        self.empty_count[stage_name] = sum(full_result["is_empty"])
+        self.data_count[stage_name] = len(full_result["success"])
+        self.decode_latencies[stage_name] = result["itl"]
+        self.success_count[stage_name] = sum(full_result["success"])
         self.infer_time[stage_name] = max(result["end_time"]) - min(result["start_time"])
-        per_request_avg_decode_time = []
         # Compute the average decode latency per request
-        if not math.isclose(sum(result["prefill_latency"]), 0):
-            for i, value in enumerate(result["seq_latency"]):
-                if value and result["generate_tokens_len"][i] > 1:  # Skip empty lists
-                    tpot = (value - result["prefill_latency"][i]) / (result["generate_tokens_len"][i] - 1)
-                    per_request_avg_decode_time.append(tpot)
-            result["average_decode_latencies"] = per_request_avg_decode_time[:]
-        else:
-            result["average_decode_latencies"] = result["prefill_latency"]
         self.logger.info("Converting perf results of stage ...")
         self.result[stage_name] = self.convert_result(result)
         self.logger.info("Finish Converting!")
@@ -118,24 +107,17 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             "id",
             "start_time",
             "end_time",
-            "input_data",
-            "input_token_id",
-            "is_success",
-            "is_empty",
-            "request_id",
-            "output",
-            "output_token_id",
-            "prefill_throughput",
+            "success",
         ]
         for key in remove_keys:
             result.pop(key, None)
         mapping = {
-            "seq_latency": "E2EL",
-            "prefill_latency": "TTFT",
-            "average_decode_latencies": "TPOT",
-            "decode_token_latencies": "ITL",
-            "input_tokens_len": "InputTokens",
-            "generate_tokens_len": "OutputTokens",
+            "latency": "E2EL",
+            "ttft": "TTFT",
+            "tpot": "TPOT",
+            "itl": "ITL",
+            "input_tokens": "InputTokens",
+            "output_tokens": "OutputTokens",
             "generate_tokens_speed": "OutputTokenThroughput",
         }
 
@@ -267,14 +249,14 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
                 self.common_metrics[name] = {}
 
         for stage_name, _ in self.stage_dict.items():
-            self.common_metrics["Benchmark Duration"][stage_name] = round(self.infer_time[stage_name] * 1000, 4)
+            self.common_metrics["Benchmark Duration"][stage_name] = round(self.infer_time[stage_name] * SECONDE_TO_MILLISECONDE, 4)
             self.common_metrics["Total Requests"][stage_name] = self.data_count[stage_name]
             self.common_metrics["Failed Requests"][stage_name] = self.data_count[stage_name] - self.success_count[stage_name]
             if self.common_metrics["Failed Requests"][stage_name] > 0:
                 self.logger.warning("Some requests failed, please check the ERROR log from responses!")
             self.common_metrics["Success Requests"][stage_name] = self.success_count[stage_name]
             self.common_metrics["Concurrency"][stage_name] = round(
-                sum(self.result[stage_name]["E2EL"]) / self.infer_time[stage_name] / 1000, 4
+                sum(self.result[stage_name]["E2EL"]) / self.infer_time[stage_name], 4
             )
             self.common_metrics["Max Concurrency"][stage_name] = self.max_concurrency
 
@@ -288,8 +270,7 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             self.common_metrics["Total Input Tokens"][stage_name] = sum(self.result[stage_name]["InputTokens"])
             if self.common_metrics["Total Input Tokens"][stage_name] != 0 and self.result[stage_name].get("TTFT") is not None:
                 self.common_metrics["Prefill Token Throughput"][stage_name] = round(
-                    1000
-                    * self.common_metrics["Total Input Tokens"][stage_name]
+                    self.common_metrics["Total Input Tokens"][stage_name]
                     / sum(self.result[stage_name]["TTFT"]),
                     4,
                 )
@@ -335,7 +316,10 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
                 for key, val in values[stage_name].items():
                     if key == "N":
                         continue
-                    values[stage_name][key] = str(val) + metrics_units_map.get(metric)
+                    uint = metrics_units_map.get(metric)
+                    if uint == ms:
+                        val = round(val * SECONDE_TO_MILLISECONDE, 4)
+                    values[stage_name][key] = str(val) + uint
         common_metric_units_map = {
             "Benchmark Duration": ms,
             "Total Requests": None,
