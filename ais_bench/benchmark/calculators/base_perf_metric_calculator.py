@@ -6,6 +6,7 @@ DEFAULT_STATS = [
 ]
 MAX_STATS_LEN = 8
 PERCENTAGE_PATTERN = r'^P(0*[1-9]\d{0,1})$' # P1 ~ P99
+SECONDE_TO_MILLISECONDE = 1000
 
 def is_legal_percentage_str(stat):
     return re.match(PERCENTAGE_PATTERN, stat)
@@ -13,6 +14,10 @@ def is_legal_percentage_str(stat):
 class BasePerfMetricCalculator(ABC):
     def __init__(self, perf_details: dict):
         self.perf_details = perf_details
+        
+    @abstractmethod
+    def _init_datas(self, perf_details: dict, max_concurrency: int):
+        pass
 
     @abstractmethod
     def get_common_res(self):

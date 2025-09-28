@@ -110,7 +110,7 @@ def build_model_from_cfg(model_cfg: ConfigDict):
     if errors:
         raise ValueError(f"{model_name} build failed with the following errors: {errors}")
     model_cfg.pop('run_cfg', None)
-    model_cfg.pop('max_out_len', None)
+    model_cfg.pop('request_rate', None)
     model_cfg.pop('batch_size', None)
     model_cfg.pop('abbr', None)
     model_cfg.pop('attr', None)
