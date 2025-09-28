@@ -1,9 +1,9 @@
-from abc import abstractstaticmethod
+from abc import abstractmethod
 from typing import List, Dict, Optional, Union
 
 from datasets import Dataset, DatasetDict, concatenate_datasets
 
-from ais_bench.benchmark.openicl import DatasetReader
+from ais_bench.benchmark.openicl.icl_dataset_reader import DatasetReader
 
 
 class BaseDataset:
@@ -16,11 +16,11 @@ class BaseDataset:
         # maybe duplicate
         assert (max(k) if isinstance(k, List) else
                 k) <= n, 'Maximum value of `k` must less than or equal to `n`'
-        abbr = kwargs.pop('abbr', 'dataset')
+        self.abbr = kwargs.pop('abbr', 'dataset')
         
         self.dataset = self.load(**kwargs)
         self._init_reader(**reader_cfg)
-        self.repeated_dataset(abbr, n) # this process will update self.dataset and self.reader.dataset
+        self.repeated_dataset(self.abbr, n) # this process will update self.dataset and self.reader.dataset
 
 
     def _init_reader(self, **kwargs):
@@ -92,6 +92,6 @@ class BaseDataset:
     def test(self):
         return self.reader.dataset['test']
 
-    @abstractstaticmethod
+    @abstractmethod
     def load(**kwargs) -> Union[Dataset, DatasetDict]:
         pass
