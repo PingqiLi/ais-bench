@@ -1,6 +1,6 @@
 """Random Retriever."""
 
-from typing import Optional
+from typing import Optional, Dict
 
 import numpy as np
 from tqdm import trange
@@ -21,11 +21,13 @@ class RandomRetriever(BaseRetriever):
 
     def __init__(self,
                  dataset,
+                 ice_template: Optional[Dict] = None,
+                 prompt_template: Optional[Dict] = None,
                  ice_separator: Optional[str] = '\n',
                  ice_eos_token: Optional[str] = '\n',
                  ice_num: Optional[int] = 1,
                  seed: Optional[int] = 43) -> None:
-        super().__init__(dataset, ice_separator, ice_eos_token, ice_num)
+        super().__init__(dataset, ice_template, prompt_template, ice_separator, ice_eos_token, ice_num)
         self.seed = seed
 
     def retrieve(self):
