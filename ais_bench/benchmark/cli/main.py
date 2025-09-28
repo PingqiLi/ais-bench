@@ -166,8 +166,8 @@ def main():
     from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
     from ais_bench.benchmark.utils import get_logger
     from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
-    from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg, fill_perf_cfg,
-        fill_merged_infer_cfg, fill_merged_eval_cfg, function_call_task_check, get_config_type)
+    from ais_bench.benchmark.utils.run import (fill_infer_cfg, fill_eval_cfg, get_config_from_arg,
+        function_call_task_check, get_config_type)
 
     # initialize logger
     logger = get_logger(log_level='DEBUG' if args.debug else 'INFO')
@@ -215,7 +215,7 @@ def main():
     function_call_task_check(cfg, args.merge_ds)
 
     if args.mode == 'perf':
-        fill_perf_cfg(cfg, args)
+        fill_infer_cfg(cfg, args)
         cfg.infer.partitioner['out_dir'] = osp.join(cfg['work_dir'],
                                                     'performances')
         partitioner = PARTITIONERS.build(cfg.infer.partitioner)
@@ -226,10 +226,7 @@ def main():
         logger.info("Performance evaluation tasks completed.")
 
     if cfg.get('infer', None) is None:
-        if args.merge_ds:
-            fill_merged_infer_cfg(cfg, args)
-        else:
-            fill_infer_cfg(cfg, args)
+        fill_infer_cfg(cfg, args)
 
     if args.mode in ['all', 'infer']:
         # "infer" in config, we will provide a default configuration
@@ -255,10 +252,7 @@ def main():
         logger.info("Inference tasks completed.")
 
     if cfg.get('eval', None) is None:
-        if args.merge_ds:
-            fill_merged_eval_cfg(cfg, args)
-        else:
-            fill_eval_cfg(cfg, args)
+        fill_eval_cfg(cfg, args)
 
     if args.mode in ['all', 'eval']:
         # "eval" in config, we will provide a default configuration

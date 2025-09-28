@@ -18,7 +18,7 @@ from mmengine.device import is_npu_available
 from tqdm import tqdm
 
 from ais_bench.benchmark.registry import RUNNERS, TASKS
-from ais_bench.benchmark.utils import get_logger, task_name_from_cfg
+from ais_bench.benchmark.utils import get_logger, task_abbr_from_cfg
 from ais_bench.benchmark.runners.base import TasksMonitor
 
 
@@ -78,7 +78,7 @@ class LocalRunner(BaseRunner):
         Returns:
             list[tuple[str, int]]: A list of (task name, exit code).
         """
-        task_names = [task_name_from_cfg(task) for task in tasks]
+        task_names = [task_abbr_from_cfg(task) for task in tasks]
 
         def monitor_process(task_names, output_path, is_debug, refresh_interval=0.5, run_in_background=False):
             tasks_monitor = TasksMonitor(task_names, output_path, is_debug, refresh_interval, run_in_background)
@@ -125,7 +125,7 @@ class LocalRunner(BaseRunner):
         for task in tasks:
             task = TASKS.build(dict(cfg=task, type=self.task_cfg['type']))
             task_name = task.name
-            num_gpus = task.num_gpus
+            num_gpus = task.num_gpus if hasattr(task, 'num_gpus') else 0
             assert len(all_gpu_ids) >= num_gpus
             # get cmd
             mmengine.mkdir_or_exist('tmp/')
@@ -181,7 +181,7 @@ class LocalRunner(BaseRunner):
 
         def submit(task, index):
             task = TASKS.build(dict(cfg=task, type=self.task_cfg['type']))
-            num_gpus = task.num_gpus
+            num_gpus = task.num_gpus if hasattr(task, 'num_gpus') else 0
             assert len(gpus) >= num_gpus
 
             while True:

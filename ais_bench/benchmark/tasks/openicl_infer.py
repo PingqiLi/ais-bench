@@ -18,7 +18,7 @@ from ais_bench.benchmark.utils import (build_dataset_from_cfg, build_model_from_
                                model_abbr_from_cfg, task_abbr_from_cfg)
 from ais_bench.benchmark.utils.types import _check_type
 from ais_bench.benchmark.tasks.base import TaskStateManager
-from ais_bench.benchmark.utils.abbr import task_name_from_cfg
+from ais_bench.benchmark.utils.abbr import task_abbr_from_cfg
 
 
 
@@ -186,7 +186,7 @@ if __name__ == '__main__':
     cfg = Config.fromfile(args.config)
     task_state_manager = TaskStateManager(
         tmp_path=os.path.join(cfg["work_dir"], "status_tmp"),
-        task_name=task_name_from_cfg(cfg),
+        task_name=task_abbr_from_cfg(cfg),
         is_debug=cfg["cli_args"]["debug"],
     )
     manager_t = threading.Thread(
@@ -197,7 +197,7 @@ if __name__ == '__main__':
     task_state_manager.update_task_state(
         {
             "status": "start",
-            "task_log_path": os.path.join("log/infer/", f"{task_name_from_cfg(cfg)}.out"),
+            "task_log_path": os.path.join("logs/infer/", f"{task_abbr_from_cfg(cfg)}.out"),
         }
     )
     start_time = time.perf_counter()
