@@ -1,6 +1,7 @@
 import os
 import time
 import uuid
+import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional, Union, Tuple
 from mmengine.config import ConfigDict
@@ -63,7 +64,8 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
                  enable_ssl: bool = False,
                  custom_client = dict(type=OpenAIChatTextClient),
                  generation_kwargs: Optional[Dict] = None,
-                 trust_remote_code: bool = False):
+                 trust_remote_code: bool = False,
+                 **kwargs):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
@@ -77,9 +79,10 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
         self.host_ip = host_ip
         self.host_port = host_port
         self.enable_ssl = enable_ssl
+        self.api_key = kwargs.get("api_key", "")
         self.base_url = self._get_base_url()
-        self.endpoint_url = os.path.join(self.base_url, "chat/completions")
-        self.model= model if model else self._get_service_model_path()
+        self.endpoint_url =  self._get_endpoint_url()
+        self.model= self._get_model_name(model)
         self.is_multi_modal = False
         self.init_client(custom_client)
 
@@ -90,6 +93,7 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
         custom_client['url'] = self.endpoint_url
         custom_client['retry'] = self.retry
         self.client = build_client_from_cfg(custom_client)
+        setattr(self.client, "api_key", self.api_key)
 
     def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
@@ -195,14 +199,37 @@ class VLLMCustomAPIChat(PerformanceAPIModel):
 
         return ''.join(response)
 
-    def _get_base_url(self):
-        if self.enable_ssl:
-            return f"https://{self.host_ip}:{self.host_port}/v1"
-        return f"http://{self.host_ip}:{self.host_port}/v1"
+    def _is_valid_ip(self):
+        pattern = r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+        if re.match(pattern, self.host_ip):
+            return True
+        else:
+            return False
 
-    def _get_service_model_path(self):
-        client = OpenAI(api_key="EMPTY", base_url=self.base_url)
-        return client.models.list().data[0].id
+    def _get_endpoint_url(self):
+        if self._is_valid_ip() or self.host_ip=="localhost":
+            return os.path.join(self.base_url, "chat/completions")
+        else:
+            return self.host_ip
+
+    def _get_base_url(self):
+        if self._is_valid_ip() or self.host_ip=="localhost":
+            if self.enable_ssl:
+                return f"https://{self.host_ip}:{self.host_port}/v1/"
+            return f"http://{self.host_ip}:{self.host_port}/v1/"
+        else:
+            return self.host_ip
+
+    def _get_model_name(self, model):
+        if model:
+            return model
+        if self._is_valid_ip() or self.host_ip=="localhost":
+            client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+            return client.models.list().data[0].id
+        else:
+            self.logger.error("model name not configured .")
+            return ""
+
 
 
 @MODELS.register_module()
@@ -247,7 +274,8 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
                  enable_ssl: bool = False,
                  custom_client = dict(type=OpenAIChatStreamClient),
                  generation_kwargs: Optional[Dict] = None,
-                 trust_remote_code: bool = False):
+                 trust_remote_code: bool = False,
+                 **kwargs):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
                          meta_template=meta_template,
@@ -261,9 +289,10 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
         self.host_ip = host_ip
         self.host_port = host_port
         self.enable_ssl = enable_ssl
+        self.api_key = kwargs.get("api_key", "")
         self.base_url = self._get_base_url()
-        self.endpoint_url = os.path.join(self.base_url, "chat/completions")
-        self.model = model if model else self._get_service_model_path()
+        self.endpoint_url = self._get_endpoint_url()
+        self.model = self._get_model_name(model)
         self.init_client(custom_client)
         self.is_multi_modal = False
 
@@ -273,7 +302,9 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
             custom_client = dict(type=OpenAIChatStreamClient)
         custom_client['url'] = self.endpoint_url
         custom_client['retry'] = self.retry
+        #custom_client['api_key'] = self.api_key
         self.client = build_client_from_cfg(custom_client)
+        setattr(self.client, "api_key", self.api_key)
 
     def encode_input(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
@@ -374,15 +405,36 @@ class VLLMCustomAPIChatStream(PerformanceAPIModel):
 
         response = self.client.request(cache_data, generation_kwargs)
         self.set_result(cache_data)
-
         return ''.join(response)
 
+    def _is_valid_ip(self):
+        pattern = r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+        if re.match(pattern, self.host_ip):
+            return True
+        else:
+            return False
+
+    def _get_endpoint_url(self):
+        if self._is_valid_ip() or self.host_ip=="localhost":
+            return os.path.join(self.base_url, "chat/completions")
+        else:
+            return self.host_ip
 
     def _get_base_url(self):
-        if self.enable_ssl:
-            return f"https://{self.host_ip}:{self.host_port}/v1/"
-        return f"http://{self.host_ip}:{self.host_port}/v1/"
+        if self._is_valid_ip() or self.host_ip=="localhost":
+            if self.enable_ssl:
+                return f"https://{self.host_ip}:{self.host_port}/v1/"
+            return f"http://{self.host_ip}:{self.host_port}/v1/"
+        else:
+            return self.host_ip
 
-    def _get_service_model_path(self):
-        client = OpenAI(api_key="EMPTY", base_url=self.base_url)
-        return client.models.list().data[0].id
+    def _get_model_name(self, model):
+        if model:
+            return model
+        if self._is_valid_ip() or self.host_ip=="localhost":
+            client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+            return client.models.list().data[0].id
+        else:
+            self.logger.error("model name not configured.")
+            return ""
+

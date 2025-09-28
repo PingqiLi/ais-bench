@@ -2,11 +2,23 @@ import re
 import os
 import copy
 import ipaddress
+from urllib.parse import urlparse
 
 from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.registry import LOAD_DATASET, MODELS, CLIENTS, PERF_METRIC_CALCULATORS
 
+def is_http_start(url):
+    if len(url) < 4:
+        return False
+    return url[:4] == 'http'
+
+def is_valid_http_url(url):
+    try:
+        result = urlparse(url)
+        return (result.scheme in ('http', 'https')) and (bool(result.netloc))
+    except:
+        return False
 
 def validate_model_cfg(model_cfg: ConfigDict) -> dict:
     errors = {}
@@ -43,6 +55,8 @@ def validate_model_cfg(model_cfg: ConfigDict) -> dict:
 
         if key == "host_ip":
             if value == "localhost":
+                continue
+            if is_http_start(value) and is_valid_http_url(value):
                 continue
             try:
                 ipaddress.ip_address(value)

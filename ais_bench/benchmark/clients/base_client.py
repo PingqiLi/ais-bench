@@ -102,7 +102,7 @@ class BaseClient(ABC):
             raw_response = self._http_pool_manager.request(
             request_method,
             self.valid_url,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json","Authorization": "Bearer "+getattr(self, "api_key","")},
             body=json.dumps(request_body).encode(),
             timeout=self._timeout,
             preload_content=not self._is_stream,
