@@ -8,24 +8,34 @@ synthetic_reader_cfg = dict(
     output_column='answer'
 )
 
+synthetic_config = {
+    "Type":"tokenid",
+    "RequestCount": 10,
+    "TrustRemoteCode": False,
+    "TokenIdConfig" : {
+        "RequestSize": 10
+    }
+}
+
 synthetic_infer_cfg = dict(
     prompt_template=dict(
         type=PromptTemplate,
         template="{question}"
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, is_synthetic=True)
+    inferencer=dict(type=GenInferencer)
 )
 
 synthetic_eval_cfg = dict(
     evaluator=dict(type=MATHEvaluator, version='v2'), pred_postprocessor=dict(type=math_postprocess_v2)
 )
 
+
 synthetic_datasets = [
     dict(
         abbr='synthetic',
         type=SyntheticDataset,
-        path='ais_bench/datasets/synthetic',
+        config=synthetic_config,
         reader_cfg=synthetic_reader_cfg,
         infer_cfg=synthetic_infer_cfg,
         eval_cfg=synthetic_eval_cfg

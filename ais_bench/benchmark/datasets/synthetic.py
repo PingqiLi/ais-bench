@@ -63,17 +63,6 @@ def check_range(name: str, value: Any, param: NumberRange):
         if gt or ge:
             raise ValueError(f"Parameter {name} is {value}, not within the required range {interval_str}")
 
-def get_synthetic_dataset_config():
-    try:
-        from ais_bench.datasets.synthetic.synthetic_config import synthetic_config
-        return synthetic_config
-    except ImportError as e:
-        raise RuntimeError(
-            f"Synthetic config import failed. Verify that 'ais_bench' is installed. Details: {str(e)}"
-        ) from e
-    except Exception as e:
-        raise RuntimeError(f"Unexpected error: {str(e)}") from e
-
 def normalize_file_path(file_path:str) -> str:
     return os.path.abspath(os.path.expanduser(file_path))
 
@@ -205,14 +194,15 @@ class SyntheticDataset(BaseDataset):
                 token and output token respectively.
 
         Returns:
-            A data string which contains 2 parts: "data", "max_new_tokens".
+            data (str): Constructed input with 'A'.
+            num_expect_generated_tokens (int): max_tokens.
         """
         if not hasattr(line, '__len__') or len(line) != 2:
             raise ValueError("Input line should be a list with 2 integral elements.")
         default_str = "A"
         num_input_token, num_expect_generated_tokens = line
         data = " ".join([default_str] * num_input_token)
-        return data + str(num_expect_generated_tokens)
+        return data, num_expect_generated_tokens
 
     @staticmethod
     def find_first_file_path(search_path: str, search_file: str) -> str:
@@ -271,9 +261,8 @@ class SyntheticDataset(BaseDataset):
 
         return valid_indices[rand_indices].to(torch.int64)
 
-    def load(self, path, **kwargs):
+    def load(self, config, **kwargs):
         self.logger = get_logger()
-        config = get_synthetic_dataset_config()
         dataset = []
         model_path_key = "ModelPath"
         config[model_path_key] = kwargs.get("model_path", None)
@@ -292,8 +281,8 @@ class SyntheticDataset(BaseDataset):
                                         for _ in range(request_count)]
 
             for num_input_output_token in tqdm(num_input_output_tokens, desc="Constructing synthetic string datasets ..."):
-                data = self.read_line(self, num_input_output_token)
-                dataset.append({"question": data, "answer": "aaa"})
+                data, max_tokens = self.read_line(self, num_input_output_token)
+                dataset.append({"question": data, "answer": "aaa", "max_out_len": max_tokens})
 
         elif config_type == "tokenid":
             tokenid_config = config.get("TokenIdConfig")

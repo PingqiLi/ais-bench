@@ -12,6 +12,7 @@ from ais_bench.benchmark.runners import LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLInferTask, OpenICLApiInferTask
 from ais_bench.benchmark.openicl.icl_inferencer import  GenInferencer, GenModelPerfInferencer
 from ais_bench.benchmark.utils import get_logger, match_cfg_file
+from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
 
 logger = get_logger()
 

@@ -110,6 +110,12 @@ class DatasetReader:
                 f'\n    input_columns: {self.input_columns},\n'
                 f'    output_columns: {self.output_column}\n}})')
 
+    def get_max_out_len(self):
+        if "max_out_len" in self.input_columns and "max_out_len" in self.dataset['test'].features:
+            return self.dataset['test']['max_out_len']
+        else:
+            return None
+
 
 def load_partial_dataset(
         dataset: Dataset,

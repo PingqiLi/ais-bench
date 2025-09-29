@@ -204,3 +204,17 @@ def search_configs_from_args(args):
             missingval="N/A",       # 处理空值
         )
     )
+
+def get_meta_json(dataset_path, meta_path):
+    ori_meta_path = meta_path
+    if not meta_path:
+        meta_path = dataset_path + '.meta.json'
+    if os.path.exists(meta_path):
+        with open(meta_path, 'r', encoding='utf-8') as f:
+            meta_json_conf = json.load(f)
+    else:
+        if ori_meta_path: 
+            # user set meta_path does not exists
+            raise ValueError(f'The file path specified by parameter "meta_path" does not exist: {ori_meta_path}')
+        meta_json_conf = {}
+    return meta_json_conf
