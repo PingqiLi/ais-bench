@@ -15,5 +15,6 @@ with read_base():
     from .groups.longbench import longbench_summary_groups
 
 summarizer = dict(
+    attr = "accuracy",
     summary_groups=sum([v for k, v in locals().items() if k.endswith('_summary_groups')], []),
 )

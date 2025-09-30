@@ -13,6 +13,7 @@ with read_base():
     from .groups.xiezhi import xiezhi_summary_groups
 
 summarizer = dict(
+    attr = "accuracy",
     dataset_abbrs=[
         '--------- 考试 Exam ---------',  # category
         # 'Mixed', # subcategory
