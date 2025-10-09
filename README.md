@@ -14,23 +14,21 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-red?logo=apache)](https://www.apache.org/licenses/LICENSE-2.0)
 <br><br>
 [🌐官方网站](https://www.aisbench.com) |
-[🛠️安装](#️-工具安装) |
-[🚀快速入门](#-快速入门) |
+[📖工具文档](https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/) |
 [🔥最新进展](#-最新进展)|
 [🤔报告问题](https://gitee.com/aisbench/benchmark/issues/new/choose)
 
 </div>
 
 ## 🔥 最新进展
-
 - **\[2025.9.08\]** 支持📚[模拟真实业务流量](doc/users_guide/rps_distribution.md)：通过控制请求发送速率波动，感知在模拟真实场景下服务化的性能测评结果！🔥🔥🔥
 
 - **\[2025.8.28\]** 支持📚[多次独立重复推理精度场景](doc/users_guide/accuracy_benchmark.md#多次独立重复推理)，计算pass@k/cons@k/avg@n等不同维度的精度指标！🔬🔬🔬
 
-- **\[2025.8.19\]** 
+- **\[2025.8.19\]**
   - 新增Function Call专用模型配置 [vllm_api_function_call_chat](ais_bench/benchmark/configs/models/vllm_api/vllm_api_function_call_chat.py)，支持 [BFCL 函数调用能力评估](ais_bench/benchmark/configs/datasets/BFCL/README.md) 🔥🔥🔥
   - 提供工具支持的[性能测试规格说明](doc/users_guide/performance_benchmark.md#服务化性能测试规格说明)，优化推理集群场景工具内存占用及性能计算。最大规格场景（250K条请求，输入/输出token 4K/4K）内存占用下降低60%，内存占用小于64GB；性能结果计算效率提升20倍。🚀🚀🚀
-- **\[2025.7.15\]** 
+- **\[2025.7.15\]**
   - 支持[sharegpt](ais_bench/benchmark/configs/datasets/sharegpt/README.md)和[mtbench](ais_bench/benchmark/configs/datasets/mtbench/README.md)多轮对话数据集服务化性能测评和可视化，测评方式见📚[多轮对话测评指南](doc/users_guide/multiturn_benchmark.md)！🔥🔥🔥
   - 性能评测场景使用[自定义数据集](doc/users_guide/custom_dataset.md)，支持按请求粒度指定最大输出长度！🔥🔥🔥
 
