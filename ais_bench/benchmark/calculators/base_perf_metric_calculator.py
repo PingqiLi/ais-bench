@@ -25,3 +25,15 @@ class BasePerfMetricCalculator(ABC):
     @abstractmethod
     def calculate(self):
         pass
+    
+    def extract_success_item(self, requests: dict):
+        is_success = requests.get("is_success", [])
+        for key, value in requests.items():
+            if key == "is_success":
+                continue
+            if isinstance(value, list):
+                value = [v for i, v in enumerate(value) if is_success[i]]
+            else:
+                value = value if is_success else []
+            requests[key] = value
+        return requests
