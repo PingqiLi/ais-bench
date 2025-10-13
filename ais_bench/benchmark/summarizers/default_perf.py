@@ -69,6 +69,18 @@ class DefaultPerfSummarizer:
             self._load_details_perf_data(calculator)
             self._dump_calculated_perf_data()
 
+    def extract_success_item(self, requests: dict):
+        is_success = requests.get("is_success", [])
+        for key, value in requests.items():
+            if key == "is_success":
+                continue
+            if isinstance(value, list):
+                value = [v for i, v in enumerate(value) if is_success[i]]
+            else:
+                value = value if is_success else []
+            requests[key] = value
+        return requests
+
     def _load_details_perf_data(self, calculator_conf: ConfigDict):
         self.calculators = {}
         for model in self.model_abbrs:
@@ -79,9 +91,11 @@ class DefaultPerfSummarizer:
                     continue
                 self.logger.info(f"Loading detail perf data of {model=} {dataset=} ...")
                 details_data = orjson.loads(open(perf_details_file, "rb").read())
+                details_data["requests"] = self.extract_success_item(details_data.get("requests", {}))
+                is_success = details_data["requests"].get("is_success", [])
                 decode_cost_file = osp.join(self.work_dir, "performances", model, f"{dataset}_details.h5")
                 h5_data = load_from_h5(decode_cost_file)
-                details_data["requests"]["decode_token_latencies"] = [value for value in h5_data]
+                details_data["requests"]["decode_token_latencies"] = [value for i, value in enumerate(h5_data) if is_success[i]]
                 plot_file_path = osp.join(self.work_dir, "performances", model, f"{dataset}_plot.html")
                 has_plot = plot_sorted_request_timelines(
                     details_data["requests"]["start_time"],
