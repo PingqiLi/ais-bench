@@ -20,34 +20,34 @@ class VocalSoundDataset(BaseDataset):
     @staticmethod
     def load(path, audio_type):
         """
-    Load a tiny audio classification dataset whose ground-truth label is
-    embedded in the file name
+        Load a tiny audio classification dataset whose ground-truth label is
+        embedded in the file name
 
-    Parameters
-    ----------
-    path : str
-        Directory that contains `.wav` files.  Every file is treated as one
-        training / evaluation sample.  The label (answer) is extracted from
-        the file name by taking the last underscore-separated substring
-        **before** the extension, e.g.
-            file_name : 00001_cat.wav  -->  answer = "cat"
-            file_name : speaker_42.wav  -->  answer = "42"
-    audio_type : str
-        How the audio should be returned:
-        - "audio_path"   : keep the original file path (str)
-        - "audio_base64" : read the whole file and return it as a base64-
-          encoded UTF-8 string
+        Parameters
+        ----------
+        path : str
+            Directory that contains `.wav` files.  Every file is treated as one
+            training / evaluation sample.  The label (answer) is extracted from
+            the file name by taking the last underscore-separated substring
+            **before** the extension, e.g.
+                file_name : 00001_cat.wav  -->  answer = "cat"
+                file_name : speaker_42.wav  -->  answer = "42"
+        audio_type : str
+            How the audio should be returned:
+            - "audio_path"   : keep the original file path (str)
+            - "audio_base64" : read the whole file and return it as a base64-
+            encoded UTF-8 string
 
-    Returns
-    -------
-    datasets.Dataset
-        A HuggingFace `datasets.Dataset` where every row is a dictionary:
-            {
-              "audio_url": str,  # path or base64 string
-              "question" : "To be replaced!",  # static placeholder
-              "answer"   : str   # label extracted from file name
-            }
-    """
+        Returns
+        -------
+        datasets.Dataset
+            A HuggingFace `datasets.Dataset` where every row is a dictionary:
+                {
+                "audio_url": str,  # path or base64 string
+                "question" : "To be replaced!",  # static placeholder
+                "answer"   : str   # label extracted from file name
+                }
+        """
         path = get_data_path(path, local_mode=True)
         path = Path(path)
         dataset = []
