@@ -2,7 +2,7 @@
   <br />
   <br />
 
-  # **AISBench 工具**
+  # **AISBench 评测工具**
   #### 面向人工智能领域的测试基准工具
   <!-- 用分隔线替代背景 -->
   ---
@@ -17,7 +17,12 @@
 [📖工具文档](https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/) |
 [🔥最新进展](#-最新进展)|
 [🤔报告问题](https://gitee.com/aisbench/benchmark/issues/new/choose)
+<br><br>简体中文 | [English](README_en.md)
 </div>
+
+> ❗<span style="color: red;"><b>重要</b></span>
+>
+> **⭐️收藏项目**，你将能第一时间获取 AISBench评测工具 的最新动态～
 
 ## 🔥 最新进展
 - **\[2025.9.08\]** 支持📚[模拟真实业务流量](https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/advanced_tutorials/rps_distribution.html)：通过控制请求发送速率波动，感知在模拟真实场景下服务化的性能测评结果！🔥🔥🔥

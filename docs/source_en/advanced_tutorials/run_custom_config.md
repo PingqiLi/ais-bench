@@ -12,7 +12,7 @@ ais_bench ais_bench/configs/api_examples/infer_vllm_api_general.py
 
 ## Example of Using a Custom Configuration File
 ### Editing the Example Content
-The following example demonstrates how to evaluate the performance of two service interfaces ([`v1/chat/completions`](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py) and [`v1/completions`](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)) on the [GSM8K](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/gsm8k/README.md) and [MATH datasets](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/math/README.md). Refer to the sample file: [demo_infer_vllm_api.py](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/configs/api_examples/demo_infer_vllm_api.py):
+The following example demonstrates how to evaluate the performance of two service interfaces ([`v1/chat/completions`](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/models/vllm_api/vllm_api_general_chat.py) and [`v1/completions`](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/models/vllm_api/vllm_api_general.py)) on the [GSM8K](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/gsm8k/README_en.md) and [MATH datasets](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/math/README_en.md). Refer to the sample file: [demo_infer_vllm_api.py](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/configs/api_examples/demo_infer_vllm_api.py):
 
 ```python
 from mmengine.config import read_base

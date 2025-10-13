@@ -12,53 +12,53 @@ Open-source datasets refer to widely used, publicly accessible datasets in the c
 ### LLM Datasets
 | Dataset Name | Category | Detailed Introduction & Acquisition Method |
 |---------------|----------------------|-------------------|
-| DEMO | Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/demo/README.md) |
-| ARC_c | Reasoning (Common Sense + Science) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ARC_c/README.md) |
-| ARC_e | Reasoning (Common Sense + Science) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ARC_e/README.md) |
-| SuperGLUE_BoolQ | Natural Language Understanding (Q&A) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README.md) |
-| agieval | Comprehensive Exams / Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/agieval/README.md) |
-| aime2024 | Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/aime2024/README.md) |
-| aime2025 | Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/aime2025/README.md) |
-| bbh | Multi-Task (Big-Bench Hard) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/bbh/README.md) |
-| cmmlu | Chinese Understanding / Knowledge Q&A | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/cmmlu/README.md) |
-| ceval | Chinese Professional Exams | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ceval/README.md) |
-| drop | Reading Comprehension + Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/drop/README.md) |
-| gsm8k | Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/gsm8k/README.md) |
-| gpqa | Knowledge Q&A | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/gpqa/README.md) |
-| hellaswag | Common Sense Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/hellaswag/README.md) |
-| humaneval | Programming (Code Generation + Testing) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/humaneval/README.md) |
-| humanevalx | Programming (Multilingual) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/humanevalx/README.md) |
-| ifeval | Programming (Function Generation) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ifeval/README.md) |
-| lambada | Long Text Cloze | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/lambada/README.md) |
-| lcsts | Chinese Text Summarization | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/lcsts/README.md) |
-| livecodebench | Programming (Real-Time Code) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/livecodebench/README.md) |
-| longbench | Long Sequences | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/longbench/README.md) |
-| longbenchv2 | Long Sequences | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/longbenchv2/README.md) |
-| math | Advanced Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/math/README.md) |
-| mbpp | Programming (Python) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mbpp/README.md) |
-| mgsm | Multilingual Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mgsm/README.md) |
-| mmlu | Multidisciplinary Understanding (English) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mmlu/README.md) |
-| mmlu_pro | Multidisciplinary Understanding (Professional Version) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mmlu_pro/README.md) |
-| needlebench_v2 | Long Sequences | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/needlebench_v2/README.md) |
-| piqa | Physical Common Sense Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/piqa/README.md) |
-| siqa | Social Common Sense Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/siqa/README.md) |
-| triviaqa | Knowledge Q&A | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/triviaqa/README.md) |
-| winogrande | Common Sense Reasoning (Pronoun Resolution) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/winogrande/README.md) |
-| Xsum | Text Generation (Summarization) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/Xsum/README.md) |
-| BFCL | Function Calling Capability Evaluation | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/BFCL/README.md) |
+| DEMO | Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/demo/README_en.md) |
+| ARC_c | Reasoning (Common Sense + Science) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ARC_c/README_en.md) |
+| ARC_e | Reasoning (Common Sense + Science) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ARC_e/README_en.md) |
+| SuperGLUE_BoolQ | Natural Language Understanding (Q&A) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/SuperGLUE_BoolQ/README_en.md) |
+| agieval | Comprehensive Exams / Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/agieval/README_en.md) |
+| aime2024 | Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/aime2024/README_en.md) |
+| aime2025 | Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/aime2025/README_en.md) |
+| bbh | Multi-Task (Big-Bench Hard) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/bbh/README_en.md) |
+| cmmlu | Chinese Understanding / Knowledge Q&A | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/cmmlu/README_en.md) |
+| ceval | Chinese Professional Exams | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ceval/README_en.md) |
+| drop | Reading Comprehension + Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/drop/README_en.md) |
+| gsm8k | Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/gsm8k/README_en.md) |
+| gpqa | Knowledge Q&A | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/gpqa/README_en.md) |
+| hellaswag | Common Sense Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/hellaswag/README_en.md) |
+| humaneval | Programming (Code Generation + Testing) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/humaneval/README_en.md) |
+| humanevalx | Programming (Multilingual) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/humanevalx/README_en.md) |
+| ifeval | Programming (Function Generation) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ifeval/README_en.md) |
+| lambada | Long Text Cloze | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/lambada/README_en.md) |
+| lcsts | Chinese Text Summarization | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/lcsts/README_en.md) |
+| livecodebench | Programming (Real-Time Code) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/livecodebench/README_en.md) |
+| longbench | Long Sequences | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/longbench/README_en.md) |
+| longbenchv2 | Long Sequences | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/longbenchv2/README_en.md) |
+| math | Advanced Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/math/README_en.md) |
+| mbpp | Programming (Python) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mbpp/README_en.md) |
+| mgsm | Multilingual Mathematical Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mgsm/README_en.md) |
+| mmlu | Multidisciplinary Understanding (English) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mmlu/README_en.md) |
+| mmlu_pro | Multidisciplinary Understanding (Professional Version) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mmlu_pro/README_en.md) |
+| needlebench_v2 | Long Sequences | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/needlebench_v2/README_en.md) |
+| piqa | Physical Common Sense Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/piqa/README_en.md) |
+| siqa | Social Common Sense Reasoning | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/siqa/README_en.md) |
+| triviaqa | Knowledge Q&A | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/triviaqa/README_en.md) |
+| winogrande | Common Sense Reasoning (Pronoun Resolution) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/winogrande/README_en.md) |
+| Xsum | Text Generation (Summarization) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/Xsum/README_en.md) |
+| BFCL | Function Calling Capability Evaluation | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/BFCL/README_en.md) |
 
 ### Multimodal Datasets
 | Dataset Name | Category | Detailed Introduction & Acquisition Method |
 |---------------|----------------------|-------------------|
-| textvqa | Multimodal Understanding (Image + Text) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/textvqa/README.md) |
-| videobench | Multimodal Understanding (Video) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/videobench/README.md) |
-| vocalsound | Multimodal Understanding (Audio) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/vocalsound/README.md) |
+| textvqa | Multimodal Understanding (Image + Text) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/textvqa/README_en.md) |
+| videobench | Multimodal Understanding (Video) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/videobench/README_en.md) |
+| vocalsound | Multimodal Understanding (Audio) | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/vocalsound/README_en.md) |
 
 ### Multi-Turn Dialogue Datasets
 | Dataset Name | Category | Detailed Introduction & Acquisition Method |
 |---------------|----------------------|-------------------|
-| sharegpt | Multi-Turn Dialogue | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/sharegpt/README.md) |
-| mtbench | Multi-Turn Dialogue | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mtbench/README.md) |
+| sharegpt | Multi-Turn Dialogue | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/sharegpt/README_en.md) |
+| mtbench | Multi-Turn Dialogue | [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mtbench/README_en.md) |
 
 
 **Tip**: Users can uniformly place the acquired dataset folders in the `ais_bench/datasets/` directory. AISBench Benchmark will automatically retrieve the dataset files in this directory based on the dataset configuration file for testing.
