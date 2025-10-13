@@ -28,36 +28,36 @@ class VideoBenchDataset(BaseDataset):
     @staticmethod
     def load(path, video_type, num_frames):
         """
-    Load VideoBench dataset from a local directory.
+        Load VideoBench dataset from a local directory.
 
-    Parameters
-    ----------
-    path : str
-        Root directory that contains the dataset.
-        Inside this directory you MUST have
-        1) an `answer/ANSWER.json` file that stores the ground-truth answers,
-        2) one or more `*new.json` files that store the questions, choices
-           and video metadata.
-    video_type : str
-        Reserved argument that decides which video field to use.
-        Currently only "video_path" is supported, i.e. the local path
-        stored in `vid_path`.
-    num_frames : int, optional
-        Number of frames to sample from each video (not used in this
-        implementation, kept for API consistency). Default is 5.
+        Parameters
+        ----------
+        path : str
+            Root directory that contains the dataset.
+            Inside this directory you MUST have
+            1) an `answer/ANSWER.json` file that stores the ground-truth answers,
+            2) one or more `*new.json` files that store the questions, choices
+            and video metadata.
+        video_type : str
+            Reserved argument that decides which video field to use.
+            Currently only "video_path" is supported, i.e. the local path
+            stored in `vid_path`.
+        num_frames : int, optional
+            Number of frames to sample from each video (not used in this
+            implementation, kept for API consistency). Default is 5.
 
-    Returns
-    -------
-    datasets.Dataset
-        A HuggingFace `datasets.Dataset` object where every row is a
-        dictionary with the following keys:
-        - "video_url"        : str   local path to the video file
-        - "video_id"         : str   unique identifier of the video
-        - "question"         : str   question text
-        - "choices_prompt"   : str   fixed prompt "Choices: " (6 options)
-                                       or a single space otherwise
-        - "answer"           : str   ground-truth answer string
-    """
+        Returns
+        -------
+        datasets.Dataset
+            A HuggingFace `datasets.Dataset` object where every row is a
+            dictionary with the following keys:
+            - "video_url"        : str   local path to the video file
+            - "video_id"         : str   unique identifier of the video
+            - "question"         : str   question text
+            - "choices_prompt"   : str   fixed prompt "Choices: " (6 options)
+                                        or a single space otherwise
+            - "answer"           : str   ground-truth answer string
+        """
         path = get_data_path(path, local_mode=True)
         ans_path = path + '/answer/ANSWER.json'
         if not os.path.exists(ans_path):

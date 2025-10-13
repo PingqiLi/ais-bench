@@ -81,8 +81,6 @@ class MMPromptTemplate(BasePromptTemplate):
         for i, item in enumerate(template):
             if 'prompt_mm' in item:
                 template[i]['prompt_mm'] = self.get_mm_template(item)
-            else:
-                raise ValueError("In multimodal scenarios, use MMPromptTemplate, which should include the prompt_mm field.")
         return template
     
     def _check_prompt_template(obj) -> 'MMPromptTemplate':
