@@ -1,5 +1,5 @@
 # BFCL (Berkeley Function Calling Leaderboard) V3
-
+中文 | [English](README_en.md)
 ## 数据集简介
 
 **Berkeley Function Calling Leaderboard (BFCL)** 是一个专门用于评估大语言模型（LLMs）函数调用能力的综合性、可执行的评估基准。
@@ -156,7 +156,7 @@ test_ids_to_generate = {
     "parallel": ["parallel_0"],
     "multiple": ["multiple_0"],
     "parallel_multiple": ["parallel_multiple_0"],
-    "java": [],                                
+    "java": [],
     "javascript": ["javascript_0"],
     "live_simple": ["live_simple_0-0-0"],
     "live_multiple": ["live_multiple_0-0-0"],
@@ -174,7 +174,7 @@ test_ids_to_generate = {
 ## 💡 使用建议
 
 1. **首次评估**：建议使用 [测试组别](#测试组别) 进行相对全面的评估
-2. **性能调优**：根据初步结果选择特定类别进行深入测试  
+2. **性能调优**：根据初步结果选择特定类别进行深入测试
 3. **问题定位**：使用精确测试配置定位具体问题用例
 
 ---
