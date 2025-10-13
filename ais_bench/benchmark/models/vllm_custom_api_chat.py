@@ -5,9 +5,9 @@ from transformers import AutoTokenizer
 from openai import OpenAI
 
 from ais_bench.benchmark.registry import MODELS
-from ais_bench.benchmark.utils.prompt import PromptList
+from ais_bench.benchmark.utils.prompt import PromptList, is_mm_prompt
 
-from ais_bench.benchmark.models.base_api import BaseAPIModel
+from ais_bench.benchmark.models.base_api import BaseAPIModel, APITemplateParser
 from ais_bench.benchmark.models.output import RequestOutput
 
 PromptType = Union[PromptList, str]
@@ -84,6 +84,8 @@ class VLLMCustomAPIChat(BaseAPIModel):
         self.tokenizer = None
         if path:
             self.tokenizer = AutoTokenizer.from_pretrained(path)
+        self.is_multi_modal = False
+        self.template_parser = APITemplateParser(self.meta_template)
     
     def _get_url(self, host_ip: str, host_port: int, url: str):
         if url:
@@ -93,6 +95,19 @@ class VLLMCustomAPIChat(BaseAPIModel):
             return f"{base_url}/chat/completions"
         return f"{base_url}/chat/completions"
 
+    def check_mm_prompt(self, input_data):
+        if isinstance(input_data, str):
+            return False
+        else:
+            assert len(input_data)>=1 and "prompt" in input_data[0]
+            prompt = input_data[0]["prompt"]
+            if not isinstance(prompt, list) or len(prompt) < 0 or not isinstance(prompt[0], dict):
+                return False
+            for data in prompt:
+                if any(key in data for key in ("image_url", "video_url", "audio_url")):
+                    return True
+            return False
+    
     def encode(self, prompt: list) -> Tuple[float, List[int]]:
         """Encode a string into tokens, measuring processing time."""
         if not self.tokenizer:

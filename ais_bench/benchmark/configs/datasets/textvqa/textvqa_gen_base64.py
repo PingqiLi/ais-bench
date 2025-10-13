@@ -1,19 +1,24 @@
-from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
+from ais_bench.benchmark.openicl.icl_prompt_template_mm import MMPromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
-from ais_bench.benchmark.datasets import TEXTVQADataset, TEXTEvaluator, math_postprocess_v2
+from ais_bench.benchmark.datasets import TEXTVQADataset, TEXTEvaluator
 
 
 textvqa_reader_cfg = dict(
-    input_columns=['question'],
+    input_columns=['question', 'image_url'],
     output_column='answer'
 )
 
 
 textvqa_infer_cfg = dict(
     prompt_template=dict(
-        type=PromptTemplate,
-        template={'type': "image_text", 'data': ['image_url_base64', 'text'], 'prompt': " Answer the question using a single word or phrase."}
+        type=MMPromptTemplate,
+        template=dict(
+            round=[
+                dict(role="HUMAN", prompt_mm={"text": "{question} Answer the question using a single word or phrase.",
+                                           "image_url": {"url": "data:image/jpeg;base64,{image_url}"}})
+            ]
+            )
     ),
     retriever=dict(type=ZeroRetriever),
     inferencer=dict(type=GenInferencer)
@@ -28,6 +33,7 @@ textvqa_datasets = [
         abbr='textvqa',
         type=TEXTVQADataset,
         path='ais_bench/datasets/textvqa/textvqa_json/textvqa_val.jsonl', # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
+        image_type="image_base64",
         reader_cfg=textvqa_reader_cfg,
         infer_cfg=textvqa_infer_cfg,
         eval_cfg=textvqa_eval_cfg

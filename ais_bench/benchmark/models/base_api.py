@@ -90,6 +90,13 @@ class BaseAPIModel(BaseModel):
             " to be called in base classes"
         )
 
+    @abstractmethod
+    def check_mm_prompt(self, input_data):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not supported"
+            " to be called in base classes"
+        )
+
     async def iter_lines(self, stream):
         """
         Split the input stream into lines based on multiple delimiters:
@@ -161,6 +168,7 @@ class BaseAPIModel(BaseModel):
         else:
             self.session = session
             close_session = False
+        output.is_mm_prompt = self.check_mm_prompt(input_data=input_data)
         request_body = await self.get_request_body(input_data, max_out_len, output, **args)
         if self.stream:
             await self.stream_infer(request_body, output)
@@ -271,10 +279,6 @@ class APITemplateParser:
         """
         assert isinstance(prompt_template, (str, list, PromptList, tuple))
 
-        # mm data
-        if is_mm_prompt(prompt_template):
-            return prompt_template
-
         if not isinstance(prompt_template, (str, PromptList)):
             return [self.parse_template(p, mode=mode) for p in prompt_template]
 
@@ -357,6 +361,7 @@ class APITemplateParser:
             # in case the model does not have any meta template
             prompt = ""
             last_sep = ""
+            prompt_mm = []
             for item in prompt_template:
                 if isinstance(item, dict) and set(["section", "pos"]) == set(
                     item.keys()
@@ -367,8 +372,10 @@ class APITemplateParser:
                         prompt += last_sep + item
                 elif item.get("prompt", ""):
                     prompt += last_sep + item.get("prompt", "")
+                elif item.get("prompt_mm", ""):
+                    prompt_mm += item.get("prompt_mm", [])
                 last_sep = "\n"
-        return prompt
+        return prompt if prompt else prompt_mm
 
     def _update_role_dict(self, prompts: Union[List, str]) -> Dict[str, Dict]:
         """Update the default role dict with the given prompts."""
@@ -492,7 +499,12 @@ class APITemplateParser:
             return None, False
         res = {}
         res["role"] = merged_prompt["api_role"]
-        res["prompt"] = merged_prompt.get("begin", "")
-        res["prompt"] += merged_prompt.get("prompt", "")
-        res["prompt"] += merged_prompt.get("end", "")
+        if "prompt" in merged_prompt:
+            res["prompt"] = merged_prompt.get("begin", "")
+            res["prompt"] += merged_prompt.get("prompt", "")
+            res["prompt"] += merged_prompt.get("end", "")
+        elif "prompt_mm" in merged_prompt:
+            res["prompt"] = merged_prompt.get("prompt_mm", [])
+        else:
+            raise ValueError("Invalid prompt content: without prompt/prompt_mm !")
         return res, True

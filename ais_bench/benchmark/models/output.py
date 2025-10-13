@@ -2,6 +2,7 @@ import time
 from abc import abstractmethod
 
 import numpy as np
+from ais_bench.benchmark.utils import get_logger
 
 
 class Output:
@@ -18,8 +19,10 @@ class Output:
         self.error_info: str = ""
         self.extra_perf_data: dict = {}
         self.extra_details_data: dict = {}
+        self.logger = get_logger()
+        self.is_mm_prompt: bool = False
 
-    def _get_input_tokens_chars_num(self, model):
+    def _get_input_tokens(self, model):
         """Calculate the actual input token length for the model.
         
         Args:
@@ -27,11 +30,13 @@ class Output:
         """
         if self.input_tokens:
             return
+        if self.is_mm_prompt:
+            return
         if hasattr(model, "encode"):
             token_ids = model.encode(self.input)
             self.input_tokens = len(token_ids)
 
-    def _get_output_tokens_chars_num(self, model):
+    def _get_output_tokens(self, model):
         """Calculate the actual output token length for the model.
         
         Args:
@@ -61,8 +66,8 @@ class Output:
 
         if not self.success:
             return clean_result(self.to_dict())
-        self._get_input_tokens_chars_num(model)
-        self._get_output_tokens_chars_num(model)
+        self._get_input_tokens(model)
+        self._get_output_tokens(model)
         self.time_points = np.array(self.time_points, dtype=np.float64)
         if self.time_points.size < 2:
             self.success = False

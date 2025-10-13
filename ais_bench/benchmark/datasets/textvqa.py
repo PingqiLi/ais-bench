@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import base64
 from os import environ
 
 from datasets import Dataset, DatasetDict
@@ -227,7 +228,37 @@ class VQAEvalMethod:
 class TEXTVQADataset(BaseDataset):
 
     @staticmethod
-    def load(path):
+    def load(path, image_type):
+        """
+    Load a TextVQA-style dataset that pairs images with question-answer
+    annotations.
+
+    Parameters
+    ----------
+    path : str
+        Full path to the **question file** (usually `*_questions.json` or
+        similar).  The corresponding ground-truth answer file is expected to
+        live in the same directory and to have the suffix
+        `_annotations.json`, e.g.
+            /foo/bar/train_questions.json   # <-- `path`
+            /foo/bar/train_annotations.json # <-- auto-detected
+    image_type : str
+        How the image should be returned:
+        - "image_path"   : keep the original file path (str)
+        - "image_base64" : read the image and return it as a base64-encoded
+          string (str)
+
+    Returns
+    -------
+    datasets.Dataset
+        A HuggingFace `datasets.Dataset` where every row is a dictionary
+        containing (at least) the keys that were present in the question
+        file plus:
+        - "answer"    : list of dicts, each dict has an "answer" key
+                        (ground-truth answers loaded from the annotation file)
+        - "image_url" : str, either the original path or the base64 string
+                        depending on `image_type`
+    """
         path = get_data_path(path, local_mode=True)
 
         parts = path.split('/')
@@ -249,7 +280,16 @@ class TEXTVQADataset(BaseDataset):
                     line['answer'] = answer
                 except:
                     raise ValueError("Please check your dataset!")
+                # get image_url
+                if image_type=="image_path":
+                    image_url = line["image"]
+                elif image_type=="image_base64":
+                    with open(line['image'], 'rb') as f:
+                        binary_data = f.read()
+                    image_url = base64.b64encode(binary_data).decode("utf-8")
+                line["image_url"] = image_url
                 dataset.append(line)
+
         return Dataset.from_list(dataset)
 
 
