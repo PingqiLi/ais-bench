@@ -1,18 +1,9 @@
 blank_issues_enabled: false  # 禁止空白 Issue，强制使用模板
-templates:
-  - name: 🔧 Bug&报错&异常报告
-    about: 提交程序中的错误或异常
-    file: bug.yml
-    labels: ["bug", "待处理"]  # 自动添加标签
-  - name: ❓ 工具使用咨询
-    about: 咨询工具使用过程中的问题
-    file: consult.yml
-    labels: ["question", "待回复"]
-  - name: 📃 文档问题
-    about: 反馈文档中的错误或需要补充的内容
-    file: doc.yml
-    labels: ["documentation", "待更新"]
-  - name: 🔬 功能需求
-    about: 提出新功能建议或现有功能优化
-    file: feature.yml
-    labels: ["enhancement", "需求讨论"]
+
+contact_links:
+  - name: 📚 官方文档
+    url: https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/
+    about: 遇到问题请在官方文档中搜索。
+  - name: 📚 Documentation
+    url: https://ais-bench-benchmark.readthedocs.io/en/latest/
+    about: Check if your question is answered in the documentation.
