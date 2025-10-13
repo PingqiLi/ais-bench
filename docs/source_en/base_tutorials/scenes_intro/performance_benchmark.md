@@ -19,7 +19,7 @@ Among them:
 ### Task Meaning Query (Optional)
 Specific information (introduction, usage constraints, etc.) about the selected model task `vllm_api_stream_chat`, dataset task `demo_gsm8k_gen_4_shot_cot_chat_prompt`, and result presentation task `default_perf` can be queried from the following links:
 - `--models`: 📚 [Service-Oriented Inference Backend](../all_params/models.md#service-oriented-inference-backend)
-- `--datasets`: 📚 [Open-Source Datasets](../all_params/datasets.md#open-source-datasets) → 📚 [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/demo/README.md)
+- `--datasets`: 📚 [Open-Source Datasets](../all_params/datasets.md#open-source-datasets) → 📚 [Detailed Introduction](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/demo/README_en.md)
 - `--summarizer`: 📚 [Result Summary Tasks](../all_params/summarizer.md#supported-result-summary-tasks)
 
 ### Preparations Before Running the Command

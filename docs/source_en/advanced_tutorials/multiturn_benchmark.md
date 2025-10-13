@@ -41,7 +41,7 @@ Where:
 To use the `vllm_api_stream_chat_multiturn` model task, you need to prepare an inference service that supports the `/v1/chat/completions` sub-service. Refer to 🔗 [Start an OpenAI-Compatible Server with vLLM](https://docs.vllm.com/en/latest/getting_started/quickstart.html#openai-compatible-server) to launch the inference service.
 
 #### 2. For `--datasets`
-To use the `sharegpt_gen` dataset task, you need to prepare the ShareGPT dataset by following the instructions in 🔗 [ShareGPT Dataset](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/sharegpt/README.md).
+To use the `sharegpt_gen` dataset task, you need to prepare the ShareGPT dataset by following the instructions in 🔗 [ShareGPT Dataset](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/sharegpt/README_en.md).
 
 
 ### Modifying Configuration Files for Corresponding Tasks

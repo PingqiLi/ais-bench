@@ -170,7 +170,7 @@ ais_bench --models vllm_api_general_chat vllm_api_stream_chat --datasets aime202
 ```
 
 ### Merging Sub-dataset Inference
-Some datasets are categorized into different sub-datasets, which will be split into multiple subtasks for inference during the inference process. Examples include 📚 [MMLU](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mmlu/README.md) and 📚 [CEVAL](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ceval/README.md). AISBench Benchmark supports merging datasets that consist of multiple small-scale datasets into a single task for unified evaluation. An example command is as follows:
+Some datasets are categorized into different sub-datasets, which will be split into multiple subtasks for inference during the inference process. Examples include 📚 [MMLU](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/mmlu/README_en.md) and 📚 [CEVAL](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/benchmark/configs/datasets/ceval/README_en.md). AISBench Benchmark supports merging datasets that consist of multiple small-scale datasets into a single task for unified evaluation. An example command is as follows:
 ```bash
 ais_bench --models vllm_api_general --datasets ceval_gen --merge-ds
 ```
