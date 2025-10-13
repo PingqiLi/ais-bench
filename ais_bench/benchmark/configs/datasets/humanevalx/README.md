@@ -1,4 +1,5 @@
 # HumanEvalx
+中文 | [English](README_en.md)
 ## 数据集简介
 HumanEval-X 是由清华大学 KEG 实验室 THUDM 提供的一套多语言代码生成模型的评价标准。它包含 820 个高质量手写样本，覆盖 Python、C++、Java、JavaScript 和 Go 语言。
 
