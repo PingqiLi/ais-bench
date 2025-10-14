@@ -23,7 +23,7 @@ LongBench_dureader_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, max_out_len=128),
+    inferencer=dict(type=GenInferencer),
 )
 
 LongBench_dureader_eval_cfg = dict(

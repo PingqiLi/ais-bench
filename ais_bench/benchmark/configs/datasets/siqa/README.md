@@ -1,4 +1,5 @@
 # SIQA
+中文 | [English](README_en.md)
 ## 数据集简介
 SIQA（Social Interaction QA） 是一个用于测试社会常识智能的问答基准。与许多关注物理或分类知识的先前基准不同，SIQA专注于推理人们的行为及其社会影响。例如，给定一个动作如“杰西看了一场音乐会”和一个问题如“杰西为什么这么做？”，人类可以轻松推断出杰西想“看他最喜欢的表演者”或“享受音乐”，而不是“看看里面发生了什么”或“看看是否有效”。
 
@@ -28,4 +29,4 @@ rm -r OpenCompassData-core-20240207.zip
 ## 可用数据集任务
 |任务名称|简介|评估指标|few-shot|prompt格式|对应源码配置文件路径|
 | --- | --- | --- | --- | --- | --- |
-|siqa_gen_0_shot_chat|siqa数据集生成式任务|accuracy|0-shot|对话格式|[siqa_gen_0_shot_chat.py](siqa_gen_0_shot_chat.py)|
+|siqa_gen_0_shot_chat|siqa数据集生成式任务；`EDAccEvaluator`精度评估方式会通过`Levenshtein距离算法`选取最接近的答案，可能会造成误判，导致精度得分结果偏高。|accuracy|0-shot|对话格式|[siqa_gen_0_shot_chat.py](siqa_gen_0_shot_chat.py)|

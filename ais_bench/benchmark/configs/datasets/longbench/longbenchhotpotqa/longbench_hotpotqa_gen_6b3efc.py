@@ -23,7 +23,7 @@ LongBench_hotpotqa_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, max_out_len=32),
+    inferencer=dict(type=GenInferencer),
 )
 
 LongBench_hotpotqa_eval_cfg = dict(
