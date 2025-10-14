@@ -24,7 +24,6 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         if sum(perf_details["requests"]["is_success"]) == 0:
             self.logger.error("All requests failed, can't calculate performance results. Please check the ERROR log from every responses!")
             raise ValueError("All requests failed!")
-        self.extract_success_item(perf_details.get("requests", {}))
         self.stage_dict = {
             "stable": self._get_requests_id(perf_details)
         }
