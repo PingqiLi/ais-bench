@@ -1,4 +1,5 @@
 # WinoGrande
+中文 | [English](README_en.md)
 ## 数据集简介
 WinoGrande是一个包含44,000道题目的新型数据集，其设计灵感源自Winograd Schema Challenge（Levesque、Davis和Morgenstern，2011年），但通过调整规模并增强对数据集特定偏见的鲁棒性进行了改进。该任务采用二选一的填空形式，目标是为给定句子选择符合常识推理的正确选项。
 

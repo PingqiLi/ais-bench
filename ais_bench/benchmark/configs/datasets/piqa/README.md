@@ -1,4 +1,13 @@
+<!--
+ * @Author: yh_silence yh_silence@alumni.sjtu.edu.cn
+ * @Date: 2025-08-13 15:59:22
+ * @LastEditors: yh_silence yh_silence@alumni.sjtu.edu.cn
+ * @LastEditTime: 2025-10-11 14:52:51
+ * @FilePath: \benchmark\ais_bench\benchmark\configs\datasets\piqa\README.md
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+-->
 # piqa
+中文 | [English](README_en.md)
 ## 数据集简介
 PIQA 数据集提出了物理常识推理任务，并构建了相应的基准数据集 ——Physical Interaction: Question Answering（即 PIQA，物理交互问答）。
 物理常识是实现真正意义上 AI 完备性（包括能与世界交互、理解自然语言的机器人）道路上的一大难题。
