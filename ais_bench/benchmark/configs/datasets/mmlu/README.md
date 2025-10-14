@@ -1,5 +1,4 @@
 # MMLU
-中文 | [English](README_en.md)
 ## 数据集简介
 MMLU（Massive Multitask Language Understanding）是一个新的基准，用于衡量在零样本（zero-shot）和少样本（few-shot）情形下，大模型在预训练期间获得的世界知识。这使得该基准测试更具挑战性，也更类似于我们评估人类的方式。该基准涵盖 STEM、人文（humanities）、社会科学（social sciences）等领域的 57 个学科（subject）。 它的难度从初级到高级，既考验世界知识，又考验解决问题的能力。 学科范围从数学和历史等传统领域到法律和伦理等更为专业的领域。学科的粒度和广度使该基准成为识别模型盲点的理想选择。
 

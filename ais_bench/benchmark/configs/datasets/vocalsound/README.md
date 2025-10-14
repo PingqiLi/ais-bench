@@ -1,5 +1,4 @@
 # VocalSound
-中文 | [English](README_en.md)
 ## 数据集简介
 VocalSound是一个用于人类时声音识别的数据集，说话者包含了不同年龄、性别和国家，共有超过21000条wav格式的语音文件，覆盖了laughter（笑声）、sigh（叹息）、cough（咳嗽）、throat clearing（清嗓子）、sneeze（打喷嚏）、sniff（抽鼻子）等六种不同类型的声音。模型需要判断不同的语音文件属于哪一类的声音。
 

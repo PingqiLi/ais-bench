@@ -1,5 +1,4 @@
 # VideoBench
-中文 | [English](README_en.md)
 ## 数据集简介
 VideoBench是一个视频相关大模型的评估基准，AISBench支持VideoBench作为文本视频多模态理解任务的测评，文本为关于视频内容的选择题。
 

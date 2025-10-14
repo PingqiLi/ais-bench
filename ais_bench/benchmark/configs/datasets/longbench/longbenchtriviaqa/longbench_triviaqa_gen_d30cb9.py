@@ -27,7 +27,7 @@ LongBench_triviaqa_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer),
+    inferencer=dict(type=GenInferencer, max_out_len=32),
 )
 
 LongBench_triviaqa_eval_cfg = dict(

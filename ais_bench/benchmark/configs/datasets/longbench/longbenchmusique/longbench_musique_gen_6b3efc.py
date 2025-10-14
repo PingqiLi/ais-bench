@@ -23,7 +23,7 @@ LongBench_musique_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer),
+    inferencer=dict(type=GenInferencer, max_out_len=32),
 )
 
 LongBench_musique_eval_cfg = dict(

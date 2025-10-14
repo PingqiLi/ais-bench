@@ -1,5 +1,4 @@
 # LCSTS
-中文 | [English](README_en.md)
 ## 数据集简介
 LCSTS数据集是一个大规模的中文短文本摘要数据集，由哈尔滨工业大学深圳研究生院发布。该数据集主要来源于中国的微博平台，包含了超过200万条真实的中文短文本及其作者给出的简短摘要。此外，研究者还手动标注了其中10666条摘要与对应短文本的相关性。
 > 🔗 数据集主页链接[https://huggingface.co/datasets/aligeniewcp22/LCSTS](https://huggingface.co/datasets/aligeniewcp22/LCSTS)

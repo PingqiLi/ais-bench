@@ -23,7 +23,7 @@ LongBench_narrativeqa_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer),
+    inferencer=dict(type=GenInferencer, max_out_len=128),
 )
 
 LongBench_narrativeqa_eval_cfg = dict(

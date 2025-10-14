@@ -23,7 +23,7 @@ LongBench_passage_count_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer),
+    inferencer=dict(type=GenInferencer, max_out_len=32),
 )
 
 LongBench_passage_count_eval_cfg = dict(

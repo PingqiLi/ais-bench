@@ -1,13 +1,12 @@
 # MTBench
-中文 | [English](README_en.md)
 ## 数据集简介
 MTBench数据集是一种多轮对话数据集，是覆盖写作、角色扮演、推理、数学、编码、信息抽取、STEM、和人文学科8个类别，每类10题，题目难度呈“专家级”；共有80个多轮对话数据，每条数据包含两轮对话，主要用于评估大模型的对话能力。
 数据样例如下，`category`表示数据类别，`turns`表示两轮问题，`reference`表示对应的参考答案，部分数据没有`reference`字段：
 > 🔗 数据集主页链接[https://huggingface.co/datasets/HuggingFaceH4/mt_bench_prompts](https://huggingface.co/datasets/HuggingFaceH4/mt_bench_prompts)。
 ```
-{"question_id": 111,
-"category": "math",
-"prompt": ["The vertices of a triangle are at points (0, 0), (-1, 1), and (3, 3). What is the area of the triangle?", "What's area of the circle circumscribing the triangle?"],
+{"question_id": 111, 
+"category": "math", 
+"prompt": ["The vertices of a triangle are at points (0, 0), (-1, 1), and (3, 3). What is the area of the triangle?", "What's area of the circle circumscribing the triangle?"], 
 "reference": ["Area is 3", "5pi"]}
 ```
 

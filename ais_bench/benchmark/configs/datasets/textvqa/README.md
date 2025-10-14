@@ -1,5 +1,4 @@
 # TextVQA
-中文 | [English](README_en.md)
 ## 数据集简介
 TextVQA为图片文本多模态理解数据集，文本为每张图片相关的问题，数据集中的图片来自OpenImages。
 

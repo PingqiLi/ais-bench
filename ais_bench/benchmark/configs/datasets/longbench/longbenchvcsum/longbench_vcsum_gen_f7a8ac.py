@@ -23,7 +23,7 @@ LongBench_vcsum_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer),
+    inferencer=dict(type=GenInferencer, max_out_len=512),
 )
 
 LongBench_vcsum_eval_cfg = dict(

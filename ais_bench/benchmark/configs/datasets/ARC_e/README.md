@@ -1,5 +1,4 @@
 # ARC Easy Set
-中文 | [English](README_en.md)
 ## 数据集简介
 ARC是一个包含7,787道真实小学阶段科学选择题的新数据集，旨在推动高级问答技术的研究。该数据集分为挑战集（Challenge Set）和简单集（Easy Set），其中挑战集仅包含基于检索算法和词语共现算法均回答错误的难题。本文涉及的是Easy Set。
 
