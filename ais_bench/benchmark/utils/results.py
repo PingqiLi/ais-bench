@@ -16,8 +16,8 @@ def safe_write(results_dict: dict, filename):
     with open(filename, "a", encoding="utf-8") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         try:
-            for index, result in results_dict.items():
-                f.write(json.dumps({index: result}) + "\n")
+            for _, result in results_dict.items():
+                f.write(json.dumps(result) + "\n")
             f.flush()
             os.fsync(f.fileno())
         finally:

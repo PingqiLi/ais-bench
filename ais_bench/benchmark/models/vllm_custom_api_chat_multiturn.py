@@ -10,7 +10,7 @@ from tqdm import tqdm
 from openai import OpenAI
 
 from ais_bench.benchmark.registry import MODELS
-from ais_bench.benchmark.utils.prompt import PromptList, is_mm_prompt
+from ais_bench.benchmark.utils.prompt import PromptList
 
 from ais_bench.benchmark.models.base_api import BaseAPIModel, handle_synthetic_input
 from ais_bench.benchmark.models.performance_api import PerformanceAPIModel

@@ -1,6 +1,7 @@
 """Direct Generation Inferencer."""
 
 import asyncio
+import copy
 from multiprocessing import BoundedSemaphore
 from typing import List, Optional
 
@@ -73,6 +74,7 @@ class GenInferencer(BaseApiInferencer, BaseLocalInferencer):
             token_bucket: Semaphore for rate limiting
             session: HTTP session for the request
         """
+        data = copy.deepcopy(data)
         index = data.pop("index")
         input = data.pop("prompt")
         data_abbr = data.pop("data_abbr")
@@ -86,9 +88,8 @@ class GenInferencer(BaseApiInferencer, BaseLocalInferencer):
         else:
             await self.status_counter.failed()
         await self.status_counter.finish()
-        await asyncio.to_thread(
-            self.output_handler.report_cache_info, index, input, output, data_abbr, gold
-        )
+
+        await self.output_handler.report_cache_info(index, input, output, data_abbr, gold)
 
     def batch_inference(
         self,

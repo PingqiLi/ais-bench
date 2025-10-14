@@ -144,6 +144,12 @@ class ArgumentParser():
             help='Whether to enable pressure test in perf mode (only attr service)',
             action='store_true',
         )
+        parser.add_argument(
+            '--pressure-time',
+            help='Pressure test time, only valid when --pressure is True, default is 15 seconds',
+            type=int,
+            default=15
+        )
 
     def _custom_dataset_parser(self):
         """These args are all for the quick construction of custom datasets."""

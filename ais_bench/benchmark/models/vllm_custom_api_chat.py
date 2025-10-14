@@ -5,7 +5,7 @@ from transformers import AutoTokenizer
 from openai import OpenAI
 
 from ais_bench.benchmark.registry import MODELS
-from ais_bench.benchmark.utils.prompt import PromptList, is_mm_prompt
+from ais_bench.benchmark.utils.prompt import PromptList
 
 from ais_bench.benchmark.models.base_api import BaseAPIModel, APITemplateParser
 from ais_bench.benchmark.models.output import RequestOutput

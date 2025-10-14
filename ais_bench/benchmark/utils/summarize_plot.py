@@ -7,11 +7,11 @@ import time
 
 # ================== Constants ==================
 WEBGL_CONFIG = {
-    'scrollZoom': True,
-    'plotGlPixelRatio': 1,
-    'showLink': False,
-    'displaylogo': False,
-    'queueLength': 10,
+    "scrollZoom": True,
+    "plotGlPixelRatio": 1,
+    "showLink": False,
+    "displaylogo": False,
+    "queueLength": 10,
 }
 
 AXIS_CONFIG = dict(
@@ -19,20 +19,20 @@ AXIS_CONFIG = dict(
     showgrid=True,
     showticklabels=True,
     gridwidth=0.5,
-    gridcolor='rgba(211,211,211,0.5)',
-    linecolor='black',
+    gridcolor="rgba(211,211,211,0.5)",
+    linecolor="black",
 )
 
 # ================== Chunk rendering configuration ==================
 MAX_POINTS_PER_TRACE = 10000  # maximum number of points per trace
 TIMELINE_POINTS_PER_REQUEST = 3  # each request takes 3 points in the timeline chart (start, end, break)
 
+
 # ================== Helper functions ==================
 def validate_input_data(
     start_time_list: List[float],
     prefill_latency_list: List[float],
     end_time_list: List[float],
-    decode_token_latencies_list: List[List[float]],
 ) -> bool:
     """Validate input data"""
     logger = get_logger()
@@ -41,77 +41,77 @@ def validate_input_data(
         logger.warning("No requests to plot!")
         return False
 
-    if (n_requests != len(prefill_latency_list) or
-        n_requests != len(end_time_list) or
-        n_requests != len(decode_token_latencies_list)):
+    if n_requests != len(prefill_latency_list) or n_requests != len(end_time_list):
         logger.warning("Input list lengths mismatch! Details: ")
-        logger.warning(f"start_list:{n_requests}, prefill_latency_list:{len(prefill_latency_list)}")
-        logger.warning(f"end_list:{len(end_time_list)}, decode_token_latencies_list:{len(decode_token_latencies_list)}")
+        logger.warning(
+            f"start_list:{n_requests}, prefill_latency_list:{len(prefill_latency_list)}"
+        )
         return False
 
     return True
 
+
 def is_non_streaming_scenario(
     prefill_latency_list: List[float],
-    decode_token_latencies_list: List[List[float]]
 ) -> bool:
     """Check if it is a non-streaming scenario"""
     return all(p == 0.0 for p in prefill_latency_list)
 
+
 def preprocess_data(
-    start_time_list: List[float],
-    prefill_latency_list: List[float],
-    end_time_list: List[float],
-    decode_token_latencies_list: List[List[float]],
+    start_times: np.ndarray,
+    prefill_latencies: np.ndarray,
+    end_times: np.ndarray,
 ) -> Tuple[Optional[np.ndarray], np.ndarray, np.ndarray, bool]:
     """
     Data preprocessing
     返回: (first_token_times, adjusted_starts, adjusted_ends, is_non_streaming)
     """
-    start = np.asarray(start_time_list, dtype=np.float64)
-    prefill = np.asarray(prefill_latency_list, dtype=np.float64)  # prefill data is in ms, while other data is in s
-    end = np.asarray(end_time_list, dtype=np.float64)
-
     # Check if it is a non-streaming scenario
-    is_non_streaming = is_non_streaming_scenario(prefill_latency_list, decode_token_latencies_list)
+    is_non_streaming = is_non_streaming_scenario(prefill_latencies)
 
     # Calculate the first token time
-    first_token_times = (start + prefill) if not is_non_streaming else None
+    first_token_times = (start_times + prefill_latencies) if not is_non_streaming else None
 
     # For each request, check if it contains non-first token delay. If so, update the end_time of the request.
     # Because the end_time_list has errors due to the timing of the points, we need to use the value of first_token_time_list to correct it.
     # Only correct the end time in non-streaming scenarios
     if not is_non_streaming:
-        no_decode_indices = [i for i, lst in enumerate(decode_token_latencies_list) if not lst.any()]
-        if no_decode_indices:
-            end[no_decode_indices] = first_token_times[no_decode_indices]
-            get_logger().debug(f"Adjusted {len(no_decode_indices)} requests with no decode tokens")
+        no_decode_indices = np.where(np.abs(end_times - first_token_times) < 0.001)[0]
+        if no_decode_indices.any():
+            end_times[no_decode_indices] = first_token_times[no_decode_indices]
+            get_logger().debug(
+                f"Adjusted {len(no_decode_indices)} requests with no decode tokens"
+            )
             del no_decode_indices
 
     # Calculate the global minimum time
-    global_x_min = np.min(start) if len(start) > 0 else 0.0
+    global_x_min = np.min(start_times) if len(start_times) > 0 else 0.0
 
     # Calculate the relative time
-    adjusted_starts = start - global_x_min
-    adjusted_first_tokens = (first_token_times - global_x_min) if not is_non_streaming else None
-    adjusted_ends = end - global_x_min
+    adjusted_starts = start_times - global_x_min
+    adjusted_first_tokens = (
+        (first_token_times - global_x_min) if not is_non_streaming else None
+    )
+    adjusted_ends = end_times - global_x_min
 
     return adjusted_first_tokens, adjusted_starts, adjusted_ends, is_non_streaming
+
 
 def generate_timeline_traces(
     adjusted_starts: np.ndarray,
     adjusted_ends: np.ndarray,
     adjusted_first_tokens: np.ndarray,
     multiturn_group_id_list: list,
-    unit: str
+    unit: str,
 ) -> List[go.Scattergl]:
     """Generate the trajectory of the request timeline chart"""
     n_requests = len(adjusted_starts)
     if n_requests == 0:
         return []
-    unique_ids = []  #without sorted group id
-    first_index_lookup = {}  #key: without sorted group id; value: index
-    index_map = [] # idex
+    unique_ids = []  # without sorted group id
+    first_index_lookup = {}  # key: without sorted group id; value: index
+    index_map = []  # idex
     for idx, val in enumerate(multiturn_group_id_list):
         if val not in first_index_lookup:
             first_index_lookup[val] = len(unique_ids)
@@ -142,7 +142,7 @@ def generate_timeline_traces(
         # Red line (TTFT): from start to the first token
         red_x[arr_idx] = start_t
         red_x[arr_idx + 1] = first_token_t
-        red_y[arr_idx:arr_idx + 2] = y if is_multiturn else sorted_pos + 1
+        red_y[arr_idx : arr_idx + 2] = y if is_multiturn else sorted_pos + 1
 
         blue_content_data = "NaN"
 
@@ -150,7 +150,7 @@ def generate_timeline_traces(
         if end_t > first_token_t:
             blue_x[arr_idx] = first_token_t
             blue_x[arr_idx + 1] = end_t
-            blue_y[arr_idx:arr_idx + 2] = y if is_multiturn else sorted_pos + 1
+            blue_y[arr_idx : arr_idx + 2] = y if is_multiturn else sorted_pos + 1
             decode_time = end_t - first_token_t
             blue_content_data = f"{first_token_t:.2f}→{end_t:.2f}={decode_time:.2f}"
 
@@ -159,7 +159,9 @@ def generate_timeline_traces(
         e2e = end_t - start_t
 
         red_content = f"<span style='color:red'>TTFT({unit}): {start_t:.2f}→{first_token_t:.2f}={ttft:.2f}</span><br>"
-        blue_content = f"<span style='color:blue'>Decode({unit}): {blue_content_data}</span><br>"
+        blue_content = (
+            f"<span style='color:blue'>Decode({unit}): {blue_content_data}</span><br>"
+        )
         e2e_content = f"E2E({unit}): {start_t:.2f}→{end_t:.2f}={e2e:.2f}"
         hover_text[arr_idx] = red_content + blue_content + e2e_content
 
@@ -176,36 +178,39 @@ def generate_timeline_traces(
 
         # Red line
         if np.any(~np.isnan(red_x[chunk])):
-            traces.append(go.Scattergl(
-                x=red_x[chunk],
-                y=red_y[chunk],
-                mode='lines',
-                line=dict(color='red', width=1, shape="hv"),
-                hoverinfo='text',
-                hovertext=hover_text[chunk],
-                showlegend=False,
-                connectgaps=False
-            ))
+            traces.append(
+                go.Scattergl(
+                    x=red_x[chunk],
+                    y=red_y[chunk],
+                    mode="lines",
+                    line=dict(color="red", width=1, shape="hv"),
+                    hoverinfo="text",
+                    hovertext=hover_text[chunk],
+                    showlegend=False,
+                    connectgaps=False,
+                )
+            )
 
         # Blue line
         if np.any(~np.isnan(blue_x[chunk])):
-            traces.append(go.Scattergl(
-                x=blue_x[chunk],
-                y=blue_y[chunk],
-                mode='lines',
-                line=dict(color='blue', width=1, shape="hv"),
-                hoverinfo='none',
-                showlegend=False,
-                connectgaps=False
-            ))
+            traces.append(
+                go.Scattergl(
+                    x=blue_x[chunk],
+                    y=blue_y[chunk],
+                    mode="lines",
+                    line=dict(color="blue", width=1, shape="hv"),
+                    hoverinfo="none",
+                    showlegend=False,
+                    connectgaps=False,
+                )
+            )
 
     del red_x, red_y, blue_x, blue_y, hover_text
     return traces
 
+
 def generate_concurrency_traces(
-    adjusted_starts: np.ndarray,
-    adjusted_ends: np.ndarray,
-    unit: str
+    adjusted_starts: np.ndarray, adjusted_ends: np.ndarray, unit: str
 ) -> List[go.Scattergl]:
     """Generate the trajectory of the concurrency chart"""
     # 过滤零长度请求
@@ -220,10 +225,10 @@ def generate_concurrency_traces(
 
     # Generate the event array
     events = np.empty((n_events, 2), dtype=np.float32)
-    events[:len(valid_starts), 0] = valid_starts
-    events[:len(valid_starts), 1] = 1  # Start event
-    events[len(valid_starts):, 0] = valid_ends
-    events[len(valid_starts):, 1] = -1  # End event
+    events[: len(valid_starts), 0] = valid_starts
+    events[: len(valid_starts), 1] = 1  # Start event
+    events[len(valid_starts) :, 0] = valid_ends
+    events[len(valid_starts) :, 1] = -1  # End event
 
     # Stable sorting (start event priority if time is the same)
     sort_indices = np.lexsort((events[:, 1], events[:, 0]))
@@ -258,46 +263,47 @@ def generate_concurrency_traces(
 
         chunk = slice(start_idx, end_idx)
 
-        traces.append(go.Scattergl(
-            x=conc_times[chunk],
-            y=conc_counts[chunk],
-            mode='lines',
-            line=dict(color='#4CAF50', width=1, shape='hv'),
-            fill='tozeroy',
-            fillcolor='rgba(76,175,80,0.1)',
-            hoverinfo="text",
-            hovertext=conc_hover_text[chunk],
-            showlegend=False,
-            connectgaps=True
-        ))
+        traces.append(
+            go.Scattergl(
+                x=conc_times[chunk],
+                y=conc_counts[chunk],
+                mode="lines",
+                line=dict(color="#4CAF50", width=1, shape="hv"),
+                fill="tozeroy",
+                fillcolor="rgba(76,175,80,0.1)",
+                hoverinfo="text",
+                hovertext=conc_hover_text[chunk],
+                showlegend=False,
+                connectgaps=True,
+            )
+        )
 
     # Clean up large arrays and release memory
     del events, sort_indices, unique_times, inverse_indices, delta_per_time, cumulative
     del conc_times, conc_counts, conc_hover_text
     return traces
 
+
 def create_plot_layout(
-    max_time: float,
-    unit: str,
-    has_timeline: bool
+    max_time: float, unit: str, has_timeline: bool
 ) -> Dict[str, Any]:
     """Create the layout configuration of the chart"""
     xaxis_config = dict(
         **AXIS_CONFIG,
         showspikes=True,
-        spikemode='across',
-        spikesnap='cursor',
+        spikemode="across",
+        spikesnap="cursor",
         spikethickness=1,
-        spikecolor='#666',
-        spikedash='dot',
+        spikecolor="#666",
+        spikedash="dot",
         title=f"Relative Time ({unit})",
         range=[0, max_time],
     )
 
     yaxis_config = dict(
         **AXIS_CONFIG,
-        rangemode='nonnegative',
-        tickmode='auto',
+        rangemode="nonnegative",
+        tickmode="auto",
         nticks=10,
     )
 
@@ -305,10 +311,10 @@ def create_plot_layout(
         # Double chart mode
         return dict(
             height=1200,
-            plot_bgcolor='white',
+            plot_bgcolor="white",
             xaxis1=dict(
                 **xaxis_config,
-                matches='x2',
+                matches="x2",
             ),
             yaxis1=dict(
                 **yaxis_config,
@@ -322,40 +328,35 @@ def create_plot_layout(
                 title="Request Concurrency Count",
             ),
             hoverlabel=dict(
-                bgcolor='rgba(255,255,255,0.9)',
-                font_size=12,
-                align='left'
+                bgcolor="rgba(255,255,255,0.9)", font_size=12, align="left"
             ),
-            hovermode='closest',
+            hovermode="closest",
         )
     else:
         # Single chart mode (only concurrency chart)
         return dict(
-            height= 600,
-            plot_bgcolor='white',
+            height=600,
+            plot_bgcolor="white",
             xaxis=dict(**xaxis_config),
-            yaxis=dict(**yaxis_config,
-                         title = "Request Concurrency Count"
-            ),
+            yaxis=dict(**yaxis_config, title="Request Concurrency Count"),
             hoverlabel=dict(
-                bgcolor='rgba(255,255,255,0.9)',
-                font_size=12,
-                align='left'
+                bgcolor="rgba(255,255,255,0.9)", font_size=12, align="left"
             ),
-            hovermode='closest',
+            hovermode="closest",
         )
+
 
 # ================== Main function for external use ==================
 def plot_sorted_request_timelines(
-    start_time_list: List[float],
-    prefill_latency_list: List[float],
-    end_time_list: List[float],
-    decode_token_latencies_list: List[List[float]],
+    start_times: np.ndarray,
+    end_times: np.ndarray,
+    prefill_latencies: np.ndarray,
     multiturn_group_id_list: List[str],
     output_file: str = "timeline.html",
-    unit: str = "s"
+    unit: str = "s",
 ) -> None:
     """Plot the request timeline and concurrency chart"""
+
     logger = get_logger()
     start_timestamp = time.perf_counter()
 
@@ -363,23 +364,35 @@ def plot_sorted_request_timelines(
     logger.info("Starting request timeline processing...")
 
     # Validate input data
-    if not validate_input_data(start_time_list, prefill_latency_list, end_time_list, decode_token_latencies_list):
+    if not validate_input_data(start_times, prefill_latencies, end_times):
         return False
 
     # Data preprocessing
     preprocess_start = time.perf_counter()
-    adjusted_first_token_times, adjusted_starts, adjusted_ends, is_non_streaming = preprocess_data(
-        start_time_list, prefill_latency_list, end_time_list, decode_token_latencies_list
+    adjusted_first_token_times, adjusted_starts, adjusted_ends, is_non_streaming = (
+        preprocess_data(
+            start_times,
+            prefill_latencies,
+            end_times
+        )
     )
 
     if is_non_streaming:
-        logger.warning("[Non-streaming scenario] The plot will only show the request concurrency chart!")
+        logger.warning(
+            "[Non-streaming scenario] The plot will only show the request concurrency chart!"
+        )
 
-    n_requests = len(start_time_list)
-    has_timeline = not is_non_streaming and adjusted_first_token_times is not None and n_requests > 0
+    n_requests = len(start_times)
+    has_timeline = (
+        not is_non_streaming
+        and adjusted_first_token_times is not None
+        and n_requests > 0
+    )
     max_time = np.max(adjusted_ends) if n_requests > 0 else 1.0
 
-    logger.info(f"Data preprocessing completed in {time.perf_counter() - preprocess_start:.4f}s")
+    logger.info(
+        f"Data preprocessing completed in {time.perf_counter() - preprocess_start:.4f}s"
+    )
 
     # ===== 2. Generate timeline chart trajectory (only in streaming scenario) =====
     timeline_traces = []
@@ -387,16 +400,26 @@ def plot_sorted_request_timelines(
         logger.info(f"Generating timeline traces for {n_requests} requests...")
         timeline_start = time.perf_counter()
         timeline_traces = generate_timeline_traces(
-            adjusted_starts, adjusted_ends, adjusted_first_token_times, multiturn_group_id_list, unit
+            adjusted_starts,
+            adjusted_ends,
+            adjusted_first_token_times,
+            multiturn_group_id_list,
+            unit,
         )
-        logger.info(f"Generated timeline trace chunks in {time.perf_counter() - timeline_start:.4f}s")
+        logger.info(
+            f"Generated timeline trace chunks in {time.perf_counter() - timeline_start:.4f}s"
+        )
 
     # ===== 3. Generate concurrency chart trajectory =====
     logger.info("Generating concurrency traces...")
     concurrency_start = time.perf_counter()
-    concurrency_traces = generate_concurrency_traces(adjusted_starts, adjusted_ends, unit)
+    concurrency_traces = generate_concurrency_traces(
+        adjusted_starts, adjusted_ends, unit
+    )
 
-    logger.info(f"Generated concurrency trace chunks in {time.perf_counter() - concurrency_start:.4f}s")
+    logger.info(
+        f"Generated concurrency trace chunks in {time.perf_counter() - concurrency_start:.4f}s"
+    )
 
     # ===== 4. Create chart =====
     logger.info("Creating figure layout...")
@@ -407,12 +430,7 @@ def plot_sorted_request_timelines(
 
     # Create chart object
     if has_timeline:
-        fig = make_subplots(
-            rows=2,
-            cols=1,
-            vertical_spacing=0.1,
-            shared_xaxes=True
-        )
+        fig = make_subplots(rows=2, cols=1, vertical_spacing=0.1, shared_xaxes=True)
         for trace in timeline_traces:
             fig.add_trace(trace, row=1, col=1)
         for trace in concurrency_traces:
@@ -433,7 +451,7 @@ def plot_sorted_request_timelines(
 
     fig.write_html(
         output_file,
-        include_plotlyjs='cdn',
+        include_plotlyjs="cdn",
         config=WEBGL_CONFIG,
         auto_open=False,
         full_html=True,

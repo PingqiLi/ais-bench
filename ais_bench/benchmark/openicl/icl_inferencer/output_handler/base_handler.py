@@ -4,14 +4,15 @@ import queue
 import shutil
 import traceback
 import uuid
+import time
 from abc import abstractmethod
 from collections import defaultdict
-from multiprocessing import Event
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import h5py
 import numpy as np
+import janus
 
 from ais_bench.benchmark.models.output import Output
 from ais_bench.benchmark.utils import get_logger
@@ -51,18 +52,17 @@ class BaseInferencerOutputHandler:
         """
         self.results_dict = defaultdict(dict)
         self.model = model
-        self.cache_queue = queue.Queue()
+        self.cache_queue = janus.Queue()
         self.all_success = True
 
     @abstractmethod
-    def save_results(
+    def get_result(
         self,
-        index: int,
-        data_abbr: str,
+        h5_group: h5py.Group,
         input: Union[str, List[str]],
         output: Union[str, Output],
         gold: Optional[str] = None,
-    ) -> None:
+    ) -> dict:
         """
         Save the results to the results_dict.
 
@@ -70,8 +70,7 @@ class BaseInferencerOutputHandler:
         to define how results are stored and processed.
 
         Args:
-            index (int): The index of the current result
-            data_abbr (str): Abbreviation for the dataset
+            h5_group (h5py.Group): HDF5 group to write results to
             input (Union[str, List[str]]): Input data for the inference
             output (Union[str, Output]): Output result from inference
             gold (Optional[str]): Ground truth data for comparison
@@ -119,9 +118,9 @@ class BaseInferencerOutputHandler:
         except Exception as e:
             raise
 
-    def report_cache_info(
+    async def report_cache_info(
         self,
-        index: int,
+        id: int,
         input: Union[List[str], str],
         output: Union[Output, str],
         data_abbr: str,
@@ -135,7 +134,7 @@ class BaseInferencerOutputHandler:
         scheduled for queuing), False if failed (e.g., full queue or unable to schedule).
 
         Args:
-            index (int): The index of the current result
+            id (int): The index of the current result
             input (Union[List[str], str]): Input data for the inference
             output (Union[Output, str]): Output result from inference
             data_abbr (str): Abbreviation for the dataset
@@ -148,8 +147,8 @@ class BaseInferencerOutputHandler:
             queue.Full: If queue is full and cannot accept new items
         """
         try:
-            item = (index, data_abbr, input, output, gold)
-            self.cache_queue.put_nowait(item)
+            item = (id, data_abbr, input, output, gold)
+            await self.cache_queue.async_q.put_nowait(item)
             return True
         except queue.Full:
             return False
@@ -238,7 +237,6 @@ class BaseInferencerOutputHandler:
         save_dir: str,
         file_name: str,
         perf_mode: bool,
-        stop_event: Event,
         save_every: int = 1,
     ) -> None:
         """
@@ -252,7 +250,6 @@ class BaseInferencerOutputHandler:
             save_dir (str): Directory to save output files
             file_name (str): Name of the output file
             perf_mode (bool): Whether in performance mode
-            stop_event (Event): Event to signal when to stop processing
             save_every (int): Number of items to batch before writing (default: 1)
 
         Raises:
@@ -274,34 +271,30 @@ class BaseInferencerOutputHandler:
                     cache_data = []
                     processed_count = 0
 
-                    while not stop_event.is_set():
+                    while True:
                         try:
-                            item = self.cache_queue.get(timeout=1)
+                            item = self.cache_queue.sync_q.get(timeout=1)
                         except queue.Empty:
+                            time.sleep(0.1)
                             continue
 
                         if item is None:
                             break
                         try:
-                            self.save_results(*item)
-                            index, data_abbr = item[0], item[1]
+                            uid = str(uuid.uuid4())[:8]
 
-                            # Extract and write arrays to HDF5
-                            data_wo_arrays = self._extract_and_write_arrays(
-                                self.results_dict[data_abbr][str(index)], group
-                            )
-
-                            if perf_mode:
-                                data_wo_arrays["h5_name"] = h5_name
-
-                            self.results_dict[data_abbr][str(index)] = data_wo_arrays
-
-                            # Prepare JSON data (optimize by pre-computing JSON string)
+                            result_data = self.get_result(group, *item[2:])
+                            id, data_abbr = item[0], item[1]
                             json_data = {
                                 "data_abbr": data_abbr,
-                                "index": index,
-                                "cache_data": data_wo_arrays,
+                                "id": id,
                             }
+
+                            if perf_mode:
+                                result_data["h5_name"] = h5_name
+                            json_data.update(result_data)
+
+                            self.results_dict[data_abbr][uid] = json_data
 
                             # Pre-compute JSON string to avoid repeated serialization
                             json_str = json.dumps(json_data) + "\n"
@@ -343,7 +336,7 @@ class BaseInferencerOutputHandler:
                 )
 
             # Clean up empty directories
-            if json_path.exists() and json_path.parent.exists():
+            if json_path.parent.exists():
                 try:
                     empty = next(Path(json_path.parent).iterdir(), None) is None
                     if empty:
@@ -364,7 +357,7 @@ class BaseInferencerOutputHandler:
         adding a None item to the queue, which serves as a stop signal.
         """
         try:
-            self.cache_queue.put(None)
+            self.cache_queue.sync_q.put(None)
             logger.debug("Stop signal sent to cache consumer")
         except Exception as e:
             logger.error(f"Error sending stop signal to cache consumer: {str(e)}")
