@@ -3,13 +3,14 @@ import json
 import warnings
 from abc import abstractmethod
 from copy import deepcopy
+import asyncio
 
 from typing import Dict, List, Optional, Tuple, Union
 
 from ais_bench.benchmark.utils import (
     get_logger,
 )
-from ais_bench.benchmark.utils.prompt import PromptList, is_mm_prompt
+from ais_bench.benchmark.utils.prompt import PromptList
 
 from ais_bench.benchmark.models.base import BaseModel
 
@@ -168,66 +169,77 @@ class BaseAPIModel(BaseModel):
         else:
             self.session = session
             close_session = False
-        output.is_mm_prompt = self.check_mm_prompt(input_data=input_data)
-        request_body = await self.get_request_body(input_data, max_out_len, output, **args)
-        if self.stream:
-            await self.stream_infer(request_body, output)
-        else:
-            await self.text_infer(request_body, output)
+        request_body = await self.get_request_body(
+            input_data, max_out_len, output, **args
+        )
+        retry_count = 0
+        for _ in range(self.retry):
+            try:
+                if self.stream:
+                    await self.stream_infer(request_body, output)
+                else:
+                    await self.text_infer(request_body, output)
+                # break retry loop when request is successful
+                break
+            except asyncio.exceptions.CancelledError as e:
+                output.success = False
+                output.error_info = "Request cancelled by user"
+                break
+            except Exception:
+                # increase retry count and set output to failed
+                retry_count += 1
+                output.success = False
+                exc_info = sys.exc_info()
+                output.error_info = (
+                    f"After {retry_count} retries, request failed with exception:\n"
+                    + "\n".join(traceback.format_exception(*exc_info))
+                )
+                await output.clear_time_points()
+                continue
         if close_session:
             await self.session.close()
         return output
 
     async def stream_infer(self, request_body: dict, output: Output):
         headers = {"Content-Type": "application/json"}
-        try:
-            await output.record_time_point()
-            async with self.session.post(
-                url=self.url, json=request_body, headers=headers
-            ) as response:
-                if response.status == 200:
-                    async for raw_chunk in self.iter_lines(response.content):
-                        chunk = raw_chunk.strip()
-                        if not chunk:
-                            continue
-                        chunk = chunk.decode("utf-8")
-                        if chunk.startswith(":"):
-                            continue
-                        chunk = chunk.removeprefix("data:").strip()
-                        if chunk == "[DONE]":
-                            break
-                        await output.record_time_point()
-                        data = json.loads(chunk)
-                        await self.parse_stream_response(data, output)
-                    output.success = True
-                else:
-                    output.error_info = response.reason
-                    output.success = False
-        except Exception:
-            output.success = False
-            exc_info = sys.exc_info()
-            output.error_info = "".join(traceback.format_exception(*exc_info))
+        await output.record_time_point()
+        async with self.session.post(
+            url=self.url, json=request_body, headers=headers
+        ) as response:
+            if response.status == 200:
+                async for raw_chunk in self.iter_lines(response.content):
+                    chunk = raw_chunk.strip()
+                    if not chunk:
+                        continue
+                    chunk = chunk.decode("utf-8")
+                    if chunk.startswith(":"):
+                        continue
+                    chunk = chunk.removeprefix("data:").strip()
+                    if chunk == "[DONE]":
+                        break
+                    await output.record_time_point()
+                    data = json.loads(chunk)
+                    await self.parse_stream_response(data, output)
+                output.success = True
+            else:
+                output.error_info = response.reason
+                output.success = False
 
     async def text_infer(self, request_body, output: Output):
         headers = {"Content-Type": "application/json"}
-        try:
-            await output.record_time_point()
-            async with self.session.post(
-                url=self.url, json=request_body, headers=headers
-            ) as response:
-                if response.status == 200:
-                    raw_data = await response.text()
-                    await output.record_time_point()
-                    data = json.loads(raw_data)
-                    await self.parse_text_response(data, output)
-                    output.success = True
-                else:
-                    output.error_info = response.reason
-                    output.success = False
-        except Exception:
-            output.success = False
-            exc_info = sys.exc_info()
-            output.error_info = "".join(traceback.format_exception(*exc_info))
+        await output.record_time_point()
+        async with self.session.post(
+            url=self.url, json=request_body, headers=headers
+        ) as response:
+            if response.status == 200:
+                raw_data = await response.text()
+                await output.record_time_point()
+                data = json.loads(raw_data)
+                await self.parse_text_response(data, output)
+                output.success = True
+            else:
+                output.error_info = response.reason
+                output.success = False
 
 
 class APITemplateParser:

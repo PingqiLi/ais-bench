@@ -76,17 +76,20 @@ def get_prompt_hash(dataset_cfg: Union[ConfigDict, List[ConfigDict]]) -> str:
     return hash_object.hexdigest()
 
 
-def is_mm_prompt(prompt_template):
+def is_mm_prompt(prompt):
     # input type1: custom language (aime2024_gen)
     # input type2: chat language (aime2024_gen_0_shot_chat_prompt)
     # input type3: multi-modal input (textvqa_gen)
     # Return: Only return True when input type3
-    if not isinstance(prompt_template, list) or len(prompt_template) < 0 \
-                or not isinstance(prompt_template[0], dict):  #input type1
+    if not isinstance(prompt, list):
         return False
-    for data in prompt_template:
-        if any(key in data for key in ("image_url", "video_url", "audio_url")):
-            return True
+    for message in prompt:
+        content = message.get('content')
+        if not isinstance(content, list):
+            return False
+        for mm_data in content:
+            if mm_data.get('type') in ('text','image_url', 'video_url', 'audio_url'):
+                return True
     return False
 
 

@@ -5,6 +5,7 @@ import threading
 import time
 from typing import Any, List
 from multiprocessing import Event, Process, Queue, shared_memory, BoundedSemaphore
+from typing import Dict
 
 import multiprocessing as mp
 import pickle
@@ -14,6 +15,7 @@ from ais_bench.benchmark.global_consts import WORKERS_NUM
 from ais_bench.benchmark.registry import ICL_INFERENCERS, TASKS, ICL_RETRIEVERS
 from ais_bench.benchmark.tasks.base import BaseTask, TaskStateManager
 from ais_bench.benchmark.tasks.utils import (
+    update_global_data_index,
     check_virtual_memory_usage,
     create_message_share_memory,
     ProgressBar,
@@ -26,8 +28,9 @@ from ais_bench.benchmark.utils import (
 )
 from ais_bench.benchmark.utils.abbr import task_abbr_from_cfg
 
-CONCURRENCY_PER_PROCESS = 800
+CONCURRENCY_PER_PROCESS = 500
 MAX_WORKERS_NUM = mp.cpu_count() * 0.8
+TASK_WAIT_TIME = 60
 
 
 def run_single_inferencer(
@@ -36,8 +39,8 @@ def run_single_inferencer(
     shm_name: str,
     message_shm_name: str,
     max_concurrency: int,
-    index_queue: Queue,
-    token_producer: Queue = None,
+    indexes: Dict,
+    token_bucket: BoundedSemaphore,
 ):
     """Run a single inferencer that reads samples from shared memory.
 
@@ -47,17 +50,18 @@ def run_single_inferencer(
         shm_name: The name of the shared memory block containing pickled samples
         max_concurrency: Maximum concurrent requests in this process
         index_queue: Queue yielding (index, offset, length) for items in shared memory
-        token_producer: Token generator; inferencer must acquire tokens before inference
+        token_bucket: Token bucket for rate limiting
     """
     inferencer_cfg["model_cfg"] = model_cfg
     inferencer_cfg["batch_size"] = max_concurrency
     inferencer = ICL_INFERENCERS.build(inferencer_cfg)
+    # pressure mode each process has a copy of the data list
 
     inferencer.inference_with_shm(
         shm_name,
         message_shm_name,
-        index_queue,
-        token_producer,
+        indexes,
+        token_bucket,
     )
 
 
@@ -76,9 +80,13 @@ class OpenICLApiInferTask(BaseTask):
         super().__init__(cfg)
         self.concurrency = self.model_cfg.get("batch_size", 1)
         self.pressure = self.cli_args.get("pressure", False)
+        self.pressure_time = self.cli_args.get("pressure_time")
         self.inferencer_cfg = self.dataset_cfgs[0]["infer_cfg"]["inferencer"]
         self.inferencer_cfg["model_cfg"] = self.model_cfg
-        self.inferencer_cfg["mode"] = self.cli_args.get("mode", "infer")
+        self.inferencer_cfg["pressure_time"] = self.pressure_time
+        self.inferencer_cfg["mode"] = (
+            self.cli_args.get("mode", "infer") if not self.pressure else "pressure"
+        )
         self.inferencer_cfg["batch_size"] = self.model_cfg.get("batch_size", 1)
         self.inferencer_cfg["output_json_filepath"] = self.work_dir
         self.logger = get_logger()
@@ -109,7 +117,7 @@ class OpenICLApiInferTask(BaseTask):
         if isinstance(WORKERS_NUM, int):
             if WORKERS_NUM > 0:
                 return min(WORKERS_NUM, MAX_WORKERS_NUM)
-        work_num = self.concurrency // CONCURRENCY_PER_PROCESS
+        work_num = (self.concurrency - 1) // CONCURRENCY_PER_PROCESS
         return min(work_num + 1, MAX_WORKERS_NUM)
 
     def _get_data_list(self):
@@ -120,7 +128,7 @@ class OpenICLApiInferTask(BaseTask):
         Returns:
             List: List of pickled dataset items
         """
-        pickled_dataset = []
+        data_list = []
         if not hasattr(self.inferencer, "get_data_list"):
             raise ValueError("Inferencer must implement get_data_list method")
         for dataset_cfg in self.dataset_cfgs:
@@ -133,10 +141,10 @@ class OpenICLApiInferTask(BaseTask):
             retriever = ICL_RETRIEVERS.build(retriever_cfg)
             infer_data_list = self.inferencer.get_data_list(retriever)
             for data in infer_data_list:
-                pickled_dataset.append(pickle.dumps(data))
-        return pickled_dataset
+                data_list.append(data)
+        return data_list
 
-    def _dump_dataset_to_share_memory(self):
+    def _dump_dataset_to_share_memory(self, data_list: List):
         """Dump the serialized dataset into a shared memory block.
 
         Returns:
@@ -145,7 +153,7 @@ class OpenICLApiInferTask(BaseTask):
                 - dataset_shm: The shared memory region
                 - index_queue: Queue yielding (index, offset, length)
         """
-        pickled_dataset = self._get_data_list()
+        pickled_dataset = [pickle.dumps(data) for data in data_list]
         # Dump dataset to shared memory
         lengths = [len(b) for b in pickled_dataset]
         dataset_bytes = sum(lengths)
@@ -156,21 +164,17 @@ class OpenICLApiInferTask(BaseTask):
         dataset_shm = shared_memory.SharedMemory(create=True, size=dataset_bytes)
 
         buf = dataset_shm.buf
-        index_queue_size = len(pickled_dataset) + 1
-        # In pressure mode, queue length maintains max concurrency + 1,
-        # ensuring each coroutine can get at least one data, avoiding blocking
-        if self.pressure:
-            index_queue_size = max(index_queue_size, self.concurrency + 1)
-        index_queue = mp.Queue(maxsize=index_queue_size)
+        indexes = {}
         index = 0
         offset = 0
         for data, length in zip(pickled_dataset, lengths):
             buf[offset : offset + length] = data
-            index_queue.put((index, offset, length))
+            indexes[index] = (index, offset, length)
             offset += length
             index += 1
-        index_queue.put(None)
-        return len(pickled_dataset), dataset_shm, index_queue
+        if not self.pressure:
+            indexes[index] = None
+        return len(pickled_dataset), dataset_shm, indexes
 
     def _deliver_concurrency_for_workers(self):
         """Split total concurrency across worker processes as evenly as possible.
@@ -200,7 +204,7 @@ class OpenICLApiInferTask(BaseTask):
         self,
         dataset_shm: shared_memory.SharedMemory,
         message_shm: shared_memory.SharedMemory,
-        index_queue: Queue,
+        indexes: Dict,
         token_bucket: Queue,
     ):
         """Run single-process debug mode; may be insufficient for high concurrency.
@@ -208,7 +212,8 @@ class OpenICLApiInferTask(BaseTask):
         Args:
             dataset_shm: Shared memory containing dataset
             message_shm: Shared memory for message passing
-            index_queue: Queue for data indices
+            indexes: Indexes for data
+            data_index_value: Value for data index
             token_bucket: Token bucket for rate limiting
         """
         if self.concurrency > CONCURRENCY_PER_PROCESS:
@@ -221,14 +226,14 @@ class OpenICLApiInferTask(BaseTask):
         self.inferencer.inference_with_shm(
             dataset_shm.name,
             message_shm.name,
-            index_queue,
+            indexes,
             token_bucket,
         )
 
     def _run_multi_process(
         self,
         dataset_shm: shared_memory.SharedMemory,
-        index_queue: Queue,
+        indexes: Dict,
         token_bucket: BoundedSemaphore,
         message_shms: List[shared_memory.SharedMemory],
     ):
@@ -236,7 +241,8 @@ class OpenICLApiInferTask(BaseTask):
 
         Args:
             dataset_shm: Shared memory containing dataset
-            index_queue: Queue for data indices
+            indexes: Indexes for data
+            data_index_value: Value for data index
             token_bucket: Token bucket for rate limiting
             message_shms: List to store message shared memory objects (mutated)
 
@@ -264,7 +270,7 @@ class OpenICLApiInferTask(BaseTask):
                         dataset_shm.name,
                         message_shm.name,
                         concurrency,
-                        index_queue,
+                        indexes,
                         token_bucket,
                     ),
                 )
@@ -293,14 +299,18 @@ class OpenICLApiInferTask(BaseTask):
         debug = self.cli_args.get("debug", False)
         self.inferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
 
-        dataset_size, dataset_shm, index_queue = self._dump_dataset_to_share_memory()
+        data_list = self._get_data_list()
+        dataset_size, dataset_shm, indexes = self._dump_dataset_to_share_memory(data_list)
         # In pressure mode, treat the first `concurrency` requests as the dataset size
-        request_num = dataset_size if not self.pressure else self.concurrency
+        if self.pressure:
+            request_num = self.concurrency
+        else:
+            request_num = dataset_size
 
         # Create token producer
         token_producer = TokenProducer(
             self.model_cfg.pop("request_rate", 0),
-            self.model_cfg.pop("traffic_cfg", None),
+            self.model_cfg.pop("traffic_cfg", {}),
             request_num,
             self.pressure,
         )
@@ -319,7 +329,12 @@ class OpenICLApiInferTask(BaseTask):
                 message_shms[os.getpid()] = message_shm
                 # Create progress bar
                 pb = ProgressBar(
-                    message_shms, self.stop_evt, request_num, debug, self.pressure
+                    message_shms,
+                    self.stop_evt,
+                    dataset_size,
+                    debug,
+                    self.pressure,
+                    self.pressure_time,
                 )
                 # Start display progress
                 pb_thread = threading.Thread(
@@ -328,10 +343,23 @@ class OpenICLApiInferTask(BaseTask):
                 pb_thread.start()
                 # Start produce tokens
                 token_thread.start()
+
+                global_data_index_process = Process(
+                    target=update_global_data_index,
+                    args=(
+                        list(shm.name for shm in message_shms.values()),
+                        len(indexes),
+                        self.pressure,
+                    ),
+                    daemon=True,
+                )
+
+                global_data_index_process.start()
+
                 self._run_debug(
                     dataset_shm,
                     message_shm,
-                    index_queue,
+                    indexes,
                     token_producer.token_bucket,
                 )
 
@@ -339,14 +367,31 @@ class OpenICLApiInferTask(BaseTask):
             else:
                 processes = self._run_multi_process(
                     dataset_shm,
-                    index_queue,
+                    indexes,
                     token_producer.token_bucket,
                     message_shms,
                 )
+
+                global_data_index_process = Process(
+                    target=update_global_data_index,
+                    args=(
+                        list(shm.name for shm in message_shms.values()),
+                        len(indexes),
+                        self.pressure,
+                    ),
+                    daemon=True,
+                )
+
+                global_data_index_process.start()
                 # Start ProgressBar after getting process IDs in multi-process mode
                 # Create progress bar
                 pb = ProgressBar(
-                    message_shms, self.stop_evt, request_num, debug, self.pressure
+                    message_shms,
+                    self.stop_evt,
+                    request_num,
+                    debug,
+                    self.pressure,
+                    self.pressure_time,
                 )
                 # Start display progress
                 pb_thread = threading.Thread(
@@ -368,9 +413,10 @@ class OpenICLApiInferTask(BaseTask):
             self.stop_evt.set()
             pb_thread.join()
             pb.set_message_flag(1)
+            global_data_index_process.join(timeout=TASK_WAIT_TIME)
             if processes:
                 for p in processes:
-                    p.join(timeout=60)
+                    p.join(timeout=TASK_WAIT_TIME)
                 # Check if any process is still alive, force terminate
                 for p in processes:
                     if p.is_alive():
@@ -378,11 +424,12 @@ class OpenICLApiInferTask(BaseTask):
                             f"Process {p.pid} timed out and tried to force terminate."
                         )
                         p.terminate()
-                        p.join(timeout=60)
+                        p.join(timeout=TASK_WAIT_TIME)
         finally:
             self.stop_evt.set()
             pb_thread.join()
             pb.set_message_flag(1)
+            global_data_index_process.join(timeout=TASK_WAIT_TIME)
             token_thread.join()
             for pid, shm in message_shms.items():
                 self._cleanup_shms(shm)

@@ -4,18 +4,30 @@ import mmap
 import os.path as osp
 from collections import defaultdict
 from typing import Dict, List
+import multiprocessing
+import time
 
+
+import numpy as np
+from multiprocessing import Pool
 import orjson
 import tabulate
+from tqdm import tqdm
 from mmengine import ConfigDict
 
-from ais_bench.benchmark.calculators.base_perf_metric_calculator import BasePerfMetricCalculator
+from ais_bench.benchmark.calculators.base_perf_metric_calculator import (
+    BasePerfMetricCalculator,
+)
 from ais_bench.benchmark.utils import (
     get_logger,
     model_abbr_from_cfg,
     plot_sorted_request_timelines,
 )
-from ais_bench.benchmark.utils.build import build_perf_metric_calculator_from_cfg
+from ais_bench.benchmark.utils.build import (
+    build_perf_metric_calculator_from_cfg,
+    build_model_from_cfg,
+)
+from ais_bench.benchmark.utils.prompt import is_mm_prompt
 from ais_bench.benchmark.utils.results import dump_results_dict, load_from_h5
 
 
@@ -96,68 +108,24 @@ class DefaultPerfSummarizer:
             else dataset_abbrs[0]
         )
 
-    def _extract_success_cases(self, details_perf_datas):
-        """Extract successful cases from performance data.
-
-        Performance calculation only keeps successful results, success is used to count failures.
-
-        Args:
-            details_perf_datas: Performance data dictionary
-
-        Returns:
-            dict: Performance data with only successful cases
-        """
-        success_id = [i for i, ok in enumerate(details_perf_datas["success"]) if ok]
-        success_details_perf_datas = {
-            key: [value[i] for i in success_id]
-            for key, value in details_perf_datas.items()
-            if key != "success"
-        }
-        success_details_perf_datas["success"] = details_perf_datas["success"]
-        return success_details_perf_datas
-
-    def _load_details_perf_data(self, model_abbr, data_abbrs):
-        """Load details performance data and h5 data based on data_abbrs.
-
-        Maps h5 data back to details data.
+    def _calc_perf_data(
+        self,
+        manager_list: list,
+        model_cfg: dict,
+        h5_file_path: str,
+        perf_datas: list,
+    ):
+        """Calculate performance data.
 
         Args:
-            model_abbr: Model abbreviation
-            data_abbrs: List of data abbreviations
-
-        Returns:
-            dict: Details performance data
+            model_cfg: Model configuration
+            perf_datas: Raw performance data
         """
-        perf_datas = []
-        h5_names = []
+        model = build_model_from_cfg(model_cfg)
 
-        for data_abbr in data_abbrs:
-            perf_details_file = osp.join(
-                self.work_dir, "performances", model_abbr, f"{data_abbr}_details.jsonl"
-            )
-            if not osp.exists(perf_details_file):
-                self.logger.warning(
-                    f"Cannot find {data_abbr} details perf data in {perf_details_file}, skip."
-                )
-                continue
-            with open(perf_details_file, "rb") as f:
-                mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-                for line in iter(mm.readline, b""):
-                    perf_datas.append(orjson.loads(line))
-                    h5_name = list(perf_datas[-1].values())[0].get("h5_name")
-                    if h5_name and h5_name not in h5_names:
-                        h5_names.append(h5_name)
+        h5_data = load_from_h5(h5_file_path)
 
-        array_data = {}
-        for h5_name in h5_names:
-            h5_file = osp.join(
-                self.work_dir, "performances", model_abbr, "h5_data", h5_name
-            )
-            h5_data = load_from_h5(h5_file)
-            array_data.update(h5_data)
-        details_perf_datas = defaultdict(list)
-
-        def recursive_update(pre_key, detail_data):
+        def recursive_update(detail_data):
             """Recursively update performance data.
 
             Args:
@@ -165,31 +133,138 @@ class DefaultPerfSummarizer:
                 detail_data: Detail data to process
             """
             if not detail_data:
-                details_perf_datas[pre_key].append(detail_data)
                 return
             if isinstance(detail_data, dict):
                 # __h5_ref__ marks ndarray data
                 if "__h5_ref__" in detail_data:
-                    details_perf_datas[pre_key].append(
-                        array_data[detail_data["__h5_ref__"]]
-                    )
-                    return
+                    return h5_data[detail_data["__h5_ref__"]]
                 for key, value in detail_data.items():
-                    recursive_update(key, value)
-            else:
-                details_perf_datas[pre_key].append(detail_data)
+                    detail_data[key] = recursive_update(value)
+            return detail_data
 
+        # calc_perf_datas = []
         for perf_data in perf_datas:
-            for data_id, detail_data in perf_data.items():
-                detail_data["id"] = data_id
-                recursive_update(data_id, detail_data)
-        lens = {key: len(value) for key, value in details_perf_datas.items()}
+            if not perf_data["success"]:
+                manager_list.append({"success": False})
+                continue
+            recursive_update(perf_data)
+            if not is_mm_prompt(perf_data["input"]):
+                perf_data["input_tokens"] = len(model.encode(perf_data["input"]))
+            else:
+                perf_data["input_tokens"] = 0 # multi-modal input does not support input_tokens
+            if not perf_data["output_tokens"]:
+                perf_data["output_tokens"] = len(model.encode(perf_data["prediction"]))
+            perf_data.pop("input")
+            perf_data.pop("prediction")
+            perf_data.pop("h5_name")
+            time_points = perf_data.pop("time_points")
+            perf_data["start_time"] = time_points[0]
+            perf_data["end_time"] = time_points[-1]
+            perf_data["latency"] = time_points[-1] - time_points[0]
+            perf_data["ttft"] = time_points[1] - time_points[0]
+            perf_data["tpot"] = (
+                (perf_data["latency"] - perf_data["ttft"]) / (perf_data["output_tokens"] - 1)
+                if perf_data["output_tokens"] > 1
+                else 0
+            )
+            perf_data["itl"] = np.diff(time_points[1:]) if len(time_points) > 2 else []
+            perf_data["generate_tokens_speed"] = (
+                perf_data["output_tokens"] / perf_data["latency"]
+            )
+            manager_list.append(perf_data)
+        # return calc_perf_datas
+
+    def tqdm_monitor(self, total, manager_list, event):
+        with tqdm(total=total, desc="Calculating performance details") as pbar:
+            while not event.is_set():
+                pbar.n = len(manager_list)
+                pbar.refresh()
+                time.sleep(0.1)
+
+    def _load_details_perf_data(self, model_cfg: dict, data_abbrs: list):
+        """Load details performance data and h5 data based on data_abbrs.
+
+        Maps h5 data back to details data.
+
+        Args:
+            model_cfg: Model configuration
+            data_abbrs: List of data abbreviations
+
+        Returns:
+            dict: Details performance data
+        """
+        details_perf_datas = defaultdict(list)
+        model_abbr = model_abbr_from_cfg_used_in_summarizer(model_cfg)
+
+        h5_perf_data_map = defaultdict(list)
+
+        for data_abbr in data_abbrs:
+            perf_details_file = osp.join(
+                self.work_dir, "performances", model_abbr, f"{data_abbr}_details.jsonl"
+            )
+            if not osp.exists(perf_details_file):
+                self.logger.warning(
+                    f"Cannot find details perf data of [{model_abbr}/{data_abbr}] in {perf_details_file}, skip."
+                )
+                continue
+            with open(perf_details_file, "rb") as f:
+                mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+                for line in iter(mm.readline, b""):
+                    perf_data = orjson.loads(line)
+                    h5_name = perf_data.get("h5_name")
+                    if h5_name:
+                        h5_perf_data_map[h5_name].append(perf_data)
+        if not h5_perf_data_map:
+            raise RuntimeError(
+                f"Not found any details perf data in work_dir, please check {self.work_dir}."
+            )
+
+        details_perf_datas = defaultdict(list)
+
+        with multiprocessing.Manager() as manager:
+            manager_list = manager.list()  # 共享字典
+            processes = []
+
+            total_counter = 0
+
+            for h5_name, perf_datas in h5_perf_data_map.items():
+                h5_path = osp.join(
+                    self.work_dir, "performances", model_abbr, "h5_data", h5_name
+                )
+                total_counter += len(perf_datas)
+                p = multiprocessing.Process(
+                    target=self._calc_perf_data,
+                    args=(manager_list, model_cfg, h5_path, perf_datas),
+                )
+                processes.append(p)
+                p.start()
+            event = multiprocessing.Event()
+            monitor_progress = multiprocessing.Process(
+                target=self.tqdm_monitor,
+                args=(total_counter, manager_list, event),
+            )
+            monitor_progress.start()
+
+            # wait for all processes to finish
+            for p in processes:
+                p.join()
+            event.set()
+            monitor_progress.join()
+
+            for perf_data in manager_list:
+                for key, value in perf_data.items():
+                    details_perf_datas[key].append(value)
+
+        lens = {
+            key: len(value)
+            for key, value in details_perf_datas.items()
+            if key != "success"
+        }
         if len(set(list(lens.values()))) != 1:
             raise ValueError(
                 f"The length of details perf datas is not the same: {lens}, "
                 f"each perf data should have same data structure"
             )
-        details_perf_datas = self._extract_success_cases(details_perf_datas)
         return details_perf_datas
 
     def _dump_calculated_perf_data(self):
@@ -311,7 +386,7 @@ class DefaultPerfSummarizer:
             calculators_per_model = {}
             for dataset_abbrs in self.dataset_abbrs:
                 details_perf_datas = self._load_details_perf_data(
-                    model_abbr, dataset_abbrs
+                    model_cfg, dataset_abbrs
                 )
                 # In merge_ds mode, use datatype of similar datasets as abbreviation
                 dataset_abbr = self._get_dataset_abbr(dataset_abbrs)
@@ -323,10 +398,9 @@ class DefaultPerfSummarizer:
                     f"{dataset_abbr}_plot.html",
                 )
                 has_plot = plot_sorted_request_timelines(
-                    details_perf_datas["start_time"],
-                    details_perf_datas["ttft"],
-                    details_perf_datas["end_time"],
-                    details_perf_datas["itl"],
+                    np.array(details_perf_datas["start_time"]),
+                    np.array(details_perf_datas["end_time"]),
+                    np.array(details_perf_datas["ttft"]),
                     details_perf_datas.get(
                         "multiturn_group_id",
                         [""] * len(details_perf_datas["start_time"]),

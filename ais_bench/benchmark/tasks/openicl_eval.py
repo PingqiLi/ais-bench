@@ -133,7 +133,8 @@ class OpenICLEvalTask(BaseTask):
                 with open(filename, "rb") as f: 
                         mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
                         for line in iter(mm.readline, b""):
-                            preds.extend(list(orjson.loads(line).values()))
+                            preds.append(orjson.loads(line))
+                preds.sort(key=lambda x: x.get('id',0))
             else:
                 filename = partial_filename
                 preds = []

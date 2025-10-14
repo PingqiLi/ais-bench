@@ -1,4 +1,3 @@
-
 import os.path as osp
 import copy
 from abc import ABC, abstractmethod
@@ -10,6 +9,7 @@ from ais_bench.benchmark.runners import LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLApiInferTask
 from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
 from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
+from ais_bench.benchmark.cli.utils import fill_model_path_if_synthetic
 
 
 class BaseWorker(ABC):
@@ -29,18 +29,22 @@ class BaseWorker(ABC):
 
 class Infer(BaseWorker):
     def update_cfg(self, cfg: ConfigDict) -> None:
-        new_cfg = dict(infer=dict(
-            partitioner=dict(type=get_config_type(NaivePartitioner)),
-            runner=dict(
-                max_num_workers=self.args.max_num_workers,
-                max_workers_per_gpu=self.args.max_workers_per_gpu,
-                debug=self.args.debug,
-                task=dict(type=get_config_type(OpenICLApiInferTask)),
-                type=get_config_type(LocalRunner),
-            )), )
-        for data_config in cfg['datasets']:
-            retriever_cfg = data_config['infer_cfg']['retriever']
-            infer_cfg = data_config['infer_cfg']
+        new_cfg = dict(
+            infer=dict(
+                partitioner=dict(type=get_config_type(NaivePartitioner)),
+                runner=dict(
+                    max_num_workers=self.args.max_num_workers,
+                    max_workers_per_gpu=self.args.max_workers_per_gpu,
+                    debug=self.args.debug,
+                    task=dict(type=get_config_type(OpenICLApiInferTask)),
+                    type=get_config_type(LocalRunner),
+                ),
+            ),
+        )
+        for data_config in cfg["datasets"]:
+            fill_model_path_if_synthetic(cfg["models"][0], data_config)
+            retriever_cfg = data_config["infer_cfg"]["retriever"]
+            infer_cfg = data_config["infer_cfg"]
             if "prompt_template" in infer_cfg:
                 retriever_cfg["prompt_template"] = infer_cfg["prompt_template"]
             if "ice_template" in infer_cfg:
@@ -48,7 +52,7 @@ class Infer(BaseWorker):
         cfg.merge_from_dict(new_cfg)
         if cfg.cli_args.debug:
             cfg.infer.runner.debug = True
-        cfg.infer.partitioner['out_dir'] = osp.join(cfg['work_dir'], 'predictions/')
+        cfg.infer.partitioner["out_dir"] = osp.join(cfg["work_dir"], "predictions/")
         return cfg
 
     def do_work(self, cfg: ConfigDict):
@@ -65,7 +69,7 @@ class Infer(BaseWorker):
 
     def _update_tasks_cfg(self, tasks, cfg: ConfigDict):
         # update parameters to correct sub cfg
-        if hasattr(cfg, 'attack'):
+        if hasattr(cfg, "attack"):
             for task in tasks:
                 cfg.attack.dataset = task.datasets[0][0].abbr
                 task.attack = cfg.attack
@@ -73,16 +77,21 @@ class Infer(BaseWorker):
 
 class Eval(BaseWorker):
     def update_cfg(self, cfg: ConfigDict) -> None:
-        new_cfg = dict(eval=dict(
-            partitioner=dict(type=get_config_type(NaivePartitioner)),
-            runner=dict(
-                max_num_workers=self.args.max_num_workers,
-                debug=self.args.debug,
-                task=dict(type=get_config_type(OpenICLEvalTask)),
-            )), )
+        new_cfg = dict(
+            eval=dict(
+                partitioner=dict(type=get_config_type(NaivePartitioner)),
+                runner=dict(
+                    max_num_workers=self.args.max_num_workers,
+                    debug=self.args.debug,
+                    task=dict(type=get_config_type(OpenICLEvalTask)),
+                ),
+            ),
+        )
 
-        new_cfg['eval']['runner']['type'] = get_config_type(LocalRunner)
-        new_cfg['eval']['runner']['max_workers_per_gpu'] = self.args.max_workers_per_gpu
+        for data_config in cfg["datasets"]:
+            fill_model_path_if_synthetic(cfg["models"][0], data_config)
+        new_cfg["eval"]["runner"]["type"] = get_config_type(LocalRunner)
+        new_cfg["eval"]["runner"]["max_workers_per_gpu"] = self.args.max_workers_per_gpu
         cfg.merge_from_dict(new_cfg)
         if cfg.cli_args.dump_eval_details:
             cfg.eval.runner.task.dump_details = True
@@ -90,7 +99,7 @@ class Eval(BaseWorker):
             cfg.eval.runner.task.cal_extract_rate = True
         if cfg.cli_args.debug:
             cfg.eval.runner.debug = True
-        cfg.eval.partitioner['out_dir'] = osp.join(cfg['work_dir'], 'results/')
+        cfg.eval.partitioner["out_dir"] = osp.join(cfg["work_dir"], "results/")
         return cfg
 
     def do_work(self, cfg: ConfigDict):
@@ -115,66 +124,29 @@ class Eval(BaseWorker):
         pass
 
 
-class Perf(BaseWorker):
-    def update_cfg(self, cfg: ConfigDict) -> None:
-        new_cfg = dict(infer=dict(
-            partitioner=dict(type=get_config_type(NaivePartitioner)),
-            runner=dict(
-                max_num_workers=self.args.max_num_workers,
-                max_workers_per_gpu=self.args.max_workers_per_gpu,
-                debug=self.args.debug,
-                task=dict(type=get_config_type(OpenICLApiInferTask)),
-                type=get_config_type(LocalRunner),
-            )), )
-        for data_config in cfg['datasets']:
-            retriever_cfg = data_config['infer_cfg']['retriever']
-            infer_cfg = data_config['infer_cfg']
-            if "prompt_template" in infer_cfg:
-                retriever_cfg["prompt_template"] = infer_cfg["prompt_template"]
-            if "ice_template" in infer_cfg:
-                retriever_cfg["ice_template"] = infer_cfg["ice_template"]
-        cfg.merge_from_dict(new_cfg)
-        if cfg.cli_args.debug:
-            cfg.infer.runner.debug = True
-        cfg.infer.partitioner['out_dir'] = osp.join(cfg['work_dir'], 'performances/')
-        return cfg
-
-    def do_work(self, cfg: ConfigDict):
-        partitioner = PARTITIONERS.build(cfg.infer.partitioner)
-        logger.info("Starting performance evaluation tasks...")
-        tasks = partitioner(cfg)
-
-        # update tasks cfg before run
-        self._update_tasks_cfg(tasks, cfg)
-
-        runner = RUNNERS.build(cfg.infer.runner)
-        runner(tasks)
-        logger.info("Performance evaluation tasks completed.")
-
-    def _update_tasks_cfg(self, tasks, cfg: ConfigDict):
-        # update parameters to correct sub cfg
-        pass
-
-
 class AccViz(BaseWorker):
     def update_cfg(self, cfg: ConfigDict) -> None:
-        summarizer_cfg = cfg.get('summarizer', {})
-        if not summarizer_cfg or summarizer_cfg.get('type', None) is None or summarizer_cfg.get('attr', None) != "accuracy":
-            summarizer_cfg['type'] = get_config_type(DefaultSummarizer)
-        summarizer_cfg.pop('attr', None)
-        cfg['summarizer'] = summarizer_cfg
+        summarizer_cfg = cfg.get("summarizer", {})
+        if (
+            not summarizer_cfg
+            or summarizer_cfg.get("type", None) is None
+            or summarizer_cfg.get("attr", None) != "accuracy"
+        ):
+            summarizer_cfg["type"] = get_config_type(DefaultSummarizer)
+        summarizer_cfg.pop("attr", None)
+        cfg["summarizer"] = summarizer_cfg
         return cfg
 
     def do_work(self, cfg: ConfigDict) -> int:
         logger.info("Summarizing evaluation results...")
-        summarizer_cfg = cfg.get('summarizer', {})
+        summarizer_cfg = cfg.get("summarizer", {})
 
         # For subjective summarizer
-        if summarizer_cfg.get('function', None):
+        if summarizer_cfg.get("function", None):
             main_summarizer_cfg = copy.deepcopy(summarizer_cfg)
             grouped_datasets = {}
             for dataset in cfg.datasets:
-                prefix = dataset['abbr'].split('_')[0]
+                prefix = dataset["abbr"].split("_")[0]
                 if prefix not in grouped_datasets:
                     grouped_datasets[prefix] = []
                 grouped_datasets[prefix].append(dataset)
@@ -182,50 +154,62 @@ class AccViz(BaseWorker):
             for dataset in grouped_datasets.values():
                 temp_cfg = copy.deepcopy(cfg)
                 temp_cfg.datasets = dataset
-                summarizer_cfg = dict(type=dataset[0]['summarizer']['type'], config=temp_cfg)
+                summarizer_cfg = dict(
+                    type=dataset[0]["summarizer"]["type"], config=temp_cfg
+                )
                 summarizer = build_from_cfg(summarizer_cfg)
                 dataset_score = summarizer.summarize(time_str=self.args.cfg_time_str)
                 if dataset_score:
                     dataset_score_container.append(dataset_score)
-            main_summarizer_cfg['config'] = cfg
+            main_summarizer_cfg["config"] = cfg
             main_summarizer = build_from_cfg(main_summarizer_cfg)
-            main_summarizer.summarize(time_str=self.args.cfg_time_str, subjective_scores=dataset_score_container)
+            main_summarizer.summarize(
+                time_str=self.args.cfg_time_str,
+                subjective_scores=dataset_score_container,
+            )
         else:
-            summarizer_cfg['config'] = cfg
+            summarizer_cfg["config"] = cfg
             summarizer = build_from_cfg(summarizer_cfg)
             summarizer.summarize(time_str=self.args.cfg_time_str)
 
 
 class PerfViz(BaseWorker):
     def update_cfg(self, cfg: ConfigDict) -> None:
-        summarizer_cfg = cfg.get('summarizer', {})
-        if not summarizer_cfg or summarizer_cfg.get('type', None) is None or summarizer_cfg.get('attr', None) != "performance":
-            summarizer_cfg['type'] = get_config_type(DefaultPerfSummarizer)
-        summarizer_cfg.pop('attr', None)
-        if summarizer_cfg.get('calculator') is None:
-            summarizer_cfg['calculator'] = dict(type=get_config_type(DefaultPerfMetricCalculator))
-        summarizer_cfg.pop('dataset_abbrs', None)
-        summarizer_cfg.pop('summary_groups', None)
-        summarizer_cfg.pop('prompt_db', None)
-        cfg['summarizer'] = summarizer_cfg
+        summarizer_cfg = cfg.get("summarizer", {})
+        if (
+            not summarizer_cfg
+            or summarizer_cfg.get("type", None) is None
+            or summarizer_cfg.get("attr", None) != "performance"
+        ):
+            summarizer_cfg["type"] = get_config_type(DefaultPerfSummarizer)
+        summarizer_cfg.pop("attr", None)
+        if summarizer_cfg.get("calculator") is None:
+            summarizer_cfg["calculator"] = dict(
+                type=get_config_type(DefaultPerfMetricCalculator)
+            )
+        summarizer_cfg.pop("dataset_abbrs", None)
+        summarizer_cfg.pop("summary_groups", None)
+        summarizer_cfg.pop("prompt_db", None)
+        cfg["summarizer"] = summarizer_cfg
         return cfg
 
     def do_work(self, cfg: ConfigDict) -> int:
-        summarizer_cfg = cfg.get('summarizer', {})
-        summarizer_cfg['config'] = cfg
+        summarizer_cfg = cfg.get("summarizer", {})
+        summarizer_cfg["config"] = cfg
         summarizer = build_from_cfg(summarizer_cfg)
         logger.info("Summarizing performance results...")
         summarizer.summarize()
 
 
 WORK_FLOW = dict(
-    all = [Infer, Eval, AccViz],
-    infer = [Infer],
-    eval = [Eval, AccViz],
-    viz = [AccViz],
-    perf = [Perf, PerfViz],
-    perf_viz = [PerfViz],
+    all=[Infer, Eval, AccViz],
+    infer=[Infer],
+    eval=[Eval, AccViz],
+    viz=[AccViz],
+    perf=[Infer, PerfViz],
+    perf_viz=[PerfViz],
 )
+
 
 class WorkFlowExecutor:
     def __init__(self, cfg, workflow) -> None:
