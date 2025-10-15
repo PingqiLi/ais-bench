@@ -27,7 +27,7 @@ LongBench_trec_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, max_out_len=64),
+    inferencer=dict(type=GenInferencer),
 )
 
 LongBench_trec_eval_cfg = dict(
