@@ -1,4 +1,5 @@
 # LongBench v2
+中文 | [English](README_en.md)
 ## 数据集简介
 LongBench v2旨在评估LLM进行深度理解和推理的长上下文问题的能力。LongBench v2具有以下特点：
 （1）长度：上下文长度从8k到2M不等，大多数长度在128k以下。

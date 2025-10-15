@@ -1,4 +1,5 @@
 # race
+中文 | [English](README_en.md)
 ## 数据集简介
 RACE（Reading Comprehension from Examinations）数据集是一个大规模的机器阅读理解数据集。该数据集由中国12-18岁学生的英语考试题目构成，包含27933篇文章和97867个问题。RACE数据集分为两个子集：RACE-M和RACE-H，分别对应初中和高中的题目难度。RACE-M包含28293个问题，适合初中生水平；RACE-H包含69574个问题，适合高中生水平。每个问题都有四个备选答案，其中一个是正确答案。
 

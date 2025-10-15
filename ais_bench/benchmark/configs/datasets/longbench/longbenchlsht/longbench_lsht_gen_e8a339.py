@@ -27,7 +27,7 @@ LongBench_lsht_infer_cfg = dict(
         ),
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer, max_out_len=64),
+    inferencer=dict(type=GenInferencer),
 )
 
 LongBench_lsht_eval_cfg = dict(

@@ -1,4 +1,5 @@
 # ShareGPT
+中文 | [English](README_en.md)
 ## 数据集简介
 ShareGPT数据集是一个包含大量人类与AI对话的数据集，主要用于训练和微调对话模型。ShareGPT数据集最初是通过 ShareGPT API收集的用户共享对话数据。目前ShareGPT数据集的规模已经从最初的约 52,000 条对话扩展到约 90,000 条对话。
 数据样例如下，每条对话数据包含一个唯一的 id 和一个 conversations 数组，数组中每个元素表示对话的一轮，包括对话的来源（from，可以是用户 "human" 或 ChatGPT "gpt"）和对话内容（value）：
