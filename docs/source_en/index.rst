@@ -67,6 +67,7 @@ To help you quickly get started with AISBench Benchmark Tool, we recommend learn
    :hidden:
 
    faqs/faq
+   faqs/error_codes
 
 .. toctree::
    :maxdepth: 2

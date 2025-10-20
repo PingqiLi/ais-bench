@@ -1,5 +1,7 @@
 import sys
 from datetime import datetime
+from ais_bench.benchmark.utils.exceptions import ConfigError
+from ais_bench.benchmark.utils.error_codes import UTILS_CODES
 
 
 def get_config_type(obj) -> str:
@@ -29,7 +31,8 @@ def fill_model_path_if_synthetic(model_cfg, dataset_cfg):
     ):
         model_path = model_cfg.get("path")
         if not model_path:
-            raise ValueError(
+            raise ConfigError(
+                UTILS_CODES.CFG_1,
                 "[path] in model config is required for synthetic dataset with tokenid type"
             )
         dataset_cfg.update({"model_path": model_path})

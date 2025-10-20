@@ -4,10 +4,9 @@ import os
 import json
 
 from typing import List, Tuple, Union
-from ais_bench.benchmark.utils.logging import get_logger
-
-logger = get_logger()
-
+from ais_bench.benchmark.utils.logger import logger
+from ais_bench.benchmark.utils.exceptions import FileMatchError
+from ais_bench.benchmark.utils.error_codes import UTILS_CODES
 
 def write_status(file_path, status):
     # read existing content
@@ -106,10 +105,8 @@ def match_cfg_file(workdir: Union[str, List[str]],
         nomatched = []
         ambiguous = []
         ambiguous_return_list = []
-        err_msg = ('The provided pattern matches 0 or more than one '
-                   'config. Please verify your pattern and try again. '
-                   'You may use tools/list_configs.py to list or '
-                   'locate the configurations.\n')
+        err_msg = ("The provided pattern matches 0 or more than one "
+                   "config. Please verify your pattern and try again. \n")
         for p in pattern:
             files_ = _mf_with_multi_workdirs(workdir, p, fuzzy=False)
             if len(files_) == 0:
@@ -122,6 +119,7 @@ def match_cfg_file(workdir: Union[str, List[str]],
             err_msg += tabulate.tabulate(table,
                                          headers='firstrow',
                                          tablefmt='psql')
+            err_msg += "\n"
         if ambiguous:
             table = [['Ambiguous patterns', 'Matched files'], *ambiguous]
             warning_msg = 'Found ambiguous patterns, using the first matched config.\n'
@@ -131,7 +129,7 @@ def match_cfg_file(workdir: Union[str, List[str]],
             logger.warning(warning_msg)
             return ambiguous_return_list
 
-        raise ValueError(err_msg)
+        raise FileMatchError(UTILS_CODES.MATCH_1, err_msg)
     return files
 
 def search_configs_from_args(args):
