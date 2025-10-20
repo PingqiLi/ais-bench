@@ -17,7 +17,7 @@ from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
 logger = get_logger()
 
 def try_fill_in_custom_cfgs(config):
-    return None
+    return config
 
 
 def get_config_type(obj) -> str:
