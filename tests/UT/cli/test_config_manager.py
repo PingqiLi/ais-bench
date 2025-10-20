@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 from ais_bench.benchmark.cli.config_manager import CustomConfigChecker, ConfigManager
 from ais_bench.benchmark.utils.exceptions import CommandError, ConfigError
+from ais_bench.benchmark.utils.error_codes import TMAN_CODES
 
 class TestCustomConfigChecker(unittest.TestCase):
     def setUp(self):
@@ -36,7 +37,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-002")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_2)
 
     def test_check_models_not_list(self):
         """测试models不是列表类型"""
@@ -48,7 +49,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-003")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_3)
 
     def test_check_model_not_dict(self):
         """测试models中的元素不是字典类型"""
@@ -60,7 +61,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-003")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_3)
 
     def test_check_model_missing_required_field(self):
         """测试model缺少必需字段"""
@@ -72,7 +73,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-002")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_2)
 
     def test_check_missing_datasets(self):
         """测试缺少datasets配置"""
@@ -83,7 +84,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-002")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_2)
 
     def test_check_datasets_not_list(self):
         """测试datasets不是列表类型"""
@@ -95,7 +96,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-003")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_3)
 
     def test_check_dataset_not_dict(self):
         """测试datasets中的元素不是字典类型"""
@@ -107,7 +108,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-003")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_3)
 
     def test_check_dataset_missing_required_field(self):
         """测试dataset缺少必需字段"""
@@ -119,7 +120,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-002")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_2)
 
     def test_check_missing_summarizer(self):
         """测试缺少summarizer配置"""
@@ -130,7 +131,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-002")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_2)
 
     def test_check_summarizer_not_dict(self):
         """测试summarizer不是字典类型"""
@@ -142,7 +143,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-003")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_3)
 
     def test_check_summarizer_missing_required_field(self):
         """测试summarizer缺少必需字段"""
@@ -154,7 +155,7 @@ class TestCustomConfigChecker(unittest.TestCase):
         checker = CustomConfigChecker(invalid_config, self.file_path)
         with self.assertRaises(ConfigError) as cm:
             checker.check()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-002")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_2)
 
 class TestConfigManager(unittest.TestCase):
     def setUp(self):
@@ -254,7 +255,7 @@ class TestConfigManager(unittest.TestCase):
         # 验证异常
         with self.assertRaises(ConfigError) as cm:
             config_manager._get_config_from_arg()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-001")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_1)
 
     @mock.patch('ais_bench.benchmark.cli.config_manager.ConfigManager._load_models_config')
     @mock.patch('ais_bench.benchmark.cli.config_manager.ConfigManager._load_datasets_config')
@@ -321,7 +322,7 @@ class TestConfigManager(unittest.TestCase):
         # 验证异常
         with self.assertRaises(CommandError) as cm:
             config_manager._load_models_config()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CMD-001")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CMD_1)
 
     @mock.patch('ais_bench.benchmark.cli.config_manager.match_cfg_file')
     @mock.patch('ais_bench.benchmark.cli.config_manager.Config.fromfile')
@@ -342,7 +343,7 @@ class TestConfigManager(unittest.TestCase):
         # 验证异常
         with self.assertRaises(ConfigError) as cm:
             config_manager._load_models_config()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-002")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_2)
 
     @mock.patch('ais_bench.benchmark.cli.config_manager.match_cfg_file')
     @mock.patch('ais_bench.benchmark.cli.config_manager.make_custom_dataset_config')
@@ -387,7 +388,7 @@ class TestConfigManager(unittest.TestCase):
         # 验证异常
         with self.assertRaises(CommandError) as cm:
             config_manager._load_datasets_config()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CMD-001")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CMD_1)
 
     @mock.patch('ais_bench.benchmark.cli.config_manager.match_cfg_file')
     @mock.patch('ais_bench.benchmark.cli.config_manager.Config.fromfile')
@@ -428,7 +429,7 @@ class TestConfigManager(unittest.TestCase):
         # 验证异常
         with self.assertRaises(ConfigError) as cm:
             config_manager._load_datasets_config()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-002")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_2)
 
     @mock.patch('ais_bench.benchmark.cli.config_manager.match_cfg_file')
     @mock.patch('ais_bench.benchmark.cli.config_manager.Config.fromfile')
@@ -637,7 +638,7 @@ class TestConfigManager(unittest.TestCase):
         # 验证异常
         with self.assertRaises(CommandError) as cm:
             config_manager._dump_and_reload_config()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CMD-002")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CMD_2)
 
     @mock.patch('os.makedirs')
     @mock.patch('ais_bench.benchmark.cli.config_manager.Config.fromfile')
@@ -658,7 +659,7 @@ class TestConfigManager(unittest.TestCase):
         # 验证异常
         with self.assertRaises(ConfigError) as cm:
             config_manager._dump_and_reload_config()
-        self.assertEqual(cm.exception.error_code_str, "TMAN-CFG-001")
+        self.assertEqual(cm.exception.error_code_str, TMAN_CODES.CFG_1)
 
     @mock.patch('ais_bench.benchmark.cli.config_manager.ConfigManager._get_config_from_arg')
     @mock.patch('ais_bench.benchmark.cli.config_manager.ConfigManager._update_and_init_work_dir')

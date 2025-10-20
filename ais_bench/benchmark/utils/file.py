@@ -6,6 +6,7 @@ import json
 from typing import List, Tuple, Union
 from ais_bench.benchmark.utils.logger import logger
 from ais_bench.benchmark.utils.exceptions import FileMatchError
+from ais_bench.benchmark.utils.error_codes import UTILS_CODES
 
 def write_status(file_path, status):
     # read existing content
@@ -128,7 +129,7 @@ def match_cfg_file(workdir: Union[str, List[str]],
             logger.warning(warning_msg)
             return ambiguous_return_list
 
-        raise FileMatchError("UTILS-MATCH-001", err_msg)
+        raise FileMatchError(UTILS_CODES.MATCH_1, err_msg)
     return files
 
 def search_configs_from_args(args):

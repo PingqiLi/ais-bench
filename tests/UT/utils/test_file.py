@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock, call
 import os
 from ais_bench.benchmark.utils.file import match_cfg_file
 from ais_bench.benchmark.utils.exceptions import FileMatchError
+from ais_bench.benchmark.utils.error_codes import UTILS_CODES
 
 
 class TestMatchCfgFile(unittest.TestCase):
@@ -69,7 +70,7 @@ class TestMatchCfgFile(unittest.TestCase):
             match_cfg_file('/test/dir', 'config1')
 
         # 验证错误代码
-        self.assertEqual(context.exception.error_code_str, "UTILS-MATCH-001")
+        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_1)
 
     @patch('ais_bench.benchmark.utils.file.logger')
     @patch('os.walk')
@@ -192,7 +193,7 @@ class TestMatchCfgFile(unittest.TestCase):
             match_cfg_file('/test/dir', ['config1', 'nonexistent_config'])
 
         # 验证错误代码
-        self.assertEqual(context.exception.error_code_str, "UTILS-MATCH-001")
+        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_1)
 
     @patch('ais_bench.benchmark.utils.file.logger')
     def test_match_cfg_file_empty_pattern(self, mock_logger):
@@ -202,7 +203,7 @@ class TestMatchCfgFile(unittest.TestCase):
             match_cfg_file('/test/dir', '')
 
         # 验证错误代码
-        self.assertEqual(context.exception.error_code_str, "UTILS-MATCH-001")
+        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_1)
 
     @patch('ais_bench.benchmark.utils.file.logger')
     @patch('os.walk')
@@ -216,7 +217,7 @@ class TestMatchCfgFile(unittest.TestCase):
             match_cfg_file('', 'config1')
 
         # 验证错误代码
-        self.assertEqual(context.exception.error_code_str, "UTILS-MATCH-001")
+        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_1)
 
 
 if __name__ == '__main__':

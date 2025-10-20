@@ -6,6 +6,7 @@ import tabulate
 from mmengine.config import Config, DictAction
 
 from ais_bench.benchmark.utils.logger import AISLogger
+from ais_bench.benchmark.utils.error_codes import TMAN_CODES
 from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
 from ais_bench.benchmark.utils.run import (function_call_task_check, try_fill_in_custom_cfgs, match_cfg_file, )
 from ais_bench.benchmark.utils.exceptions import CommandError, ConfigError
@@ -27,43 +28,43 @@ class CustomConfigChecker:
     def _check_models_config(self):
         models = self.config.get('models', [])
         if not models:
-            raise ConfigError("TMAN-CFG-002", f"Config file {self.file_path} does not contain 'models' param!")
+            raise ConfigError(TMAN_CODES.CFG_2, f"Config file {self.file_path} does not contain 'models' param!")
         if not isinstance(models, list):
-            raise ConfigError("TMAN-CFG-003", f"In config file {self.file_path}, 'models' param must be a list!")
+            raise ConfigError(TMAN_CODES.CFG_3, f"In config file {self.file_path}, 'models' param must be a list!")
         for model in models:
             if not isinstance(model, dict):
-                raise ConfigError("TMAN-CFG-003", f"In config file {self.file_path}, " +
+                raise ConfigError(TMAN_CODES.CFG_3, f"In config file {self.file_path}, " +
                                  "member of 'models' param must be a dict!")
             for param in self.MODEL_REQUIRED_FIELDS:
                 if param not in model:
-                    raise ConfigError("TMAN-CFG-002", f"In config file {self.file_path}, " +
+                    raise ConfigError(TMAN_CODES.CFG_2, f"In config file {self.file_path}, " +
                                      f"member of 'models' param must contain '{param}' param!")
 
     def _check_datasets_config(self):
         datasets = self.config.get('datasets', [])
         if not datasets:
-            raise ConfigError("TMAN-CFG-002", f"Config file {self.file_path} does not contain 'datasets' param!")
+            raise ConfigError(TMAN_CODES.CFG_2, f"Config file {self.file_path} does not contain 'datasets' param!")
         if not isinstance(datasets, list):
-            raise ConfigError("TMAN-CFG-003", f"In config file {self.file_path}, 'datasets' param must be a list!")
+            raise ConfigError(TMAN_CODES.CFG_3, f"In config file {self.file_path}, 'datasets' param must be a list!")
         for dataset in datasets:
             if not isinstance(dataset, dict):
-                raise ConfigError("TMAN-CFG-003", f"In config file {self.file_path}, " +
+                raise ConfigError(TMAN_CODES.CFG_3, f"In config file {self.file_path}, " +
                                  "member of 'datasets' param must be a dict!")
             for param in self.DATASET_REQUIRED_FIELDS:
                 if param not in dataset:
-                    raise ConfigError("TMAN-CFG-002", f"In config file {self.file_path}, " +
+                    raise ConfigError(TMAN_CODES.CFG_2, f"In config file {self.file_path}, " +
                                      f"member of 'datasets' param must contain '{param}' param!")
 
     def _check_summarizer_config(self):
         summarizer = self.config.get('summarizer', None)
         if not summarizer:
-            raise ConfigError("TMAN-CFG-002", f"Config file {self.file_path} does not contain 'summarizer' param!")
+            raise ConfigError(TMAN_CODES.CFG_2, f"Config file {self.file_path} does not contain 'summarizer' param!")
         if not isinstance(summarizer, dict):
-            raise ConfigError("TMAN-CFG-003", f"In config file {self.file_path}, " +
+            raise ConfigError(TMAN_CODES.CFG_3, f"In config file {self.file_path}, " +
                              "'summarizer' param must be a dict!")
         for param in self.SUMMARIZER_REQUIRED_FIELDS:
             if param not in summarizer:
-                raise ConfigError("TMAN-CFG-002", f"In config file {self.file_path}, " +
+                raise ConfigError(TMAN_CODES.CFG_2, f"In config file {self.file_path}, " +
                                  f"member of 'summarizer' param must contain '{param}' param!")
 
 class ConfigManager:
@@ -160,7 +161,7 @@ class ConfigManager:
             try:
                 config = Config.fromfile(self.args.config, format_python_code=False)
             except BaseException as e:
-                raise ConfigError("TMAN-CFG-001", f'Config file {self.args.config} contain invaild syntax: {e}')
+                raise ConfigError(TMAN_CODES.CFG_1, f'Config file {self.args.config} contain invaild syntax: {e}')
             config = try_fill_in_custom_cfgs(config)
             CustomConfigChecker(config, self.args.config).check()
             config.merge_from_dict(dict(cli_args = vars(self.args)))
@@ -197,17 +198,17 @@ class ConfigManager:
                     try:
                         cfg = Config.fromfile(dataset[1])
                     except BaseException as e:
-                        raise ConfigError("TMAN-CFG-001", f'Config file {dataset[1]} contain invaild syntax: {e}')
+                        raise ConfigError(TMAN_CODES.CFG_1, f'Config file {dataset[1]} contain invaild syntax: {e}')
                     dataset_cfg_exist = False
                     for k in cfg.keys():
                         if k.endswith(dataset_key_suffix):
                             datasets += cfg[k]
                             dataset_cfg_exist = True
                     if not dataset_cfg_exist:
-                        raise ConfigError("TMAN-CFG-002", f"Config file {dataset[1]} does not contain a param end with {dataset_key_suffix}!")
+                        raise ConfigError(TMAN_CODES.CFG_2, f"Config file {dataset[1]} does not contain a param end with {dataset_key_suffix}!")
         else:
             if self.args.custom_dataset_path is None:
-                raise CommandError("TMAN-CMD-001", 'You must specify a custom dataset path, or specify --datasets.')
+                raise CommandError(TMAN_CODES.CMD_1, 'You must specify a custom dataset path, or specify --datasets.')
             dataset = {'path': self.args.custom_dataset_path}
             if self.args.custom_dataset_infer_method is not None:
                 dataset['infer_method'] = self.args.custom_dataset_infer_method
@@ -221,7 +222,7 @@ class ConfigManager:
 
     def _load_models_config(self):
         if not self.args.models:
-            raise CommandError("TMAN-CMD-001", 'You must specify a config file path, or specify --models and --datasets.')
+            raise CommandError(TMAN_CODES.CMD_1, 'You must specify a config file path, or specify --models and --datasets.')
         models = []
         script_dir = os.path.dirname(os.path.abspath(__file__))
         parent_dir = os.path.dirname(script_dir)
@@ -238,9 +239,9 @@ class ConfigManager:
                     try:
                         cfg = Config.fromfile(model[1])
                     except BaseException as e:
-                        raise ConfigError("TMAN-CFG-001", f'Config file {model[1]} contain invaild syntax: {e}')
+                        raise ConfigError(TMAN_CODES.CFG_1, f'Config file {model[1]} contain invaild syntax: {e}')
                     if 'models' not in cfg:
-                        raise ConfigError("TMAN-CFG-002", f"Config file {model[1]} does not contain 'models' param")
+                        raise ConfigError(TMAN_CODES.CFG_2, f"Config file {model[1]} does not contain 'models' param")
                     models += cfg['models']
         return models
 
@@ -271,7 +272,7 @@ class ConfigManager:
         try:
             cfg = Config.fromfile(s[1])
         except BaseException as e:
-            raise ConfigError("TMAN-CFG-001", f'Config file {s[1]} contain invaild syntax: {e}')
+            raise ConfigError(TMAN_CODES.CFG_1, f'Config file {s[1]} contain invaild syntax: {e}')
         # Use summarizer_key to retrieve the summarizer definition
         # from the configuration file
         summarizer = cfg[summarizer_key]
@@ -317,14 +318,14 @@ class ConfigManager:
         self.cfg.dump(output_config_path)
         # eval nums set
         if (self.args.num_prompts and self.args.num_prompts < 0) or self.args.num_prompts == 0:
-            raise CommandError("TMAN-CMD-002", "Num Prompts must be a positive integer greater than 0.")
+            raise CommandError(TMAN_CODES.CMD_2, "Num Prompts must be a positive integer greater than 0.")
         self.cfg['num_prompts'] = self.args.num_prompts
         # Config is intentally reloaded here to avoid initialized
         # types cannot be serialized
         try:
             self.cfg = Config.fromfile(output_config_path, format_python_code=False)
         except BaseException as e:
-            raise ConfigError("TMAN-CFG-001", f'Config file {output_config_path} contain invaild syntax: {e}')
+            raise ConfigError(TMAN_CODES.CFG_1, f'Config file {output_config_path} contain invaild syntax: {e}')
 
         # check if the tasks all function call tasks
         function_call_task_check(self.cfg, self.args.merge_ds)

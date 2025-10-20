@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 from ais_bench.benchmark.cli.utils import fill_model_path_if_synthetic, get_config_type
 from ais_bench.benchmark.utils.exceptions import ConfigError
+from ais_bench.benchmark.utils.error_codes import UTILS_CODES
 
 
 class TestUtils(unittest.TestCase):
@@ -34,7 +35,7 @@ class TestUtils(unittest.TestCase):
             fill_model_path_if_synthetic(model_cfg, dataset_cfg)
 
         # 验证错误信息
-        self.assertIn("UTILS-CFG-001", str(context.exception))
+        self.assertIn(UTILS_CODES.CFG_1, str(context.exception))
         self.assertIn("[path] in model config is required", str(context.exception))
 
     def test_fill_model_path_if_synthetic_not_synthetic_dataset(self):
