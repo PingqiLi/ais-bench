@@ -6,9 +6,9 @@ from typing import Dict, List, Optional, Union
 import torch
 from mmengine.device import is_npu_available
 
-from ais_bench.benchmark.models.performance import PerformanceModel
-from ais_bench.benchmark.models.base import BaseModel, LMTemplateParser
-from ais_bench.benchmark.models.base_api import APITemplateParser
+from ais_bench.benchmark.models.local_models.performance import PerformanceModel
+from ais_bench.benchmark.models import LMTemplateParser
+from ais_bench.benchmark.models import APITemplateParser
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.prompt import PromptList

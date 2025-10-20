@@ -4,10 +4,10 @@ import sys
 import threading
 import time
 from typing import Any, List
+import asyncio
+import multiprocessing as mp
 from multiprocessing import Event, Process, Queue, shared_memory, BoundedSemaphore
 from typing import Dict
-
-import multiprocessing as mp
 import pickle
 from mmengine.config import Config, ConfigDict
 
@@ -81,6 +81,7 @@ class OpenICLApiInferTask(BaseTask):
         self.concurrency = self.model_cfg.get("batch_size", 1)
         self.pressure = self.cli_args.get("pressure", False)
         self.pressure_time = self.cli_args.get("pressure_time")
+        self.warmup_size = self.cli_args.get("num_warmups", 1)
         self.inferencer_cfg = self.dataset_cfgs[0]["infer_cfg"]["inferencer"]
         self.inferencer_cfg["model_cfg"] = self.model_cfg
         self.inferencer_cfg["pressure_time"] = self.pressure_time
@@ -300,6 +301,12 @@ class OpenICLApiInferTask(BaseTask):
         self.inferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
 
         data_list = self._get_data_list()
+
+        # warmup
+        self.logger.info(f"Starting warmup...")
+        warm_up_inferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
+        asyncio.run(warm_up_inferencer.warmup(data_list, self.warmup_size))
+        
         dataset_size, dataset_shm, indexes = self._dump_dataset_to_share_memory(data_list)
         # In pressure mode, treat the first `concurrency` requests as the dataset size
         if self.pressure:

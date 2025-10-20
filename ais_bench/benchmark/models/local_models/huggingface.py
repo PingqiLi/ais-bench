@@ -5,8 +5,8 @@ import numpy as np
 import torch
 import transformers
 
-from ais_bench.benchmark.models.base import BaseModel
-from ais_bench.benchmark.models.base_api import APITemplateParser
+from ais_bench.benchmark.models import BaseModel
+from ais_bench.benchmark.models import APITemplateParser
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.prompt import PromptList

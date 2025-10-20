@@ -21,12 +21,13 @@ TEXT_MAP = {
             6: 'six', 
         }
 
+DEFAULT_NUM_FRAMES = 5 # Default number of frames to sample from each video when loading datasets
 
 @LOAD_DATASET.register_module()
 class VideoBenchDataset(BaseDataset):
 
     @staticmethod
-    def load(path, video_type, num_frames):
+    def load(path:str, video_type:str, num_frames:int=DEFAULT_NUM_FRAMES):
         """
         Load VideoBench dataset from a local directory.
 

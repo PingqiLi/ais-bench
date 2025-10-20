@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 import torch
 from tqdm import tqdm
 
-from ais_bench.benchmark.models.base import BaseModel
+from ais_bench.benchmark.models import BaseModel
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils.results import dump_results_dict
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate

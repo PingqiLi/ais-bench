@@ -7,7 +7,7 @@ from openai import OpenAI
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.prompt import PromptList
 
-from ais_bench.benchmark.models.base_api import BaseAPIModel, APITemplateParser
+from ais_bench.benchmark.models import BaseAPIModel, APITemplateParser
 from ais_bench.benchmark.models.output import RequestOutput
 
 PromptType = Union[PromptList, str]
@@ -18,23 +18,20 @@ class VLLMCustomAPIChat(BaseAPIModel):
     """Model wrapper around OpenAI's models. vllm 0.6 +
 
     Args:
-        max_seq_len (int): The maximum allowed sequence length of a model.
-            Note that the length of prompt + generated tokens shall not exceed
-            this value. Defaults to 2048.
-        request_rate (int): The maximum queries allowed per second
-            between two consecutive calls of the API. Defaults to 1.
-        traffic_cfg (ConfigDict, optional): control the request traffic rate
-            "burstiness": Optional[float],    # Burstiness factor controlling interval randomness (≥0, default:0)
-            "ramp_up_strategy": Optional[str],  # Ramp-up strategy type ("linear", "exponential", or None)
-            "ramp_up_start_rps": Optional[float],  # Starting RPS for ramp-up (required with strategy)
-            "ramp_up_end_rps": Optional[float]   # Ending RPS for ramp-up (required with strategy)
-        retry (int): Number of retires if the API call fails. Defaults to 2.
-        meta_template (Dict, optional): The model's meta prompt
-            template if needed, in case the requirement of injecting or
-            wrapping of any meta instructions.
-        host_ip (str): The  host ip of custom service, default "localhost".
-        host_port (int): The host port of custom service, default "8080".
-        enable_ssl (bool, optional): .
+        path (str, optional): Model path or identifier for the specific API model. Defaults to empty string.
+        model (str, optional): Name of the model to use for inference. If not provided, will be auto-detected from service. Defaults to empty string.
+        stream (bool, optional): Whether to enable streaming output. Defaults to False.
+        max_out_len (int, optional): Maximum output length, controlling the maximum number of tokens for generated text. Defaults to 4096.
+        retry (int, optional): Number of retry attempts when request fails. Defaults to 2.
+        headers (Dict, optional): Headers for the API request. Defaults to {"Content-Type": "application/json"}.
+        host_ip (str, optional): Host IP address of the API service. Defaults to "localhost".
+        host_port (int, optional): Port number of the API service. Defaults to 8080.
+        url (str, optional): Complete URL address of the API service. Defaults to empty string.
+        trust_remote_code (bool, optional): Whether to trust remote code when loading tokenizer. Defaults to False.
+        generation_kwargs (Dict, optional): Generation parameters configuration, additional parameters passed to the API service. Defaults to None.
+        meta_template (Dict, optional): Meta template configuration for the model, used to define conversation format and roles. Defaults to None.
+        enable_ssl (bool, optional): Whether to enable SSL connection. Defaults to False.
+        verbose (bool, optional): Whether to enable verbose logging output. Defaults to False.
     """
 
     is_api: bool = True
@@ -47,6 +44,7 @@ class VLLMCustomAPIChat(BaseAPIModel):
         stream: bool = False,
         max_out_len: int = 4096,
         retry: int = 2,
+        headers: Dict = {"Content-Type": "application/json"},
         host_ip: str = "localhost",
         host_port: int = 8080,
         url: str = "",
@@ -61,6 +59,7 @@ class VLLMCustomAPIChat(BaseAPIModel):
             stream=stream,
             max_out_len=max_out_len,
             retry=retry,
+            headers=headers,
             host_ip=host_ip,
             host_port=host_port,
             url=url,
@@ -81,65 +80,12 @@ class VLLMCustomAPIChat(BaseAPIModel):
             else meta_template
         )
         self.model = model if model else self._get_service_model_path()
-        self.tokenizer = None
-        if path:
-            self.tokenizer = AutoTokenizer.from_pretrained(path)
-        self.is_multi_modal = False
+        self.url = self._get_url()
         self.template_parser = APITemplateParser(self.meta_template)
     
-    def _get_url(self, host_ip: str, host_port: int, url: str):
-        if url:
-            return os.path.join(url, "chat/completions")
-        base_url = self._get_base_url()
-        if self.enable_ssl:
-            return f"{base_url}/chat/completions"
-        return f"{base_url}/chat/completions"
-
-    def check_mm_prompt(self, input_data):
-        if isinstance(input_data, str):
-            return False
-        else:
-            assert len(input_data)>=1 and "prompt" in input_data[0]
-            prompt = input_data[0]["prompt"]
-            if not isinstance(prompt, list) or len(prompt) < 0 or not isinstance(prompt[0], dict):
-                return False
-            for data in prompt:
-                if any(key in data for key in ("image_url", "video_url", "audio_url")):
-                    return True
-            return False
-    
-    def encode(self, prompt: list) -> Tuple[float, List[int]]:
-        """Encode a string into tokens, measuring processing time."""
-        if not self.tokenizer:
-            self.logger.error("Tokenizer is not initialized.")
-            return []
-        if isinstance(prompt, list):
-            messages = self.tokenizer.apply_chat_template(
-                prompt, add_generation_prompt=True, tokenize=False
-            )
-        elif isinstance(prompt, str):
-            messages = prompt
-        else:
-            self.logger.error(f"Prompt{prompt} is not a list or string.")
-            return []
-        tokens = self.tokenizer.encode(messages)
-        return tokens
-
-    def decode(self, tokens: List[int]) -> Tuple[List[float], str]:
-        if not self.tokenizer:
-            self.logger.error("Tokenizer is not initialized.")
-            return [], ""
-        return self.tokenizer.decode(tokens)
-
-    def _get_base_url(self) -> str:
-        if self.enable_ssl:
-            return f"https://{self.host_ip}:{self.host_port}/v1"
-        return f"http://{self.host_ip}:{self.host_port}/v1"
-
-    def _get_service_model_path(self) -> str:
-        base_url = self._get_base_url()
-        client = OpenAI(api_key="EMPTY", base_url=base_url)
-        return client.models.list().data[0].id
+    def _get_url(self) -> str:
+        endpoint = "v1/chat/completions"
+        return f"{self.base_url}{endpoint}"
 
     async def get_request_body(
         self, input: PromptType, max_out_len: int, output: RequestOutput, **args
@@ -190,10 +136,3 @@ class VLLMCustomAPIChat(BaseAPIModel):
                 output.reasoning_content += reasoning_content
         if json_content.get("usage"):
             output.output_tokens = json_content["usage"]["completion_tokens"]
-
-
-@MODELS.register_module()
-class VLLMCustomAPIChatStream(VLLMCustomAPIChat):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.stream = True

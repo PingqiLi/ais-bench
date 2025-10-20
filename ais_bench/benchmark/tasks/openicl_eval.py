@@ -155,7 +155,7 @@ class OpenICLEvalTask(BaseTask):
                     and 'meta_template' in self.model_cfg
                     and not MODELS.get(self.model_cfg['type']).is_api):
                 # Create a prompt template for role config parsing
-                from ais_bench.benchmark.models.base import LMTemplateParser
+                from ais_bench.benchmark.models import LMTemplateParser
                 parser = LMTemplateParser(self.model_cfg['meta_template'])
                 role = parser.roles[self.eval_cfg['pred_role']]
                 if sc_size is not None:

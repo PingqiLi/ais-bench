@@ -9,15 +9,13 @@ from openai import OpenAI
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.prompt import PromptList
 
-from ais_bench.benchmark.models.base_api import handle_synthetic_input
-from ais_bench.benchmark.models.performance_api import PerformanceAPIModel
-from ais_bench.benchmark.utils.build import build_client_from_cfg
+from ais_bench.benchmark.models import BaseAPIModel
 from ais_bench.benchmark.datasets.bfcl.bfcl_dependency import *
 
 PromptType = Union[PromptList, str, dict]
 
 
-class VLLMFunctionBaseAPIChat(PerformanceAPIModel):
+class VLLMFunctionBaseAPIChat(BaseAPIModel):
     """
     Base class for VLLM function-calling chat APIs, providing standard interfaces for
     pre-processing queries, injecting holdout functions, handling multi-turn inference,
@@ -264,5 +262,5 @@ class VLLMPromptAPIChat(VLLMFunctionBaseAPIChat):
 
 
 @MODELS.register_module()
-class VLLMFunctionCallAPIChat(PerformanceAPIModel):
+class VLLMFunctionCallAPIChat(BaseAPIModel):
     pass

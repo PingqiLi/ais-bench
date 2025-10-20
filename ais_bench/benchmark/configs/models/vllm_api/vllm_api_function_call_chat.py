@@ -18,6 +18,7 @@ models = [
         trust_remote_code=False,
         generation_kwargs=dict(
             temperature=0.01,
+            ignore_eos=False,
         ),
         pred_postprocessor=dict(type=extract_non_reasoning_content),
     )

@@ -166,7 +166,7 @@ class BaseInferencerOutputHandler:
         Recursively scan obj and immediately write numpy.ndarray objects to HDF5.
 
         Returns a JSON-serializable replacement object where array positions are
-        replaced with {"__h5_ref__": "<h5_path>"} placeholders.
+        replaced with {"__db_ref__": "<__db_id__>"} placeholders.
 
         Args:
             obj: Object to scan for arrays
@@ -256,7 +256,6 @@ class BaseInferencerOutputHandler:
             OSError: If file operations fail
             ValueError: If parameters are invalid
         """
-
         try:
             h5_path = Path(save_dir) / (Path(file_name).stem + ".h5")
             h5_name = h5_path.name.replace("tmp_", "")

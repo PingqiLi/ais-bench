@@ -1,21 +1,19 @@
 import sys
 import json
 import warnings
+import asyncio
+import os.path as osp
 from abc import abstractmethod
 from copy import deepcopy
-import asyncio
-
 from typing import Dict, List, Optional, Tuple, Union
 
-from ais_bench.benchmark.utils import (
-    get_logger,
-)
-from ais_bench.benchmark.utils.prompt import PromptList
-
-from ais_bench.benchmark.models.base import BaseModel
-
+from transformers import AutoTokenizer
+import requests
 import aiohttp
-import traceback
+
+from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.prompt import PromptList
+from ais_bench.benchmark.models import BaseModel
 from ais_bench.benchmark.models.output import Output
 
 
@@ -35,22 +33,17 @@ class BaseAPIModel(BaseModel):
     """Base class for API model wrapper.
 
     Args:
-        path (str): The path to the model.
-        request_rate (int): The maximum queries allowed per second
-            between two consecutive calls of the API. Defaults to 1.
-        traffic_cfg (ConfigDict, optional): control the request traffic rate
-                "burstiness": Optional[float],    # Burstiness factor controlling interval randomness (≥0, default:0)
-                "ramp_up_strategy": Optional[str],  # Ramp-up strategy type ("linear", "exponential", or None)
-                "ramp_up_start_rps": Optional[float],  # Starting RPS for ramp-up (required with strategy)
-                "ramp_up_end_rps": Optional[float]   # Ending RPS for ramp-up (required with strategy)
-        retry (int): Number of retires if the API call fails. Defaults to 2.
-        max_seq_len (int): The maximum sequence length of the model. Defaults
-            to 2048.
-        meta_template (Dict, optional): The model's meta prompt
-            template if needed, in case the requirement of injecting or
-            wrapping of any meta instructions.
-        generation_kwargs (Dict, optional): The generation kwargs for the
-            model. Defaults to dict().
+        path (str): Model path or identifier for the specific API model.
+        stream (bool, optional): Whether to enable streaming output. Defaults to False.
+        max_out_len (int, optional): Maximum output length, controlling the maximum number of tokens for generated text. Defaults to 2048.
+        retry (int, optional): Number of retry attempts when request fails. Defaults to 2.
+        host_ip (str, optional): Host IP address of the API service. Defaults to "localhost".
+        host_port (int, optional): Port number of the API service. Defaults to 8080.
+        url (str, optional): Complete URL address of the API service. Defaults to empty string.
+        meta_template (Dict, optional): Meta template configuration for the model, used to define conversation format and roles. Defaults to None.
+        generation_kwargs (Dict, optional): Generation parameters configuration, additional parameters passed to the API service. Defaults to empty dict.
+        enable_ssl (bool, optional): Whether to enable SSL connection. Defaults to False.
+        verbose (bool, optional): Whether to enable verbose logging output. Defaults to False.
     """
 
     is_api: bool = True
@@ -61,6 +54,7 @@ class BaseAPIModel(BaseModel):
         stream: bool = False,
         max_out_len: int = 2048,
         retry: int = 2,
+        headers: Dict = {"Content-Type": "application/json"},
         host_ip: str = "localhost",
         host_port: int = 8080,
         url: str = "",
@@ -71,32 +65,82 @@ class BaseAPIModel(BaseModel):
     ):
         self.logger = get_logger()
         self.path = path
+        self.tokenizer = None
+        if path:
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(path)
+            except Exception as e:
+                self.logger.error(f"Failed to load tokenizer from {path}. Error: {e}")
+                raise e
         self.stream = stream
         self.max_out_len = max_out_len
         self.retry = retry
+        self.headers = headers
         self.meta_template = meta_template if meta_template else None
         self.host_ip = host_ip
         self.host_port = host_port
+        self.url = url
         self.enable_ssl = enable_ssl
-        self.url = self._get_url(host_ip, host_port, url)
         self.template_parser = APITemplateParser(self.meta_template)
         self.generation_kwargs = generation_kwargs
         self.verbose = verbose
         self.session = None
+        self.base_url = self._get_base_url()
 
     @abstractmethod
-    def _get_url(self, host_ip: str, host_port: int, url: str):
+    def _get_url(self) -> str:
         raise NotImplementedError(
             f"{self.__class__.__name__} does not supported"
             " to be called in base classes"
         )
+    
+    def _get_base_url(self) -> str:
+        if self.url:
+            return self.url
+        protocol = "https" if self.enable_ssl else "http"
+        base_url = f"{protocol}://{self.host_ip}:{self.host_port}/"
+        return base_url
 
-    @abstractmethod
-    def check_mm_prompt(self, input_data):
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not supported"
-            " to be called in base classes"
-        )
+    def _get_service_model_path(self) -> str:
+        try:
+            url = osp.join(self.base_url, "v1/models")
+            headers = self.headers
+            response = requests.get(url, headers=headers, timeout=5)
+            
+            if response.status_code == 200:
+                data = response.json()
+                model_id = data['data'][0]['id']
+                return model_id
+            else:
+                response.raise_for_status()
+        
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(
+                f"Failed to get service model path from {self.base_url}. Error: {e}"
+            )
+
+    def encode(self, prompt: list) -> Tuple[float, List[int]]:
+        """Encode a string into tokens, measuring processing time."""
+        if not self.tokenizer:
+            self.logger.error("Tokenizer is not initialized.")
+            return []
+        if isinstance(prompt, list):
+            messages = self.tokenizer.apply_chat_template(
+                prompt, add_generation_prompt=True, tokenize=False
+            )
+        elif isinstance(prompt, str):
+            messages = prompt
+        else:
+            self.logger.error(f"Prompt: {prompt} is not a list or string.")
+            return []
+        tokens = self.tokenizer.encode(messages)
+        return tokens
+
+    def decode(self, tokens: List[int]) -> Tuple[List[float], str]:
+        if not self.tokenizer:
+            self.logger.error("Tokenizer is not initialized.")
+            return [], ""
+        return self.tokenizer.decode(tokens)
 
     async def iter_lines(self, stream):
         """
@@ -185,6 +229,8 @@ class BaseAPIModel(BaseModel):
                 output.success = False
                 output.error_info = "Request cancelled by user"
                 break
+            except json.JSONDecodeError:
+                break
             except Exception:
                 # increase retry count and set output to failed
                 retry_count += 1
@@ -201,10 +247,9 @@ class BaseAPIModel(BaseModel):
         return output
 
     async def stream_infer(self, request_body: dict, output: Output):
-        headers = {"Content-Type": "application/json"}
         await output.record_time_point()
         async with self.session.post(
-            url=self.url, json=request_body, headers=headers
+            url=self.url, json=request_body, headers=self.headers
         ) as response:
             if response.status == 200:
                 async for raw_chunk in self.iter_lines(response.content):
@@ -218,7 +263,12 @@ class BaseAPIModel(BaseModel):
                     if chunk == "[DONE]":
                         break
                     await output.record_time_point()
-                    data = json.loads(chunk)
+                    try:
+                        data = json.loads(chunk)
+                    except json.JSONDecodeError as e:
+                        output.success = False
+                        output.error_info = f"Unexpected response format: {raw_chunk}. Please check if server is working correctly."
+                        raise e
                     await self.parse_stream_response(data, output)
                 output.success = True
             else:
@@ -226,15 +276,19 @@ class BaseAPIModel(BaseModel):
                 output.success = False
 
     async def text_infer(self, request_body, output: Output):
-        headers = {"Content-Type": "application/json"}
         await output.record_time_point()
         async with self.session.post(
-            url=self.url, json=request_body, headers=headers
+            url=self.url, json=request_body, headers=self.headers
         ) as response:
             if response.status == 200:
                 raw_data = await response.text()
                 await output.record_time_point()
-                data = json.loads(raw_data)
+                try:
+                    data = json.loads(raw_data)
+                except json.JSONDecodeError as e:
+                    output.success = False
+                    output.error_info = f"Unexpected response format: {raw_data}. Please check if server is working correctly."
+                    raise e
                 await self.parse_text_response(data, output)
                 output.success = True
             else:

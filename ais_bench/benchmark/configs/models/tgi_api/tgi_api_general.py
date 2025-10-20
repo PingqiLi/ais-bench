@@ -4,21 +4,21 @@ models = [
     dict(
         attr="service",
         type=TGICustomAPI,
-        abbr='tgi-api-general',
+        abbr="tgi-api-general",
         path="",
-        request_rate = 0,
-        retry = 2,
-        host_ip = "localhost",
-        host_port = 8080,
-        max_out_len = 512,
+        stream=False,
+        request_rate=0,
+        retry=2,
+        headers={"Content-Type": "application/json"},
+        host_ip="localhost",
+        host_port=8080,
+        url="",
+        max_out_len=512,
         batch_size=1,
         trust_remote_code=False,
-        generation_kwargs = dict(
-            temperature = 0.5,
-            top_k = 10,
-            top_p = 0.95,
-            do_sample = True,
-            repetition_penalty = 1.03,
-        )
+        generation_kwargs=dict(
+            temperature=0.01,
+            ignore_eos=False,
+        ),
     )
 ]

@@ -5,6 +5,7 @@ import tabulate
 from mmengine.config import Config, DictAction
 
 from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
 from ais_bench.benchmark.utils.run import (function_call_task_check, try_fill_in_custom_cfgs, match_cfg_file, )
 
 
@@ -144,7 +145,7 @@ class ConfigManager:
                 dataset['data_type'] = self.args.custom_dataset_data_type
             if self.args.custom_dataset_meta_path is not None:
                 dataset['meta_path'] = self.args.custom_dataset_meta_path
-            # dataset = make_custom_dataset_config(dataset)
+            dataset = make_custom_dataset_config(dataset)
             datasets.append(dataset)
         return datasets
 

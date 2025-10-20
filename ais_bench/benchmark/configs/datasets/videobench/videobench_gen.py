@@ -3,6 +3,7 @@ from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.datasets import VideoBenchDataset, VideoBenchEvaluator
 
+DEFAULT_NUM_FRAMES = 5 # Default number of frames to sample from each video when loading datasets
 
 videobench_reader_cfg = dict(
     input_columns=['question', 'video_url', 'choices_prompt'],
@@ -36,6 +37,7 @@ videobench_datasets = [
         type=VideoBenchDataset,
         path='ais_bench/datasets/videobench', # 数据集路径，使用相对路径时相对于源码根路径，支持绝对路径
         video_type="video_path",
+        num_frames=DEFAULT_NUM_FRAMES,
         reader_cfg=videobench_reader_cfg,
         infer_cfg=videobench_infer_cfg,
         eval_cfg=videobench_eval_cfg

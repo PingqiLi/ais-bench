@@ -331,7 +331,7 @@ class BasePerfMetricCalculator(ABC):
                     ans[mapping_value].append(value)
 
         for key in ["ITL"]:
-            if isinstance(ans[key][0], np.ndarray) and not ans[key][0].any():
+            if not ans[key] or (isinstance(ans[key][0], np.ndarray) and not ans[key][0].any()):
                 ans.pop(key)
 
         for key in ["TTFT", "TPOT"]:

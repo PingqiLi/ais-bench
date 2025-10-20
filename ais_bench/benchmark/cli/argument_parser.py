@@ -140,6 +140,13 @@ class ArgumentParser():
             default=None
         )
         parser.add_argument(
+            '--num-warmups',
+            help='Number of warmups, Specify the number of warmups. '
+            'If not provided, the default is 1. ',
+            type=int,
+            default=1
+        )
+        parser.add_argument(
             '--pressure',
             help='Whether to enable pressure test in perf mode (only attr service)',
             action='store_true',

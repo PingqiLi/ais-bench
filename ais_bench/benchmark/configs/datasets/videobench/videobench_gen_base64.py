@@ -5,7 +5,6 @@ from ais_bench.benchmark.datasets import VideoBenchDataset, VideoBenchEvaluator
 
 DEFAULT_NUM_FRAMES = 5 # Default number of frames to sample from each video when loading datasets
 
-
 videobench_reader_cfg = dict(
     input_columns=['question', 'video_url', 'choices_prompt'],
     output_column='answer'

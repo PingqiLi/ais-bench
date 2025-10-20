@@ -1,6 +1,6 @@
 from typing import Dict, Optional
 
-from ais_bench.benchmark.models.base import BaseModel
+from ais_bench.benchmark.models import BaseModel
 
 
 class PerformanceModel(BaseModel):

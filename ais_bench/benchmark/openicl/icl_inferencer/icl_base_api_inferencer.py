@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import aiohttp
 import janus
-
+from tqdm import tqdm
 from ais_bench.benchmark.global_consts import (
     MAX_CHUNK_SIZE,
     REQUEST_TIME_OUT,
@@ -25,6 +25,7 @@ from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import (
     BaseInferencer,
 )
 
+MESSAGE_TYPE_NUM = 4 # post_req, get_req, failed_req, finish_req
 BLOCK_INTERVAL = 0.005  # Avoid request burst accumulation when RR is not configured
 MAX_BATCH_SIZE = 100000  # Maximum concurrency
 logger = get_logger(__name__)
@@ -115,6 +116,17 @@ class BaseApiInferencer(BaseInferencer):
             NotImplementedError: If not implemented in subclass
         """
         raise NotImplementedError
+
+    async def warmup(self, data_list: list, warmup_times: int = 1):
+        """Warmup the inferencer.
+
+        Args:
+            data_list: Data list to warmup
+            warmup_times: Warmup times
+        """
+        for i in tqdm(range(warmup_times), desc="Warmup"):
+            data = data_list[i % len(data_list)]
+            await self.do_request(data, None, None)
 
     def _read_and_unpickle(
         self, buf: memoryview, index_data: Tuple[int, int, int]
@@ -473,9 +485,9 @@ class StatusCounter(threading.Thread):
         self.failed_req = 0
         self.finish_req = 0
         # Use thread-safe standard library queue with capacity equal to batch_size * 4
-        if batch_size <= 0:
-            self.status_queue = None
-        self.status_queue: std_queue.Queue = std_queue.Queue(maxsize=batch_size * 4)
+        self.status_queue = None
+        if batch_size > 0:
+            self.status_queue: std_queue.Queue = std_queue.Queue(maxsize=batch_size * MESSAGE_TYPE_NUM)
         self._stop_event = threading.Event()
         self._print_interval = 1.0  # Print status once per second
 
