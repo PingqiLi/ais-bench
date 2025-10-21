@@ -1,22 +1,27 @@
-from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
+from ais_bench.benchmark.openicl.icl_prompt_template import MultiTurnPromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
-from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
+from ais_bench.benchmark.openicl.icl_inferencer import MultiTurnGenInferencer
 from ais_bench.benchmark.datasets import ShareGPTDataset, ShareGPTEvaluator, math_postprocess_v2
 
 
 sharegpt_reader_cfg = dict(
-    input_columns=['human'],
-    output_column='gpt'
+    input_columns=["question", "answer"],
+    output_column="answer"
 )
 
 
 sharegpt_infer_cfg = dict(
     prompt_template=dict(
-        type=PromptTemplate,
-        template={'type': 'conversations', 'prompt': "human"}
+        type=MultiTurnPromptTemplate,
+        template=dict(
+            round=[
+                dict(role="HUMAN", prompt="{question}"),
+                dict(role="BOT", prompt="{answer}"),
+            ]
+        )
     ),
     retriever=dict(type=ZeroRetriever),
-    inferencer=dict(type=GenInferencer)
+    inferencer=dict(type=MultiTurnGenInferencer, infer_mode="every") # Default using "every" mode, Supports: "last", "every", "every_with_gt"
 )
 
 sharegpt_eval_cfg = dict(

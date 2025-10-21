@@ -17,6 +17,10 @@ class Output:
         self.extra_perf_data: dict = {}
         self.extra_details_data: dict = {}
         self.input: list | str = None
+        self.uuid: str = ""  # A unique identifier for each case: 
+                             # In multi-turn dialogue scenarios, all turns of the same sample share the same uuid. 
+                             # In pass@k scenarios, the same sample is sampled k times and each run receives a distinct uuid
+        self.turn_id: int = 0
 
     @abstractmethod
     def get_metrics(self) -> dict:

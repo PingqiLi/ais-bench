@@ -439,7 +439,7 @@ class DefaultPerfSummarizer:
                     np.array(details_perf_datas["end_time"]),
                     np.array(details_perf_datas["ttft"]),
                     details_perf_datas.get(
-                        "multiturn_group_id",
+                        "uuid",
                         [""] * len(details_perf_datas["start_time"]),
                     ),
                     output_file=plot_file_path,

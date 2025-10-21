@@ -2,6 +2,7 @@
 
 import asyncio
 import copy
+import uuid
 from multiprocessing import BoundedSemaphore
 from typing import List, Optional
 
@@ -80,7 +81,9 @@ class GenInferencer(BaseApiInferencer, BaseLocalInferencer):
         data_abbr = data.pop("data_abbr")
         max_out_len = data.pop("max_out_len")
         gold = data.pop("gold", None)
+        uid = uuid.uuid4().hex[:8]
         output = RequestOutput(self.perf_mode)
+        output.uuid = uid
         await self.status_counter.post()
         await self.model.generate(input, max_out_len, output, session=session, **data)
         if output.success:

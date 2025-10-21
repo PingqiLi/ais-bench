@@ -1,13 +1,10 @@
 """Prompt Template."""
 import copy
-import base64
 from typing import Dict, Hashable, List, Optional, Union
 
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
 from ais_bench.benchmark.utils.prompt import PromptList, safe_format
-from ais_bench.benchmark.utils.types import _check_type_list
-from ais_bench.benchmark.utils.video import VideoAsset, image_to_base64
-from ais_bench.benchmark.openicl.icl_prompt_template_base import BasePromptTemplate
+from ais_bench.benchmark.openicl.icl_prompt_template.icl_prompt_template_base import BasePromptTemplate
 
 PromptType = Union[PromptList, str, dict]
 

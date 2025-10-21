@@ -1,14 +1,11 @@
 import json
 import os
-import re
-from os import environ
 import random
-from pathlib import Path
 
-from datasets import Dataset, DatasetDict
+from datasets import Dataset
 
 from ais_bench.benchmark.openicl import BaseEvaluator
-from ais_bench.benchmark.registry import LOAD_DATASET, TEXT_POSTPROCESSORS
+from ais_bench.benchmark.registry import LOAD_DATASET
 from ais_bench.benchmark.utils import get_data_path
 from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.tokenizer import HuggingfaceTokenizer
@@ -42,18 +39,19 @@ class ShareGPTDataset(BaseDataset):
                 continue
             if data["conversations"][0]["from"] != "human":
                 continue
-            chat = {"human":[], "gpt":[]}
+            chat = {"question":[], "answer":[], "max_out_len":[]}
             chat['id'] = data['id']
             total_len = len(data["conversations"])
             cnt_turn += total_len
             for i in range(0, total_len, 2):
                 # One user One Assistant
-                chat['human'].append(data["conversations"][i]["value"])
+                chat["question"].append(data["conversations"][i]["value"])
                 try:
                     output_len = len(tokenizer.encode(data["conversations"][i + 1]["value"]))
                 except:
                     output_len = None
-                chat['gpt'].append({"data": data["conversations"][i + 1]["value"], "output_len": output_len})
+                chat["max_out_len"] = output_len
+                chat["answer"].append(data["conversations"][i + 1]["value"])
             new_dataset.append(chat)
         logger.info(f"Number of conversations: {len(dataset)}; Number of requests: {cnt_turn // 2}")
         if not disable_shuffle:

@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from ais_bench.benchmark.cli.utils import fill_model_path_if_synthetic, get_config_type
+from ais_bench.benchmark.cli.utils import fill_model_path_if_datasets_need, get_config_type
 from ais_bench.benchmark.utils.exceptions import ConfigError
 from ais_bench.benchmark.utils.error_codes import UTILS_CODES
 
@@ -16,7 +16,7 @@ class TestUtils(unittest.TestCase):
         }
 
         # 调用函数
-        fill_model_path_if_synthetic(model_cfg, dataset_cfg)
+        fill_model_path_if_datasets_need(model_cfg, dataset_cfg)
 
         # 验证结果
         self.assertEqual(dataset_cfg.get("model_path"), "/path/to/model")
@@ -32,7 +32,7 @@ class TestUtils(unittest.TestCase):
 
         # 验证异常
         with self.assertRaises(ConfigError) as context:
-            fill_model_path_if_synthetic(model_cfg, dataset_cfg)
+            fill_model_path_if_datasets_need(model_cfg, dataset_cfg)
 
         # 验证错误信息
         self.assertIn(UTILS_CODES.CFG_1, str(context.exception))
@@ -49,7 +49,7 @@ class TestUtils(unittest.TestCase):
         original_dataset_cfg = dataset_cfg.copy()
 
         # 调用函数
-        fill_model_path_if_synthetic(model_cfg, dataset_cfg)
+        fill_model_path_if_datasets_need(model_cfg, dataset_cfg)
 
         # 验证没有修改
         self.assertEqual(dataset_cfg, original_dataset_cfg)
@@ -66,7 +66,7 @@ class TestUtils(unittest.TestCase):
         original_dataset_cfg = dataset_cfg.copy()
 
         # 调用函数
-        fill_model_path_if_synthetic(model_cfg, dataset_cfg)
+        fill_model_path_if_datasets_need(model_cfg, dataset_cfg)
 
         # 验证没有修改
         self.assertEqual(dataset_cfg, original_dataset_cfg)
@@ -82,7 +82,7 @@ class TestUtils(unittest.TestCase):
         original_dataset_cfg = dataset_cfg.copy()
 
         # 调用函数
-        fill_model_path_if_synthetic(model_cfg, dataset_cfg)
+        fill_model_path_if_datasets_need(model_cfg, dataset_cfg)
 
         # 验证没有修改
         self.assertEqual(dataset_cfg, original_dataset_cfg)
@@ -99,7 +99,7 @@ class TestUtils(unittest.TestCase):
         original_dataset_cfg = dataset_cfg.copy()
 
         # 调用函数
-        fill_model_path_if_synthetic(model_cfg, dataset_cfg)
+        fill_model_path_if_datasets_need(model_cfg, dataset_cfg)
 
         # 验证没有修改
         self.assertEqual(dataset_cfg, original_dataset_cfg)
@@ -119,7 +119,7 @@ class TestUtils(unittest.TestCase):
         }
 
         # 调用函数
-        fill_model_path_if_synthetic(model_cfg, dataset_cfg)
+        fill_model_path_if_datasets_need(model_cfg, dataset_cfg)
 
         # 验证结果
         self.assertEqual(dataset_cfg.get("model_path"), "/path/to/model")

@@ -10,7 +10,7 @@ from ais_bench.benchmark.runners import LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLApiInferTask
 from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
 from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
-from ais_bench.benchmark.cli.utils import fill_model_path_if_synthetic
+from ais_bench.benchmark.cli.utils import fill_model_path_if_datasets_need
 
 
 class BaseWorker(ABC):
@@ -43,7 +43,7 @@ class Infer(BaseWorker):
             ),
         )
         for data_config in cfg["datasets"]:
-            fill_model_path_if_synthetic(cfg["models"][0], data_config)
+            fill_model_path_if_datasets_need(cfg["models"][0], data_config)
             retriever_cfg = data_config["infer_cfg"]["retriever"]
             infer_cfg = data_config["infer_cfg"]
             if "prompt_template" in infer_cfg:
@@ -90,7 +90,7 @@ class Eval(BaseWorker):
         )
 
         for data_config in cfg["datasets"]:
-            fill_model_path_if_synthetic(cfg["models"][0], data_config)
+            fill_model_path_if_datasets_need(cfg["models"][0], data_config)
         new_cfg["eval"]["runner"]["type"] = get_config_type(LocalRunner)
         new_cfg["eval"]["runner"]["max_workers_per_gpu"] = self.args.max_workers_per_gpu
         cfg.merge_from_dict(new_cfg)

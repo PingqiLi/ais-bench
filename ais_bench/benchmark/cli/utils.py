@@ -3,6 +3,9 @@ from datetime import datetime
 from ais_bench.benchmark.utils.exceptions import ConfigError
 from ais_bench.benchmark.utils.error_codes import UTILS_CODES
 
+DATASETS_NEED_MODELS = ["ais_bench.benchmark.datasets.synthetic.SyntheticDataset",
+                      "ais_bench.benchmark.datasets.sharegpt.ShareGPTDataset"]
+
 
 def get_config_type(obj) -> str:
     if isinstance(obj, str):
@@ -23,16 +26,13 @@ def get_current_time_str():
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-def fill_model_path_if_synthetic(model_cfg, dataset_cfg):
+def fill_model_path_if_datasets_need(model_cfg, dataset_cfg):
     data_type = get_config_type(dataset_cfg.get("type"))
-    if (
-        data_type == "ais_bench.benchmark.datasets.synthetic.SyntheticDataset"
-        and dataset_cfg.get("config", {}).get("Type") == "tokenid"
-    ):
+    if data_type in DATASETS_NEED_MODELS:
         model_path = model_cfg.get("path")
         if not model_path:
             raise ConfigError(
                 UTILS_CODES.CFG_1,
-                "[path] in model config is required for synthetic dataset with tokenid type"
+                "[path] in model config is required for synthetic(tokenid) and sharegpt dataset."
             )
         dataset_cfg.update({"model_path": model_path})

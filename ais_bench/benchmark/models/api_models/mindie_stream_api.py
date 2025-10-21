@@ -3,7 +3,7 @@ from typing import Dict, Optional, Union
 
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.prompt import PromptList
-from ais_bench.benchmark.models import BaseAPIModel
+from ais_bench.benchmark.models import BaseAPIModel, LMTemplateParser
 from ais_bench.benchmark.models.output import Output
 
 PromptType = Union[PromptList, str]
@@ -62,6 +62,8 @@ class MindieStreamApi(BaseAPIModel):
             verbose=verbose,
         )
         self.url = self._get_url()
+        self.template_parser = LMTemplateParser(meta_template) 
+        # For non-chat APIs, the actual prompt is passed as a plain string (just like with offline models), so LMTemplateParser is used.
 
     def _get_url(self) -> str:
         endpoint = "infer"

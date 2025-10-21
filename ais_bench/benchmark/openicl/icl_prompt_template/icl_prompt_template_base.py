@@ -1,9 +1,8 @@
 """Prompt Template."""
-import copy
 from typing import Dict, Hashable, List, Optional, Union
 
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
-from ais_bench.benchmark.utils.prompt import PromptList, safe_format
+from ais_bench.benchmark.utils.prompt import PromptList
 from ais_bench.benchmark.utils.types import _check_type_list
 
 PromptType = Union[PromptList, str, dict]

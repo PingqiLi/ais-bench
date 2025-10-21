@@ -1,10 +1,6 @@
 import json
-import os
-import re
-from os import environ
-from pathlib import Path
 
-from datasets import Dataset, DatasetDict
+from datasets import Dataset
 
 from ais_bench.benchmark.openicl import BaseEvaluator
 from ais_bench.benchmark.registry import LOAD_DATASET
@@ -25,15 +21,18 @@ class MTBenchDataset(BaseDataset):
         with open(path, 'r', encoding='utf-8') as f:
             for line in f:
                 data = json.loads(line.strip())
-                chat = {"human":[], "gpt":[]}
+                chat = {"question": [], "answer": []}
                 chat['id'] = data['question_id']
-                total_len = len(data["prompt"])
-                cnt_turn += total_len
-                for turn in data["prompt"]:
-                    chat['human'].append(turn)
-                    chat['gpt'].append({"data": "xxx"})
+                chat["question"] = data["prompt"]
+                cnt_turn += len(data["prompt"])
+                if data.get("reference", ""):
+                    assert len(data["reference"])==len(data["prompt"])
+                    answers = data["reference"]
+                else:
+                    answers = [""] * len(data["prompt"])
+                chat["answer"] = answers
                 dataset.append(chat)
-            
+
         logger.info(f"Number of conversations: {len(dataset)}; Number of requests: {cnt_turn}")
         return Dataset.from_list(dataset)
 
