@@ -25,7 +25,7 @@ from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import (
     BaseInferencer,
 )
 
-MESSAGE_TYPE_NUM = 4 # post_req, get_req, failed_req, finish_req
+MESSAGE_TYPE_NUM = 4  # post_req, get_req, failed_req, finish_req
 BLOCK_INTERVAL = 0.005  # Avoid request burst accumulation when RR is not configured
 MAX_BATCH_SIZE = 100000  # Maximum concurrency
 logger = get_logger(__name__)
@@ -286,6 +286,8 @@ class BaseApiInferencer(BaseInferencer):
             connector=connector, timeout=timeout, max_line_size=MAX_CHUNK_SIZE
         )
         start_time = time.perf_counter()
+        
+        stop_event = asyncio.Event()
 
         async def limited_request_func(data):
             if semaphore is None:
@@ -297,7 +299,9 @@ class BaseApiInferencer(BaseInferencer):
                 # Pressure mode: continuously send requests until pressure_time
                 if self.pressure_mode:
                     while time.perf_counter() - start_time < self.pressure_time:
-                        data = await async_queue.get()
+                        if stop_event.is_set():
+                            break
+                        data = await async_queue.get(timeout=1)
 
                         # Main process interrupt -> put sentinel -> exit pressure test
                         if data is None:
@@ -307,7 +311,7 @@ class BaseApiInferencer(BaseInferencer):
 
         tasks = []
         try:
-            while True:
+            while not stop_event.is_set():
                 if token_bucket:
                     acquired = await asyncio.to_thread(token_bucket.acquire, timeout=1)
                     if not acquired:
@@ -333,13 +337,12 @@ class BaseApiInferencer(BaseInferencer):
                     break
             await asyncio.gather(*tasks)
         except asyncio.exceptions.CancelledError:
+            stop_event.set()
             # keyboard interrupt wait for all tasks to finish
-            logger.warning("Waiting to cancel requests...")
             for t in tasks:
                 if not t.done():
                     t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
-            logger.warning("Requests cancelled")
         finally:
             await session.close()
 
@@ -441,19 +444,20 @@ class BaseApiInferencer(BaseInferencer):
                 "Keyboard interrupt. Please wait for tasks exit gracefully..."
             )
             stop_event.set()
+            worker_task.cancel()
+            loop.run_until_complete(asyncio.wait_for(worker_task, timeout=None))
         finally:
             # Orderly shutdown
             stop_event.set()
-            loop.run_until_complete(asyncio.wait_for(worker_task, timeout=10.0))
-            # Join threads
-            self.output_handler.stop_cache_consumer()
-            cache_consumer_thread.join()
-
+           
+             # Join threads
             producer_thread.join()
             report_thread.join()
 
             self.status_counter.stop()
             self.status_counter.join()
+            self.output_handler.stop_cache_consumer()
+            cache_consumer_thread.join()
 
             # Close janus queue properly
             janus_queue.close()

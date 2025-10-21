@@ -1,6 +1,7 @@
 import csv
 import json
 import mmap
+import os
 import os.path as osp
 from collections import defaultdict
 from typing import Dict, List
@@ -28,7 +29,8 @@ from ais_bench.benchmark.utils.build import (
     build_model_from_cfg,
 )
 from ais_bench.benchmark.utils.prompt import is_mm_prompt
-from ais_bench.benchmark.utils.results import dump_results_dict, load_from_h5
+from ais_bench.benchmark.utils.results import dump_results_dict
+from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import init_db, load_all_numpy_from_db
 
 
 def model_abbr_from_cfg_used_in_summarizer(model):
@@ -112,7 +114,7 @@ class DefaultPerfSummarizer:
         self,
         manager_list: list,
         model_cfg: dict,
-        h5_file_path: str,
+        db_file_path: str,
         perf_datas: list,
     ):
         """Calculate performance data.
@@ -122,8 +124,8 @@ class DefaultPerfSummarizer:
             perf_datas: Raw performance data
         """
         model = build_model_from_cfg(model_cfg)
-
-        h5_data = load_from_h5(h5_file_path)
+        conn = init_db(db_file_path)
+        all_numpy_data = load_all_numpy_from_db(conn)
 
         def recursive_update(detail_data):
             """Recursively update performance data.
@@ -135,35 +137,42 @@ class DefaultPerfSummarizer:
             if not detail_data:
                 return
             if isinstance(detail_data, dict):
-                # __h5_ref__ marks ndarray data
-                if "__h5_ref__" in detail_data:
-                    return h5_data[detail_data["__h5_ref__"]]
+                # __db_ref__ marks ndarray data
+                if "__db_ref__" in detail_data:
+                    numpy_id = detail_data["__db_ref__"]
+                    if numpy_id not in all_numpy_data:
+                        return None
+                    return all_numpy_data[numpy_id]
                 for key, value in detail_data.items():
                     detail_data[key] = recursive_update(value)
             return detail_data
 
-        # calc_perf_datas = []
         for perf_data in perf_datas:
             if not perf_data["success"]:
                 manager_list.append({"success": False})
                 continue
             recursive_update(perf_data)
+            time_points = perf_data.pop("time_points")
+            if time_points is None: # jsonl is saved but database not committed, mainly on process is killed unexpectedly
+                manager_list.append({"success": False})
+                continue
             if not is_mm_prompt(perf_data["input"]):
                 perf_data["input_tokens"] = len(model.encode(perf_data["input"]))
             else:
-                perf_data["input_tokens"] = 0 # multi-modal input does not support input_tokens
+                perf_data["input_tokens"] = 0  # multi-modal input does not support input_tokens
             if not perf_data["output_tokens"]:
                 perf_data["output_tokens"] = len(model.encode(perf_data["prediction"]))
             perf_data.pop("input")
             perf_data.pop("prediction")
-            perf_data.pop("h5_name")
-            time_points = perf_data.pop("time_points")
+            perf_data.pop("db_name")
+            
             perf_data["start_time"] = time_points[0]
             perf_data["end_time"] = time_points[-1]
             perf_data["latency"] = time_points[-1] - time_points[0]
             perf_data["ttft"] = time_points[1] - time_points[0]
             perf_data["tpot"] = (
-                (perf_data["latency"] - perf_data["ttft"]) / (perf_data["output_tokens"] - 1)
+                (perf_data["latency"] - perf_data["ttft"])
+                / (perf_data["output_tokens"] - 1)
                 if perf_data["output_tokens"] > 1
                 else 0
             )
@@ -172,7 +181,7 @@ class DefaultPerfSummarizer:
                 perf_data["output_tokens"] / perf_data["latency"]
             )
             manager_list.append(perf_data)
-        # return calc_perf_datas
+        conn.close()
 
     def tqdm_monitor(self, total, manager_list, event):
         with tqdm(total=total, desc="Calculating performance details") as pbar:
@@ -180,6 +189,26 @@ class DefaultPerfSummarizer:
                 pbar.n = len(manager_list)
                 pbar.refresh()
                 time.sleep(0.1)
+            pbar.n = total
+            pbar.refresh()
+
+    def _load_tmp_result(self, model_abbr: str, data_abbrs: list):
+        tmp_perf_details_dir = osp.join(self.work_dir, "performances", model_abbr, "tmp")
+        if not os.path.exists(tmp_perf_details_dir):
+            return {}
+        tmp_cache_data = defaultdict(list)
+        for file in os.listdir(tmp_perf_details_dir):
+            if file.endswith(".jsonl"):
+                with open(osp.join(tmp_perf_details_dir, file), "r") as f:
+                    for line in f:
+                        perf_data = orjson.loads(line)
+                        data_abbr = perf_data.get("data_abbr")
+                        if data_abbr not in data_abbrs:
+                            continue
+                        db_name = perf_data.get("db_name")
+                        if db_name:
+                            tmp_cache_data[db_name].append(perf_data)
+        return tmp_cache_data
 
     def _load_details_perf_data(self, model_cfg: dict, data_abbrs: list):
         """Load details performance data and h5 data based on data_abbrs.
@@ -196,25 +225,33 @@ class DefaultPerfSummarizer:
         details_perf_datas = defaultdict(list)
         model_abbr = model_abbr_from_cfg_used_in_summarizer(model_cfg)
 
-        h5_perf_data_map = defaultdict(list)
+        db_perf_data_map = defaultdict(list)
+        
+        unfound_data_abbrs = []
 
         for data_abbr in data_abbrs:
             perf_details_file = osp.join(
                 self.work_dir, "performances", model_abbr, f"{data_abbr}_details.jsonl"
             )
             if not osp.exists(perf_details_file):
-                self.logger.warning(
-                    f"Cannot find details perf data of [{model_abbr}/{data_abbr}] in {perf_details_file}, skip."
-                )
+                unfound_data_abbrs.append(data_abbr)
                 continue
             with open(perf_details_file, "rb") as f:
                 mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
                 for line in iter(mm.readline, b""):
                     perf_data = orjson.loads(line)
-                    h5_name = perf_data.get("h5_name")
-                    if h5_name:
-                        h5_perf_data_map[h5_name].append(perf_data)
-        if not h5_perf_data_map:
+                    db_name = perf_data.get("db_name")
+                    if db_name:
+                        db_perf_data_map[db_name].append(perf_data)
+        if unfound_data_abbrs:
+            self.logger.info(f"Can't find details perf data of [{model_abbr}/{','.join(unfound_data_abbrs)}] in "
+                             f"{self.work_dir}, use tmp cache data.")
+            tmp_cache_data = self._load_tmp_result(model_abbr, unfound_data_abbrs)
+            for db_name, perf_datas in tmp_cache_data.items():
+                for perf_data in perf_datas:
+                    db_perf_data_map[db_name].append(perf_data)
+                
+        if not db_perf_data_map:
             raise RuntimeError(
                 f"Not found any details perf data in work_dir, please check {self.work_dir}."
             )
@@ -222,19 +259,19 @@ class DefaultPerfSummarizer:
         details_perf_datas = defaultdict(list)
 
         with multiprocessing.Manager() as manager:
-            manager_list = manager.list()  # 共享字典
+            manager_list = manager.list()
             processes = []
 
             total_counter = 0
 
-            for h5_name, perf_datas in h5_perf_data_map.items():
-                h5_path = osp.join(
-                    self.work_dir, "performances", model_abbr, "h5_data", h5_name
-                )
+            for db_name, perf_datas in db_perf_data_map.items():
+                db_path = osp.join(self.work_dir, "performances", model_abbr, "db_data", db_name)
+                if not os.path.exists(db_path):
+                    db_path = osp.join(self.work_dir, "performances", model_abbr, "tmp", "tmp_"+db_name)
                 total_counter += len(perf_datas)
                 p = multiprocessing.Process(
                     target=self._calc_perf_data,
-                    args=(manager_list, model_cfg, h5_path, perf_datas),
+                    args=(manager_list, model_cfg, db_path, perf_datas),
                 )
                 processes.append(p)
                 p.start()

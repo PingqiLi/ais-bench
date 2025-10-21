@@ -1,6 +1,6 @@
 import os
 import psutil
-import sys
+import shutil
 from tqdm import tqdm
 
 from abc import abstractmethod
@@ -50,6 +50,14 @@ class TasksMonitor:
         self.run_in_background = run_in_background
         self.last_table = None
         get_logger().info(f"Launch TasksMonitor, PID: {os.getpid()}")
+    
+    @staticmethod
+    def rm_tmp_files(work_dir: str):
+        """
+        Remove temporary files
+        """
+        if os.path.exists(os.path.join(work_dir, "status_tmp")):
+            shutil.rmtree(os.path.join(work_dir, "status_tmp"))
 
     def launch_state_board(self):
         if self.is_debug:
@@ -84,7 +92,7 @@ class TasksMonitor:
             return
 
         for status in statuses:
-            # 从队列获取状态信息
+            # get status information from queue
             task_name = status['task_name']
             if not self.tasks_state_map[task_name].get('start_time'):
                 self.tasks_state_map[task_name]['start_time'] = time.time()
@@ -152,85 +160,91 @@ class TasksMonitor:
         page_size = curses.LINES - 10  # reserve space for title and prompt
         stop_screen_refresh = False  # 添加停止屏幕刷新的标志
 
-        while True:
-            # function of key input
-            try:
-                key = stdscr.getch()
-                if key != -1:
-                    # up and down key to switch page
-                    if key == curses.KEY_UP and current_page > 0:
-                        current_page -= 1
-                    elif key == curses.KEY_DOWN:
-                        current_page += 1
-                    # press 'r' or 'R' to refresh page
-                    elif key in (ord('r'), ord('R')):
-                        last_refresh_time = 0  # force refresh
-                    # press 'p' or 'P' to pause/resume screen refresh
-                    elif key in (ord('p'), ord('P')):
-                        stop_screen_refresh = not stop_screen_refresh
-            except Exception:
-                pass
+        try:
+            while True:
+                # function of key input
+                try:
+                    key = stdscr.getch()
+                    if key != -1:
+                        # up and down key to switch page
+                        if key == curses.KEY_UP and current_page > 0:
+                            current_page -= 1
+                        elif key == curses.KEY_DOWN:
+                            current_page += 1
+                        # press 'r' or 'R' to refresh page
+                        elif key in (ord('r'), ord('R')):
+                            last_refresh_time = 0  # force refresh
+                        # press 'p' or 'P' to pause/resume screen refresh
+                        elif key in (ord('p'), ord('P')):
+                            stop_screen_refresh = not stop_screen_refresh
+                except Exception:
+                    pass
 
-            # if screen refresh is paused, only check key input
-            if stop_screen_refresh:
-                continue
+                # if screen refresh is paused, only check key input
+                if stop_screen_refresh:
+                    continue
 
-            # check if need refresh data
-            current_time = time.time()
-            need_refresh_data = (current_time - last_refresh_time >= self.refresh_interval)
+                # check if need refresh data
+                current_time = time.time()
+                need_refresh_data = (current_time - last_refresh_time >= self.refresh_interval)
 
-            # clear screen
-            stdscr.clear()
+                # clear screen
+                stdscr.clear()
 
-            # get current time as update time
-            current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                # get current time as update time
+                current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # refresh task state data if need
-            if need_refresh_data:
-                self._refresh_task_state()
-                last_refresh_time = current_time
+                # refresh task state data if need
+                if need_refresh_data:
+                    self._refresh_task_state()
+                    last_refresh_time = current_time
 
-            # get task state data
+                # get task state data
+                data = self._get_task_states()
+
+                # format table
+                full_table = tabulate(data, headers=headers, tablefmt="grid")
+
+                # split table to lines
+                table_lines = full_table.splitlines()
+                total_pages = max(0, (len(table_lines) - 1) // page_size) + 1
+                current_page = min(current_page, total_pages - 1)  # make sure the page won't out of
+
+                # get current page table lines
+                start_line = current_page * page_size
+                end_line = start_line + page_size
+                current_table_lines = table_lines[start_line:end_line]
+                current_table = '\n'.join(current_table_lines)
+
+                # display table and info
+                stdscr.addstr(0, 0, f"Base path of result&log : {self.output_path}")
+                stdscr.addstr(1, 0, f"Task Progress Table (Updated at: {current_time_str})")
+                stdscr.addstr(2, 0, f"Page: {current_page + 1}/{total_pages}  Total {(int((len(table_lines) - 1) / 2))} rows of data")
+
+                # add screen refresh status display and operation prompt
+                screen_status = "PAUSED" if stop_screen_refresh else "RUNNING"
+                stdscr.addstr(3, 0, f"Press Up/Down arrow to page, 'R' to refresh, 'P' to {screen_status} screen refresh, 'Ctrl + C' to exit")
+
+                try:
+                    # display current page table lines, start from line 5
+                    for i, line in enumerate(current_table_lines):
+                        if i + 5 < curses.LINES:  # make sure the line won't out of screen height
+                            stdscr.addstr(i + 5, 0, line)
+                except curses.error:
+                    # handle curses error, prevent program crash
+                    pass
+
+                # refresh screen
+                stdscr.refresh()
+
+                if self._is_all_task_done():
+                    self.last_table = full_table
+                    break
+        except KeyboardInterrupt as e:
+            self._refresh_task_state()
             data = self._get_task_states()
-
-            # format table
             full_table = tabulate(data, headers=headers, tablefmt="grid")
-
-            # split table to lines
-            table_lines = full_table.splitlines()
-            total_pages = max(0, (len(table_lines) - 1) // page_size) + 1
-            current_page = min(current_page, total_pages - 1)  # make sure the page won't out of
-
-            # get current page table lines
-            start_line = current_page * page_size
-            end_line = start_line + page_size
-            current_table_lines = table_lines[start_line:end_line]
-            current_table = '\n'.join(current_table_lines)
-
-            # display table and info
-            stdscr.addstr(0, 0, f"Base path of result&log : {self.output_path}")
-            stdscr.addstr(1, 0, f"Task Progress Table (Updated at: {current_time_str})")
-            stdscr.addstr(2, 0, f"Page: {current_page + 1}/{total_pages}  Total {(int((len(table_lines) - 1) / 2))} rows of data")
-
-            # add screen refresh status display and operation prompt
-            screen_status = "PAUSED" if stop_screen_refresh else "RUNNING"
-            stdscr.addstr(3, 0, f"Press Up/Down arrow to page, 'R' to refresh, 'P' to {screen_status} screen refresh, 'Ctrl + C' to exit")
-
-            try:
-                # display current page table lines, start from line 5
-                for i, line in enumerate(current_table_lines):
-                    if i + 5 < curses.LINES:  # make sure the line won't out of screen height
-                        stdscr.addstr(i + 5, 0, line)
-            except curses.error:
-                # handle curses error, prevent program crash
-                pass
-
-            # refresh screen
-            stdscr.refresh()
-
-            if self._is_all_task_done():
-                self.last_table = full_table
-                break
+            self.last_table = full_table
 
 
 class BaseRunner:

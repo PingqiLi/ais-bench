@@ -33,10 +33,10 @@ def write_status(file_path, status):
 
 def read_and_clear_statuses(tmp_file_dir, tmp_file_name_list):
     """
-    读取所有进程状态并清空临时文件
+    Read all task statuses and clear temporary files
 
-    返回:
-        包含所有进程状态的列表，如果出错则返回空列表
+    Returns:
+        List of all task statuses, if error, return empty list
     """
 
     if not os.path.exists(tmp_file_dir):

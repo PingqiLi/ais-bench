@@ -1,15 +1,6 @@
-"""
-Generation inferencer output handler.
+from typing import List, Optional, Union
 
-This module provides a specialized output handler for generation-based
-inference tasks, supporting both performance and accuracy modes.
-"""
-
-import queue
-import traceback
-from typing import Any, Dict, List, Optional, Union
-
-import h5py
+import sqlite3
 from .base_handler import BaseInferencerOutputHandler
 from ais_bench.benchmark.models.output import Output
 from ais_bench.benchmark.utils import get_logger
@@ -31,19 +22,15 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
         cache_queue (queue.Queue): Queue for caching results before writing
     """
 
-    def __init__(self, model: Any, perf_mode: bool = False) -> None:
+    def __init__(self, perf_mode: bool = False, save_every: int = 100) -> None:
         """
         Initialize the generation inferencer output handler.
 
         Args:
-            model: The model instance for inference operations
             perf_mode (bool): Whether to run in performance measurement mode
                             (default: False for accuracy mode)
-
-        Raises:
-            TypeError: If model is None or invalid
         """
-        super().__init__(model)
+        super().__init__(save_every)
         self.all_success = True
         self.perf_mode = perf_mode
 
@@ -65,7 +52,7 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
 
     def get_result(
         self,
-        h5_group: h5py.Group,
+        conn: sqlite3.Connection,
         input: Union[str, List[str]],
         output: Union[str, Output],
         gold: Optional[str] = None,
@@ -78,7 +65,7 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
         full input/output data is preserved for evaluation.
 
         Args:
-            h5_group (h5py.Group): HDF5 group to write results to
+            conn (sqlite3.Connection): Database connection to write results to
             input (Union[str, List[str]]): Input data for the inference
             output (Union[str, Output]): Output result from inference
             gold (Optional[str]): Ground truth data for comparison
@@ -87,54 +74,37 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
             KeyError: If output object is invalid
             ValueError: If input parameters are invalid
         """
-        try:
+        # Performance mode: only store metrics
+        if self.perf_mode and isinstance(output, Output):
+            result_data = output.get_metrics()
+            result_data = self._extract_and_write_arrays(
+                result_data, conn
+            )
 
-            # Performance mode: only store metrics
-            if self.perf_mode and isinstance(output, Output):
-                try:
-                    result_data = output.get_metrics()
-                    result_data = self._extract_and_write_arrays(
-                        result_data, h5_group
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to get metrics from output: {str(e)}")
-                    logger.error(f"Exception details: {traceback.format_exc()}")
-                    raise
+        else:
+            # Accuracy mode: store full input/output data
+            result_data = {
+                "success": (
+                    output.success if isinstance(output, Output) else True
+                ),
+                "origin_prompt": input,
+                "prediction": (
+                    output.get_prediction()
+                    if isinstance(output, Output)
+                    else output
+                ),
+            }
+
+            if gold:
+                result_data["gold"] = gold
+
+        # Check for failures and update success status
+        if not result_data.get("success", True):
+            self.all_success = False
+            if isinstance(output, Output) and hasattr(output, "error_info"):
+                result_data["error_info"] = output.error_info
             else:
-                # Accuracy mode: store full input/output data
-                try:
-                    result_data = {
-                        "success": (
-                            output.success if isinstance(output, Output) else True
-                        ),
-                        "origin_prompt": input,
-                        "prediction": (
-                            output.get_prediction()
-                            if isinstance(output, Output)
-                            else output
-                        ),
-                    }
-
-                    if gold:
-                        result_data["gold"] = gold
-
-                except Exception as e:
-                    logger.error(f"Failed to process output data: {str(e)}")
-                    logger.error(f"Exception details: {traceback.format_exc()}")
-                    raise
-
-            # Check for failures and update success status
-            if not result_data.get("success", True):
-                self.all_success = False
-                if isinstance(output, Output) and hasattr(output, "error_info"):
-                    result_data["error_info"] = output.error_info
-                else:
-                    logger.warning(
-                        f"No error info available for failed operation at data id {id}"
-                    )
-            return result_data
-
-        except Exception as e:
-            logger.error(f"Error in save_results for data id {id}: {str(e)}")
-            logger.error(f"Exception details: {traceback.format_exc()}")
-            raise
+                logger.warning(
+                    f"No error info available for failed operation at data id {id}"
+                )
+        return result_data

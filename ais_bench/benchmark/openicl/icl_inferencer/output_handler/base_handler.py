@@ -10,19 +10,18 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import h5py
+import sqlite3
 import numpy as np
 import janus
 
 from ais_bench.benchmark.models.output import Output
 from ais_bench.benchmark.utils import get_logger
 from ais_bench.benchmark.utils.results import safe_write
-
+from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import init_db, save_numpy_to_db
 logger = get_logger(__name__)
 
-H5_REF_KEY = "__h5_ref__"
-ARRAYS_GROUP_NAME = "arrays"
-H5_DATA_DIR = "h5_data"
+DB_REF_KEY = "__db_ref__"
+DB_DATA_DIR = "db_data"
 
 
 class BaseInferencerOutputHandler:
@@ -35,30 +34,23 @@ class BaseInferencerOutputHandler:
 
     Attributes:
         results_dict (defaultdict): Dictionary to store results by data abbreviation
-        model: The model instance being used for inference
         cache_queue (queue.Queue): Queue for caching results before writing
         all_success (bool): Flag indicating if all operations were successful
     """
 
-    def __init__(self, model: Any) -> None:
+    def __init__(self, save_every: int = 100) -> None:
         """
         Initialize the base output handler.
-
-        Args:
-            model: The model instance for inference operations
-
-        Raises:
-            TypeError: If model is None or invalid
         """
         self.results_dict = defaultdict(dict)
-        self.model = model
         self.cache_queue = janus.Queue()
         self.all_success = True
-
+        self.save_every = save_every
+        
     @abstractmethod
     def get_result(
         self,
-        h5_group: h5py.Group,
+        conn: sqlite3.Connection,
         input: Union[str, List[str]],
         output: Union[str, Output],
         gold: Optional[str] = None,
@@ -70,7 +62,7 @@ class BaseInferencerOutputHandler:
         to define how results are stored and processed.
 
         Args:
-            h5_group (h5py.Group): HDF5 group to write results to
+            conn (sqlite3.Connection): Database connection to write results to
             input (Union[str, List[str]]): Input data for the inference
             output (Union[str, Output]): Output result from inference
             gold (Optional[str]): Ground truth data for comparison
@@ -158,79 +150,67 @@ class BaseInferencerOutputHandler:
     def _extract_and_write_arrays(
         self,
         obj: Any,
-        group: h5py.Group,
-        compression: str = "gzip",
-        chunks: bool = True,
+        conn: sqlite3.Connection,
     ) -> Any:
         """
-        Recursively scan obj and immediately write numpy.ndarray objects to HDF5.
+        Recursively scan obj and immediately write numpy.ndarray objects to database.
 
         Returns a JSON-serializable replacement object where array positions are
-        replaced with {"__db_ref__": "<__db_id__>"} placeholders.
+        replaced with {"__db_ref__": "<id>"} placeholders.
 
         Args:
             obj: Object to scan for arrays
-            group (h5py.Group): HDF5 group to write arrays to
-            compression (str): Compression algorithm for HDF5 datasets (default: "gzip")
-            chunks (bool): Whether to enable chunking for HDF5 datasets (default: True)
+            conn (sqlite3.Connection): Database connection to write arrays to
 
         Returns:
             Any: JSON-serializable object with array references replaced
 
         Raises:
             ValueError: If obj cannot be processed
-            RuntimeError: If HDF5 operations fail
+            RuntimeError: If database operations fail
         """
 
-        try:
-            # Atomic types return directly
-            if obj is None or isinstance(obj, (bool, int, float, str, list, tuple)):
-                return obj
+        # Atomic types return directly
+        if obj is None or isinstance(obj, (bool, int, float, str, list, tuple)):
+            return obj
 
-            # If numpy array -> write to HDF5 and return reference
-            if isinstance(obj, np.ndarray):
-                arr = np.asarray(obj)
-                unique = str(uuid.uuid4()).split("-")[0]
-
-                try:
-                    group.create_dataset(
-                        unique, data=arr, compression=compression, chunks=chunks
-                    )
-
-                    # Return serializable placeholder
-                    return {H5_REF_KEY: unique}
-                except Exception as e:
-                    raise RuntimeError(f"Failed to write array to HDF5: {str(e)}")
-
-            # dict -> recursively process values
-            if isinstance(obj, dict):
-                # Use dict comprehension for better performance
-                out = {
-                    str(k): self._extract_and_write_arrays(
-                        v, group, compression, chunks
-                    )
-                    for k, v in obj.items()
-                }
-                return out
-
-            # Other types: try JSON serialization, otherwise convert to string
+        # If numpy array -> write to database and return reference
+        if isinstance(obj, np.ndarray):
+            arr = np.asarray(obj)
             try:
-                json.dumps(obj)
-                return obj
-            except Exception as json_error:
-                try:
-                    str_obj = str(obj)
-                    return str_obj
-                except Exception as str_error:
-                    logger.error(
-                        f"Failed to convert object to string: {str(str_error)}"
-                    )
-                    return None
+                id = save_numpy_to_db(conn, arr, self.save_every)
+            except Exception as e:
+                logger.error(f"Failed to save numpy array to database: {str(e)}")
+                return None
 
-        except Exception as e:
-            logger.error(f"Error in _extract_and_write_arrays: {str(e)}")
-            logger.error(f"Exception details: {traceback.format_exc()}")
-            raise
+            # Return serializable placeholder
+            return {DB_REF_KEY: id}
+
+
+        # dict -> recursively process values
+        if isinstance(obj, dict):
+            # Use dict comprehension for better performance
+            out = {
+                str(k): self._extract_and_write_arrays(
+                    v, conn
+                )
+                for k, v in obj.items()
+            }
+            return out
+
+        # Other types: try JSON serialization, otherwise convert to string
+        try:
+            json.dumps(obj)
+            return obj
+        except Exception as json_error:
+            try:
+                str_obj = str(obj)
+                return str_obj
+            except Exception as str_error:
+                logger.error(
+                    f"Failed to convert object to string: {str(str_error)}"
+                )
+                return None
 
     def run_cache_consumer(
         self,
@@ -243,7 +223,7 @@ class BaseInferencerOutputHandler:
         Run the cache consumer to process queued results.
 
         Processes items from the cache queue, saves results, and handles
-        HDF5 file operations for array data. Manages file cleanup based on
+        database file operations for array data. Manages file cleanup based on
         performance mode and success status.
 
         Args:
@@ -257,16 +237,15 @@ class BaseInferencerOutputHandler:
             ValueError: If parameters are invalid
         """
         try:
-            h5_path = Path(save_dir) / (Path(file_name).stem + ".h5")
-            h5_name = h5_path.name.replace("tmp_", "")
+            db_path = Path(save_dir) / (Path(file_name).stem + ".db")
+            db_name = db_path.name.replace("tmp_", "")
+            conn = init_db(db_path)
             json_path = Path(save_dir) / file_name
 
             # Ensure directories exist
             Path(save_dir).mkdir(parents=True, exist_ok=True)
 
             with open(json_path, "a", encoding="utf-8") as f:
-                with h5py.File(h5_path, "a") as hf:
-                    group = hf.create_group(ARRAYS_GROUP_NAME)
                     cache_data = []
                     processed_count = 0
 
@@ -282,18 +261,21 @@ class BaseInferencerOutputHandler:
                         try:
                             uid = str(uuid.uuid4())[:8]
 
-                            result_data = self.get_result(group, *item[2:])
+                            result_data = self.get_result(conn, *item[2:])
                             id, data_abbr = item[0], item[1]
                             json_data = {
                                 "data_abbr": data_abbr,
                                 "id": id,
                             }
-
-                            if perf_mode:
-                                result_data["h5_name"] = h5_name
+                            
                             json_data.update(result_data)
-
-                            self.results_dict[data_abbr][uid] = json_data
+                            if perf_mode:
+                                json_data["db_name"] = db_name
+                                self.results_dict[data_abbr][uid] = json_data
+                            else:
+                                # accuracy mode: only save successful results in data_abbr.jsonl. otherwise, save to tmp file.
+                                if result_data["success"]:
+                                    self.results_dict[data_abbr][uid] = json_data
 
                             # Pre-compute JSON string to avoid repeated serialization
                             json_str = json.dumps(json_data) + "\n"
@@ -315,15 +297,17 @@ class BaseInferencerOutputHandler:
                         f.writelines(cache_data)
                         f.flush()
 
-            # Handle H5 file based on performance mode
+            # Handle database file based on performance mode
+            conn.commit()
+            conn.close()
             if not perf_mode:
-                if h5_path.exists():
-                    os.remove(h5_path)
+                if db_path.exists():
+                    os.remove(db_path)
             else:
-                dest = h5_path.parent.parent / H5_DATA_DIR
+                dest = db_path.parent.parent / DB_DATA_DIR
                 dest.mkdir(exist_ok=True)
-                if h5_path.exists():
-                    shutil.move(str(h5_path), str(dest / h5_name))
+                if db_path.exists():
+                    shutil.move(str(db_path), str(dest / db_name))
 
             # Clean up JSON file if all operations were successful
             if self.all_success:

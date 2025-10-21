@@ -128,6 +128,7 @@ class ProgressBar:
         per_pid_shms: Dict[int, shared_memory.SharedMemory],
         stop_event: Event,
         data_num: int = -1,
+        finish_data_num: int = 0,
         debug: bool = False,
         pressure: bool = False,
         pressure_time: int = 15,
@@ -136,6 +137,8 @@ class ProgressBar:
         self.debug = debug
         self.stop_event = stop_event
         self.data_num = data_num
+        self.finish_data_num = finish_data_num
+        self.total_data_num = data_num + finish_data_num
         self.data_index = -1
         self.logger = get_logger()
 
@@ -225,7 +228,7 @@ class ProgressBar:
     # ---------- normal: two-line fixed display ----------
     def _draw_progress(self):
         """Draw progress bar with statistics."""
-        if self.data_num <= 0:
+        if self.total_data_num <= 0:
             raise ValueError("Data num must be greater than 0 for progress bar display")
         if self.pressure:
             total = self.pressure_time
@@ -234,21 +237,25 @@ class ProgressBar:
                 f"Starting progress bar Time for pressure testing: {total} s"
             )
         else:
-            total = self.data_num
+            total = self.total_data_num
             unit = "req"
-            self.logger.info(f"Starting progress bar Total data num: {total} req")
+            self.logger.info(f"Starting progress bar Total data num: {total} req"
+                             f" Finished data num: {self.finish_data_num}"
+                             f" Left data num: {self.data_num}")
 
         def get_new_count():
             if self.pressure:
                 return min(int(time.perf_counter() - start_time), total)
             else:
                 return min(
-                    int(self.stats.get("finish", 0)),
-                    self.data_num,
+                    int(self.stats.get("finish", 0) + self.finish_data_num),
+                    self.total_data_num,
                 )
 
         # leave=True ensures final display is retained after closing
         main_bar = tqdm(total=total, desc="Progress", unit=unit, position=0, leave=True)
+        if self.finish_data_num > 0:
+            main_bar.update(self.finish_data_num)
         info_bar = tqdm(total=1, desc="", bar_format="{desc}", position=1, leave=True)
 
         try:
@@ -312,7 +319,7 @@ class ProgressBar:
         if not self.pressure:
             task_state_manager.update_task_state(
                 {
-                    "total_count": self.data_num,
+                    "total_count": self.total_data_num,
                 }
             )
         else:
@@ -330,7 +337,7 @@ class ProgressBar:
                 state = {
                     "status": "inferencing",
                     "finish_count": (
-                        self.stats["finish"]
+                        self.stats["finish"] + self.finish_data_num
                         if not self.pressure
                         else min(
                             self.pressure_time, int(time.perf_counter() - start_time)
@@ -353,7 +360,7 @@ class ProgressBar:
         state = {
             "status": "write cache",
             "finish_count": (
-                self.stats["finish"]
+                self.stats["finish"] + self.finish_data_num
                 if not self.pressure
                 else min(self.pressure_time, int(time.perf_counter() - start_time))
             ),

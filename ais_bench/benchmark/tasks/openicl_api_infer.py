@@ -121,7 +121,7 @@ class OpenICLApiInferTask(BaseTask):
         work_num = (self.concurrency - 1) // CONCURRENCY_PER_PROCESS
         return min(work_num + 1, MAX_WORKERS_NUM)
 
-    def _get_data_list(self):
+    def _get_data_list(self) -> tuple[List, List]:
         """Retrieve data from the inferencer and return a picklable dataset list.
 
         Supports datasets with different retrievers and prompt templates.
@@ -132,7 +132,16 @@ class OpenICLApiInferTask(BaseTask):
         data_list = []
         if not hasattr(self.inferencer, "get_data_list"):
             raise ValueError("Inferencer must implement get_data_list method")
+        finish_cache_data = {}
+        try:
+            finish_cache_data = self.inferencer.get_finish_data_list()
+        except Exception as e:
+            self.logger.warning(f"Failed to get finish data list: {e}, infer cache data will be ignored")
+            finish_cache_data = {}
+        finish_data_list = []
         for dataset_cfg in self.dataset_cfgs:
+            data_abbr = dataset_cfg["abbr"]
+            cur_data_cache = finish_cache_data.get(data_abbr, {})
             infer_cfg = dataset_cfg["infer_cfg"]
             dataset = build_dataset_from_cfg(dataset_cfg)
             retriever_cfg = infer_cfg["retriever"].copy()
@@ -142,8 +151,15 @@ class OpenICLApiInferTask(BaseTask):
             retriever = ICL_RETRIEVERS.build(retriever_cfg)
             infer_data_list = self.inferencer.get_data_list(retriever)
             for data in infer_data_list:
+                data_id = data.get("index") 
+                if data_id in cur_data_cache:
+                    finish_data_list.append(cur_data_cache[data_id])
+                    continue
                 data_list.append(data)
-        return data_list
+        if len(finish_data_list) > 0:
+            self.logger.info(f"Found {len(finish_data_list)} completed data in cache, "
+                             "run infer task from the last interrupted position")
+        return data_list, finish_data_list
 
     def _dump_dataset_to_share_memory(self, data_list: List):
         """Dump the serialized dataset into a shared memory block.
@@ -300,7 +316,11 @@ class OpenICLApiInferTask(BaseTask):
         debug = self.cli_args.get("debug", False)
         self.inferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
 
-        data_list = self._get_data_list()
+        data_list, finish_data_list = self._get_data_list()
+        finish_data_count = len(finish_data_list)
+        if len(data_list) == 0:
+            self.logger.info(f"No data to infer, task finished")
+            return
 
         # warmup
         self.logger.info(f"Starting warmup...")
@@ -339,6 +359,7 @@ class OpenICLApiInferTask(BaseTask):
                     message_shms,
                     self.stop_evt,
                     dataset_size,
+                    finish_data_count,
                     debug,
                     self.pressure,
                     self.pressure_time,
@@ -396,6 +417,7 @@ class OpenICLApiInferTask(BaseTask):
                     message_shms,
                     self.stop_evt,
                     request_num,
+                    finish_data_count,
                     debug,
                     self.pressure,
                     self.pressure_time,
@@ -414,8 +436,6 @@ class OpenICLApiInferTask(BaseTask):
                         break
                     time.sleep(1)
         except KeyboardInterrupt:
-            self.logger.warning("Interrupted by user (Ctrl+C).")
-            self.logger.warning("Waiting for subprocesses to finish...")
             # Wait for all subprocesses to finish, timeout 1 minute and force terminate
             self.stop_evt.set()
             pb_thread.join()
@@ -494,18 +514,10 @@ if __name__ == "__main__":
         inferencer = OpenICLApiInferTask(cfg)
         inferencer.run(task_state_manager)
     except Exception as e:
-        task_state_manager.update_task_state(
-            {
-                "status": "error",
-            }
-        )
+        task_state_manager.update_task_state({"status": "error"})
         raise e
 
     end_time = time.perf_counter()
     get_logger().info(f"Time elapsed: {end_time - start_time:.2f}s")
-    task_state_manager.update_task_state(
-        {
-            "status": "finish",
-        }
-    )
+    task_state_manager.update_task_state({"status": "finish"})
     manager_t.join()

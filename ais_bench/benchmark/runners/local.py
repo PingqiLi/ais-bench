@@ -105,13 +105,14 @@ class LocalRunner(BaseRunner):
             all_gpu_ids = list(range(device_nums))
 
         if self.debug:
-            status = self._run_debug(tasks, all_gpu_ids)
+            status = self._run_debug(tasks, all_gpu_ids, monitor_p)
         else:
-            status = self._run_normal(tasks, all_gpu_ids)
+            status = self._run_normal(tasks, all_gpu_ids, monitor_p)
         monitor_p.join()
+        TasksMonitor.rm_tmp_files(tasks[0]['work_dir'])
         return status
 
-    def _run_debug(self, tasks: List[Dict[str, Any]], all_gpu_ids: List[int]):
+    def _run_debug(self, tasks: List[Dict[str, Any]], all_gpu_ids: List[int], monitor_p: multiprocessing.Process):
         """Launch multiple tasks.
 
         Args:
@@ -150,8 +151,9 @@ class LocalRunner(BaseRunner):
                 try:
                     proc.wait()
                 except KeyboardInterrupt:
+                    monitor_p.join()
                     get_logger().warning(f"Subprocess of task:{task_name} interrupted by user!")
-                    proc.wait()  # 确保子进程执行完毕
+                    proc.wait()  # ensure subprocess finished
             finally:
                 if not self.keep_tmp_file:
                     os.remove(param_file)
@@ -160,7 +162,7 @@ class LocalRunner(BaseRunner):
             status.append((task_name, 0))
         return status
 
-    def _run_normal(self, tasks: List[Dict[str, Any]], all_gpu_ids: List[int]):
+    def _run_normal(self, tasks: List[Dict[str, Any]], all_gpu_ids: List[int], monitor_p: multiprocessing.Process):
         """Launch multiple tasks.
 
         Args:
@@ -206,6 +208,7 @@ class LocalRunner(BaseRunner):
             try:
                 status = list(executor.map(submit, tasks, range(len(tasks))))
             except KeyboardInterrupt:
+                monitor_p.join()
                 get_logger().warning("Main process interrupted by user! Waiting for running tasks to complete...")
                 status = list(status) if status is not None else []
 
@@ -246,15 +249,11 @@ class LocalRunner(BaseRunner):
             out_path = task.get_log_path(file_extension='out')
             mmengine.mkdir_or_exist(osp.split(out_path)[0])
             with open(out_path, 'w', encoding='utf-8') as stdout:
-                try:
-                    result = subprocess.run(cmd,
-                                            shell=True,
-                                            text=True,
-                                            stdout=stdout,
-                                            stderr=stdout)
-                except KeyboardInterrupt:
-                    get_logger().warning(f"Subprocess of task:{task_name} interrupted by user!")
-                    result.returncode = 1
+                result = subprocess.run(cmd,
+                                        shell=True,
+                                        text=True,
+                                        stdout=stdout,
+                                        stderr=stdout)
             if result.returncode != 0:
                 logger.error(f'task {task_name} fail, see\n{out_path}')
         finally:

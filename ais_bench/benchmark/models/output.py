@@ -104,11 +104,11 @@ class RequestOutput(Output):
             return res
             
         self.prediction = self.get_prediction()
+        self.time_points = np.array(self.time_points, dtype=np.float64)
         if not self.success:
             result = clean_result(self.to_dict())
             return result
-            
-        self.time_points = np.array(self.time_points, dtype=np.float64)
+        
         if self.time_points.size <= 1:
             self.success = False
             self.error_info = "chunk size is less than 2"
