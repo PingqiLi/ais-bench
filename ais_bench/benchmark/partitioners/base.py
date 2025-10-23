@@ -8,6 +8,7 @@ from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.utils import (dataset_abbr_from_cfg, get_logger,
                                model_abbr_from_cfg, task_abbr_from_cfg)
+from ais_bench.benchmark.tasks.utils import ONLY_PERF_DATASETS, MM_DATASETS, MM_APIS
 
 
 class BasePartitioner:
@@ -84,6 +85,9 @@ class BasePartitioner:
                                work_dir=work_dir,
                                out_dir=self.out_dir,
                                add_cfg=add_cfg)
+        for task in tasks:
+            task['cli_args'] = cfg.get('cli_args', {})
+        tasks = self._check_task_cfg(tasks)
         if isinstance(tasks, list) and len(tasks) != 0 and isinstance(
                 tasks[0], list):
             self.logger.info(
@@ -99,10 +103,30 @@ class BasePartitioner:
             self.logger.info(f'Partitioned into {len(tasks)} tasks.')
             for i, task in enumerate(tasks):
                 self.logger.debug(f'Task {i}: {task_abbr_from_cfg(task)}')
-        for task in tasks:
-            task['cli_args'] = cfg.get('cli_args', {})
         return tasks
 
+    def _check_task_cfg(self, tasks):
+        filtered_tasks = []
+        for task in tasks:
+            mode = task.get("cli_args", {}).get("mode")
+            dataset_type = task["datasets"][0][0]["type"]
+            model_type = task["models"][0]["type"]
+            if mode not in ["perf", "perf_viz"] and dataset_type in ONLY_PERF_DATASETS:
+                self.logger.warning(
+                    f"'{dataset_type}' can only be used for performance evaluation, "
+                    f"but mode='{mode}', so this task is ignored!"
+                )
+            elif dataset_type in MM_DATASETS and model_type not in MM_APIS:
+                self.logger.warning(
+                    f"Multimodal dataset '{dataset_type}' can only be used for VLLMCustomAPIChat API, "
+                    f"but API='{model_type}', so this task is ignored!"
+                )
+            else:
+                filtered_tasks.append(task)
+        if len(filtered_tasks) == 0:
+            raise ValueError("No executable task found; please check the configuration!")
+        return filtered_tasks
+    
     def parse_model_dataset_args(self, cfg: ConfigDict):
         models = cfg['models']
         datasets = cfg['datasets']

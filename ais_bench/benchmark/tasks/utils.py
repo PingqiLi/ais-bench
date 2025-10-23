@@ -20,6 +20,16 @@ WAIT_FLAG = 2
 # Using signed integers to support -1 for data_index
 FMT = "5I1B1i"
 MESSAGE_SIZE = struct.calcsize(FMT)
+# These datasets can only be used to evaluate performance.
+ONLY_PERF_DATASETS = ["ais_bench.benchmark.datasets.MTBenchDataset", 
+                      "ais_bench.benchmark.datasets.ShareGPTDataset",
+                      "ais_bench.benchmark.datasets.SyntheticDataset"]
+# Multimodal datasets.
+MM_DATASETS = ["ais_bench.benchmark.datasets.TEXTVQADataset", 
+                "ais_bench.benchmark.datasets.VideoBenchDataset",
+                "ais_bench.benchmark.datasets.VocalSoundDataset"]
+# Multimodal APIs.
+MM_APIS = ["ais_bench.benchmark.models.VLLMCustomAPIChat"]
 
 logger = get_logger()
 
