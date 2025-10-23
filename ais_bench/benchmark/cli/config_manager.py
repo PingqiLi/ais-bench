@@ -318,7 +318,7 @@ class ConfigManager:
         self.cfg.dump(output_config_path)
         # eval nums set
         if (self.args.num_prompts and self.args.num_prompts < 0) or self.args.num_prompts == 0:
-            raise CommandError(TMAN_CODES.CMD_2, "Num Prompts must be a positive integer greater than 0.")
+            raise CommandError(TMAN_CODES.CMD_2, "'--num-prompts' must be a positive integer greater than 0.")
         self.cfg['num_prompts'] = self.args.num_prompts
         # Config is intentally reloaded here to avoid initialized
         # types cannot be serialized
