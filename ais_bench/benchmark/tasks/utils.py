@@ -1,5 +1,6 @@
 import time
 import struct
+from collections import OrderedDict
 from typing import Dict, List
 from multiprocessing import Event, shared_memory, BoundedSemaphore
 import numpy as np
@@ -23,6 +24,38 @@ MESSAGE_SIZE = struct.calcsize(FMT)
 logger = get_logger()
 
 
+class _MessageInfo:
+    STATUS = None
+    POST = None
+    RECV = None
+    FAIL = None
+    FINISH = None
+    DATA_SYNC_FLAG = None
+    DATA_INDEX = None
+
+
+MESSAGE_INFO = _MessageInfo()
+
+FIELDS = OrderedDict(
+    [
+        ("STATUS", "I"),
+        ("POST", "I"),
+        ("RECV", "I"),
+        ("FAIL", "I"),
+        ("FINISH", "I"),
+        ("DATA_SYNC_FLAG", "B"),
+        ("DATA_INDEX", "i"),
+    ]
+)
+
+
+offset = 0
+for name, fmt in FIELDS.items():
+    size = struct.calcsize(fmt)
+    setattr(MESSAGE_INFO, name, (offset, offset + size))
+    offset += size
+
+
 def update_global_data_index(
     shm_names: List[str], data_num: int, pressure: bool = False
 ):
@@ -39,13 +72,12 @@ def update_global_data_index(
             if (
                 data_index == INDEX_READ_FLAG
             ):  # if data_index is -1, it means the data is read by sub-process
-                shm.buf[-5:-4] = struct.pack("B", 0)  # set status to 0 before update data_index
-                shm.buf[-4:] = struct.pack("i", global_data_index)
-                shm.buf[-5:-4] = struct.pack("B", 1)  # set status to 1 after update data_index, ensure data consist
+                shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 0)  # set status to 0 before update data_index
+                shm.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]] = struct.pack("i", global_data_index)
+                shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 1)  # set status to 1 after update data_index, ensure data consist
                 global_data_index = (global_data_index + 1) % data_num
                 if not pressure and global_data_index == 0:
                     global_data_index = data_num - 1
-
 
 
 def create_message_share_memory():
@@ -239,9 +271,11 @@ class ProgressBar:
         else:
             total = self.total_data_num
             unit = "req"
-            self.logger.info(f"Starting progress bar Total data num: {total} req"
-                             f" Finished data num: {self.finish_data_num}"
-                             f" Left data num: {self.data_num}")
+            self.logger.info(
+                f"Starting progress bar Total data num: {total}"
+                f" Finished data num: {self.finish_data_num}"
+                f" Left data num: {self.data_num}"
+            )
 
         def get_new_count():
             if self.pressure:
@@ -380,7 +414,9 @@ class ProgressBar:
             flag: Flag value to set
         """
         for _, shm in self.per_pid_shms.items():
-            shm.buf[:MESSAGE_SIZE] = struct.pack(FMT, flag, 0, 0, 0, 0, 0, INDEX_READ_FLAG)
+            shm.buf[:MESSAGE_SIZE] = struct.pack(
+                FMT, flag, 0, 0, 0, 0, 0, INDEX_READ_FLAG
+            )
 
     def display(self, task_state_manager: TaskStateManager):
         """Display progress monitoring.

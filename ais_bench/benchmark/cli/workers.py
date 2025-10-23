@@ -1,7 +1,10 @@
 import os.path as osp
 import copy
 from abc import ABC, abstractmethod
+from collections import defaultdict
+
 from mmengine.config import ConfigDict
+
 from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
 from ais_bench.benchmark.utils.run import get_config_type, get_models_attr
 from ais_bench.benchmark.utils.logger import logger
@@ -64,9 +67,37 @@ class Infer(BaseWorker):
         # update tasks cfg before run
         self._update_tasks_cfg(tasks, cfg)
 
+        if (
+            cfg.get("cli_args", {}).get("merge_ds", False)
+            or cfg.get("cli_args", {}).get("mode") == "perf" # performance mode will enable merge datasets by default
+        ):
+            logger.info("Merging datasets with the same model and inferencer...")
+            tasks = self._merge_datasets(tasks)
+
         runner = RUNNERS.build(cfg.infer.runner)
         runner(tasks)
         logger.info("Inference tasks completed.")
+
+    def _merge_datasets(self, tasks):
+        # merge datasets with the same model, dataset type and inferencer
+        task_groups = defaultdict(list)
+        for task in tasks:
+            key = (
+                task["models"][0]["abbr"] # same model
+                + "_"
+                + str(task['datasets'][0][0]['type']) # same dataset type
+                + "_"
+                + str(task["datasets"][0][0]["infer_cfg"]["inferencer"]) # same inferencer with the same args
+            )
+            task_groups[key].append(task)
+        new_tasks = []
+        for key, task_group in task_groups.items():
+            new_task = copy.deepcopy(task_group[0])
+            if len(task_group) > 1:
+                for t in task_group[1:]:
+                    new_task["datasets"][0].extend(t["datasets"][0])
+            new_tasks.append(new_task)
+        return new_tasks
 
     def _update_tasks_cfg(self, tasks, cfg: ConfigDict):
         # update parameters to correct sub cfg

@@ -41,14 +41,20 @@ def task_abbr_from_cfg(task: Dict) -> str:
 
 def get_infer_output_path(
     model_cfg: ConfigDict,
-    dataset_cfg: ConfigDict,
+    dataset_cfgs: List[ConfigDict] | ConfigDict,
     root_path: str = None,
     file_extension: str = "json",
 ) -> str:
     # TODO: Rename this func
     assert root_path is not None, "default root_path is not allowed any more"
     model_abbr = model_abbr_from_cfg(model_cfg)
-    dataset_abbr = dataset_abbr_from_cfg(dataset_cfg)
+    if isinstance(dataset_cfgs, list):
+        if len(dataset_cfgs) > 1:
+            dataset_abbr = dataset_cfgs[0].get('type').split('.')[-1].lower()
+        else:
+            dataset_abbr = dataset_cfgs[0].get('abbr')
+    else:
+        dataset_abbr = dataset_abbr_from_cfg(dataset_cfgs)
     return osp.join(root_path, model_abbr, f"{dataset_abbr}.{file_extension}")
 
 

@@ -71,20 +71,15 @@ class DefaultPerfSummarizer:
         self.calculator_conf = calculator
         self.calculators = {}
 
-        dataset_abbrs = []
-        merge_ds_abbrs = defaultdict(list)
-        if self.merge_ds:
-            # In merge_ds mode, group datasets by type for performance results
-            for dataset_cfg in self.dataset_cfgs:
-                merged_ds_abbr = dataset_cfg.get("type").split(".")[-1].lower()
-                merge_ds_abbrs[merged_ds_abbr].append(dataset_cfg.get("abbr"))
-            for ds_abbrs in merge_ds_abbrs.values():
-                dataset_abbrs.append(ds_abbrs)
-        else:
-            # Index *_details.jsonl files by dataset abbreviation
-            for dataset_cfg in self.dataset_cfgs:
-                dataset_abbrs.append([dataset_cfg.get("abbr")])
-        self.dataset_abbrs = dataset_abbrs
+        dataset_groups = defaultdict(list)
+        # merge datasets with the same model, dataset type and inferencer
+        for dataset_cfg in self.dataset_cfgs:
+            data_key = (
+                str(dataset_cfg['type']) + "_"  # same dataset type
+                + str(dataset_cfg["infer_cfg"]["inferencer"]) # same inferencer with the same args
+            )
+            dataset_groups[data_key].append(dataset_cfg)
+        self.dataset_groups = dataset_groups
 
         self.work_dir = self.cfg["work_dir"]
         model_abbrs = []
@@ -95,20 +90,21 @@ class DefaultPerfSummarizer:
             model_abbrs.append(model_abbr)
         self.model_abbrs = model_abbrs
 
-    def _get_dataset_abbr(self, dataset_abbrs):
+    def _get_dataset_abbr(self, dataset_group):
         """Get dataset abbreviation.
+        If dataset_group is a single dataset, return its abbreviation.
+        If dataset_group is a group of datasets, return the type of the first dataset.
 
         Args:
-            dataset_abbrs: List of dataset abbreviations
+            dataset_group: List of dataset configurations
 
         Returns:
             str: Dataset abbreviation
         """
-        return (
-            dataset_abbrs[0].get("type").split(".")[-1].lower()
-            if self.merge_ds
-            else dataset_abbrs[0]
-        )
+        if len(dataset_group) == 1:
+            return dataset_group[0].get("abbr")
+        else:
+            return dataset_group[0].get("type").split(".")[-1].lower()
 
     def _calc_perf_data(
         self,
@@ -210,14 +206,14 @@ class DefaultPerfSummarizer:
                             tmp_cache_data[db_name].append(perf_data)
         return tmp_cache_data
 
-    def _load_details_perf_data(self, model_cfg: dict, data_abbrs: list):
-        """Load details performance data and h5 data based on data_abbrs.
+    def _load_details_perf_data(self, model_cfg: dict, dataset_group: list):
+        """Load details performance data and h5 data based on dataset_group.
 
         Maps h5 data back to details data.
 
         Args:
             model_cfg: Model configuration
-            data_abbrs: List of data abbreviations
+            dataset_group: List of dataset configurations
 
         Returns:
             dict: Details performance data
@@ -229,12 +225,12 @@ class DefaultPerfSummarizer:
         
         unfound_data_abbrs = []
 
-        for data_abbr in data_abbrs:
+        for dataset_cfg in dataset_group:
             perf_details_file = osp.join(
-                self.work_dir, "performances", model_abbr, f"{data_abbr}_details.jsonl"
+                self.work_dir, "performances", model_abbr, f"{dataset_cfg.get('abbr')}_details.jsonl"
             )
             if not osp.exists(perf_details_file):
-                unfound_data_abbrs.append(data_abbr)
+                unfound_data_abbrs.append(dataset_cfg.get('abbr'))
                 continue
             with open(perf_details_file, "rb") as f:
                 mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
@@ -328,8 +324,8 @@ class DefaultPerfSummarizer:
         # perf_tables: {"model_abbr/dataset_abbr": result_table}
         perf_tables: Dict[str, List] = {}
         for model in self.model_abbrs:
-            for dataset_abbrs in self.dataset_abbrs:
-                dataset_abbr = self._get_dataset_abbr(dataset_abbrs)
+            for dataset_group in self.dataset_groups.values():
+                dataset_abbr = self._get_dataset_abbr(dataset_group)
                 perf_result_dir = osp.join(self.work_dir, "performances", model)
                 table_list = []
                 if osp.exists(osp.join(perf_result_dir, f"{dataset_abbr}.csv")):
@@ -421,12 +417,13 @@ class DefaultPerfSummarizer:
             model_abbr = model_abbr_from_cfg_used_in_summarizer(model_cfg)
             max_concurrency = model_cfg.get("batch_size", 1)
             calculators_per_model = {}
-            for dataset_abbrs in self.dataset_abbrs:
+
+            for dataset_group in self.dataset_groups.values():
                 details_perf_datas = self._load_details_perf_data(
-                    model_cfg, dataset_abbrs
+                    model_cfg, dataset_group
                 )
                 # In merge_ds mode, use datatype of similar datasets as abbreviation
-                dataset_abbr = self._get_dataset_abbr(dataset_abbrs)
+                dataset_abbr = self._get_dataset_abbr(dataset_group)
                 # Generate visualization HTML file
                 plot_file_path = osp.join(
                     self.work_dir,

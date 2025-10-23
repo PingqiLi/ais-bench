@@ -200,7 +200,7 @@ class BaseInferencerOutputHandler:
 
         # Other types: try JSON serialization, otherwise convert to string
         try:
-            json.dumps(obj)
+            json.dumps(obj, ensure_ascii=False)
             return obj
         except Exception as json_error:
             try:
@@ -278,7 +278,7 @@ class BaseInferencerOutputHandler:
                                     self.results_dict[data_abbr][uid] = json_data
 
                             # Pre-compute JSON string to avoid repeated serialization
-                            json_str = json.dumps(json_data) + "\n"
+                            json_str = json.dumps(json_data, ensure_ascii=False) + '\n'
                             cache_data.append(json_str)
                             processed_count += 1
 

@@ -159,6 +159,9 @@ class OpenICLApiInferTask(BaseTask):
         if len(finish_data_list) > 0:
             self.logger.info(f"Found {len(finish_data_list)} completed data in cache, "
                              "run infer task from the last interrupted position")
+        if isinstance(self.num_prompts, int) and len(data_list) > self.num_prompts:
+            self.logger.info(f"Keep {self.num_prompts} prompts from {len(data_list)} data")
+            data_list = data_list[:self.num_prompts]
         return data_list, finish_data_list
 
     def _dump_dataset_to_share_memory(self, data_list: List):
@@ -236,7 +239,7 @@ class OpenICLApiInferTask(BaseTask):
         if self.concurrency > CONCURRENCY_PER_PROCESS:
             self.logger.warning(
                 f"Concurrency exceeds the default per-process limit ({CONCURRENCY_PER_PROCESS}). "
-                "This may limit throughput. Consider unsetting `--debug` to enable multi-process mode."
+                "This may limit throughput. Recommend unsetting `--debug` to enable multi-process mode."
             )
         else:
             self.logger.info(f"Running with concurrency: {self.concurrency}")

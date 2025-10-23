@@ -109,7 +109,7 @@ class BaseTask:
         """
         return get_infer_output_path(
             self.model_cfg,
-            self.dataset_cfgs[0],
+            self.dataset_cfgs,
             os.path.join(self.work_dir, self.log_subdir),
             file_extension,
         )

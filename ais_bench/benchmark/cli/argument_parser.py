@@ -103,6 +103,20 @@ class ArgumentParser():
             type=int,
             default=1
         )
+        parser.add_argument(
+            '--num-prompts',
+            help='Num Prompts, Specify the number of prompts to infer and evaluate. '
+            'Must be integer >= 1, If not provided, all prompts will be inferred and evaluated. ',
+            type=int,
+            default=None
+        )
+        parser.add_argument(
+            '--num-warmups',
+            help='Number of warmups, Specify the number of warmups. '
+            'Must be integer >= 0, use 0 to disable warmups. If not provided, the default is 1. ',
+            type=int,
+            default=1
+        )
 
     def _accuracy_parser(self):
         """These args are all for the accuracy evaluation."""
@@ -123,29 +137,10 @@ class ArgumentParser():
             help='Whether to dump the extract rate of evaluation (samples per sec)',
             action='store_true',
         )
-        parser.add_argument(
-            '--disable-cb',
-            help='Whether to disable infer with continous batch mode',
-            action='store_true',
-        )
 
     def _perf_parser(self):
         """These args are all for the performance benchmark."""
         parser = self.parser.add_argument_group('perf_args')
-        parser.add_argument(
-            '--num-prompts',
-            help='Num Prompts, Specify the number of prompts to evaluate. '
-            'If not provided, all prompts will be evaluated. ',
-            type=int,
-            default=None
-        )
-        parser.add_argument(
-            '--num-warmups',
-            help='Number of warmups, Specify the number of warmups. '
-            'If not provided, the default is 1. ',
-            type=int,
-            default=1
-        )
         parser.add_argument(
             '--pressure',
             help='Whether to enable pressure test in perf mode (only attr service)',
@@ -153,7 +148,7 @@ class ArgumentParser():
         )
         parser.add_argument(
             '--pressure-time',
-            help='Pressure test time, only valid when --pressure is True, default is 15 seconds',
+            help='Pressure test time, only valid when --pressure is True.Must be integer >= 1, default is 15 seconds',
             type=int,
             default=15
         )

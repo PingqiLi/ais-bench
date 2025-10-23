@@ -20,7 +20,7 @@ from ais_bench.benchmark.global_consts import (
     REQUEST_TIME_OUT,
 )
 from ais_bench.benchmark.openicl.utils import get_logger
-from ais_bench.benchmark.tasks.utils import STATUS_REPORT_INTERVAL
+from ais_bench.benchmark.tasks.utils import STATUS_REPORT_INTERVAL, MESSAGE_INFO
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import (
     BaseInferencer,
 )
@@ -28,6 +28,7 @@ from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import (
 MESSAGE_TYPE_NUM = 4  # post_req, get_req, failed_req, finish_req
 BLOCK_INTERVAL = 0.005  # Avoid request burst accumulation when RR is not configured
 MAX_BATCH_SIZE = 100000  # Maximum concurrency
+DEFAULT_SAVE_EVERY_FACTOR = 0.1 # default save every factor is 0.1 of batch size
 logger = get_logger(__name__)
 
 
@@ -51,7 +52,7 @@ class BaseApiInferencer(BaseInferencer):
         # Base class handles batch_size validation, model construction, output_handler initialization, etc.
         super().__init__(model_cfg, batch_size, output_json_filepath)
 
-        self.save_every = max(1, int(save_every) if save_every is not None else 1)
+        self.save_every = max(save_every, int(batch_size * DEFAULT_SAVE_EVERY_FACTOR))
 
         # Mode identification
         self.pressure_mode = mode == "pressure"
@@ -167,12 +168,12 @@ class BaseApiInferencer(BaseInferencer):
         """
         data_index = -1
         while data_index == -1:
-            flag = struct.unpack_from("B", message_share_memory.buf[-5:-4], 0)[0]
+            flag = struct.unpack_from("B", message_share_memory.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]], 0)[0]
             if flag != 1:
                 continue
-            data_index = struct.unpack("i", message_share_memory.buf[-4:])[0]
+            data_index = struct.unpack("i", message_share_memory.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]])[0]
         index_data = indexes[data_index]
-        struct.pack_into("i", message_share_memory.buf[-4:], 0, -1)
+        struct.pack_into("i", message_share_memory.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]], 0, -1)
         if not index_data:
             return None
         return self._read_and_unpickle(share_memory.buf, index_data)

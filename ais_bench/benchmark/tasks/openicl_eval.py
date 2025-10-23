@@ -101,6 +101,11 @@ class OpenICLEvalTask(BaseTask):
         })
 
         test_set = build_dataset_from_cfg(self.dataset_cfg).test
+        test_size = len(test_set)
+        if isinstance(self.num_prompts, int) and self.num_prompts > 0:
+            if test_size >= self.num_prompts:
+                test_set = test_set.select(range(self.num_prompts))
+            self.num_prompts -= test_size
         # Postprocess dataset if necessary
         if 'dataset_postprocessor' in self.eval_cfg:
             proc = self.eval_cfg['dataset_postprocessor']['type']

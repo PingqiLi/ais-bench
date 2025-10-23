@@ -18,7 +18,6 @@ from ais_bench.benchmark.openicl.icl_inferencer.icl_base_api_inferencer import B
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_local_inferencer import BaseLocalInferencer
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.gen_inferencer_output_handler import GenInferencerOutputHandler
 
-DEFAULT_SAVE_EVERY_FACTOR = 0.1
 logger = get_logger(__name__)
 
 
@@ -63,7 +62,7 @@ class GenInferencer(BaseApiInferencer, BaseLocalInferencer):
         self.gen_field_replace_token = gen_field_replace_token or ""
 
         self.output_handler = GenInferencerOutputHandler(perf_mode=self.perf_mode, 
-                                                        save_every=max(1, int(batch_size * DEFAULT_SAVE_EVERY_FACTOR)))
+                                                        save_every=self.save_every)
 
     async def do_request(
         self, data: dict, token_bucket: BoundedSemaphore, session: aiohttp.ClientSession
