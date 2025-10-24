@@ -32,7 +32,7 @@ def fill_model_path_if_datasets_need(model_cfg, dataset_cfg):
         model_path = model_cfg.get("path")
         if not model_path:
             raise ConfigError(
-                UTILS_CODES.CFG_1,
+                UTILS_CODES.SYNTHETIC_DS_MISS_REQUIRED_PARAM,
                 "[path] in model config is required for synthetic(tokenid) and sharegpt dataset."
             )
         dataset_cfg.update({"model_path": model_path})

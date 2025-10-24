@@ -35,7 +35,7 @@ class TestUtils(unittest.TestCase):
             fill_model_path_if_datasets_need(model_cfg, dataset_cfg)
 
         # 验证错误信息
-        self.assertIn(UTILS_CODES.CFG_1, str(context.exception))
+        self.assertIn(UTILS_CODES.SYNTHETIC_DS_MISS_REQUIRED_PARAM, str(context.exception))
         self.assertIn("[path] in model config is required", str(context.exception))
 
     def test_fill_model_path_if_synthetic_not_synthetic_dataset(self):

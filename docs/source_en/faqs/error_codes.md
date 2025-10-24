@@ -20,3 +20,6 @@
 ## UTILS-CFG-001
 ### error description
 ### solution
+## PARTI-FILE-001
+### error description
+### solution

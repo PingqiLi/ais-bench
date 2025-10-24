@@ -25,6 +25,7 @@ class ErrorType(Enum):
     COMMAND = "CMD"     # command error type
     CONFIG = "CFG"     # config error type
     MATCH = "MATCH"     # pattern match error type
+    FILE = "FILE"     # file error type
 
 class BaseErrorCode:
     FAQ_BASE_URL = "https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/faqs/error_codes.html#"
@@ -90,6 +91,7 @@ APPLICATION_LAYER_ERRORS = [
 
     # Partitioner
     BaseErrorCode(ErrorModule.PARTITIONER, ErrorType.UNKNOWN, 1, "unknown error of partitioner"), # PARTI-UNK-001
+    BaseErrorCode(ErrorModule.PARTITIONER, ErrorType.FILE, 1, "out dir permission denied"), # PARTI-FILE-001
 
     # Summary
     BaseErrorCode(ErrorModule.SUMMARY, ErrorType.UNKNOWN, 1, "unknown error of summary"), # SUMM-UNK-001
@@ -152,63 +154,64 @@ for error in APPLICATION_LAYER_ERRORS + BUSINESS_LOGIC_LAYER_ERRORS + ICL_LAYER_
 
 # error code consts
 class TMAN_CODES:
-    UNK_1 = "TMAN-UNK-001" # unknown error of task manager
-    CMD_1 = "TMAN-CMD-001" # command miss required argument
-    CMD_2 = "TMAN-CMD-002" # invalid argument value in command
-    CFG_1 = "TMAN-CFG-001" # invaild syntax in config content
-    CFG_2 = "TMAN-CFG-002" # config content miss required param
-    CFG_3 = "TMAN-CFG-003" # type error in config param
+    UNKNOWN_ERROR = "TMAN-UNK-001" # unknown error of task manager
+    CMD_MISS_REQUIRED_ARG = "TMAN-CMD-001" # command miss required argument
+    INVALID_ARG_VALUE_IN_CMD = "TMAN-CMD-002" # invalid argument value in command
+    INVAILD_SYNTAX_IN_CFG_CONTENT = "TMAN-CFG-001" # invaild syntax in config content
+    CFG_CONTENT_MISS_REQUIRED_PARAM = "TMAN-CFG-002" # config content miss required param
+    TYPE_ERROR_IN_CFG_PARAM = "TMAN-CFG-003" # type error in config param
 
 
 class PARTI_CODES:
-    UNK_1 = "PARTI-UNK-001" # unknown error of partitioner
+    UNKNOWN_ERROR = "PARTI-UNK-001" # unknown error of partitioner
+    OUT_DIR_PERMISSION_DENIED = "PARTI-FILE-001" # out dir permission denied
 
 
 class SUMM_CODES:
-    UNK_1 = "SUMM-UNK-001" # unknown error of summary
+    UNKNOWN_ERROR = "SUMM-UNK-001" # unknown error of summary
 
 
 class RUNNER_CODES:
-    UNK_1 = "RUNNER-UNK-001" # unknown error of runner
+    UNKNOWN_ERROR = "RUNNER-UNK-001" # unknown error of runner
 
 
 class TMON_CODES:
-    UNK_1 = "TMON-UNK-001" # unknown error of task monitor
+    UNKNOWN_ERROR = "TMON-UNK-001" # unknown error of task monitor
 
 
 class TSMAN_CODES:
-    UNK_1 = "TSMAN-UNK-001" # unknown error of task state manager
+    UNKNOWN_ERROR = "TSMAN-UNK-001" # unknown error of task state manager
 
 
 class TINFER_CODES:
-    UNK_1 = "TINFER-UNK-001" # unknown error of infer task
+    UNKNOWN_ERROR = "TINFER-UNK-001" # unknown error of infer task
 
 
 class TEVAL_CODES:
-    UNK_1 = "TEVAL-UNK-001" # unknown error of evaluate task
+    UNKNOWN_ERROR = "TEVAL-UNK-001" # unknown error of evaluate task
 
 
 class ICLI_CODES:
-    UNK_1 = "ICLI-UNK-001" # unknown error of icl inferencer
+    UNKNOWN_ERROR = "ICLI-UNK-001" # unknown error of icl inferencer
 
 
 class ICLE_CODES:
-    UNK_1 = "ICLE-UNK-001" # unknown error of icl evaluator
+    UNKNOWN_ERROR = "ICLE-UNK-001" # unknown error of icl evaluator
 
 
 class ICLR_CODES:
-    UNK_1 = "ICLR-UNK-001" # unknown error of icl retriever
+    UNKNOWN_ERROR = "ICLR-UNK-001" # unknown error of icl retriever
 
 
 class MODEL_CODES:
-    UNK_1 = "MODEL-UNK-001" # unknown error of model
+    UNKNOWN_ERROR = "MODEL-UNK-001" # unknown error of model
 
 
 class UNK_CODES:
-    UNK_1 = "UNK-UNK-001" # unknown error of utils
+    UNKNOWN_ERROR = "UNK-UNK-001" # unknown error of utils
 
 
 class UTILS_CODES:
-    UNK_1 = "UTILS-UNK-001" # unknown error of utils
+    UNKNOWN_ERROR = "UTILS-UNK-001" # unknown error of utils
     MATCH_1 = "UTILS-MATCH-001" # match config file failed
-    CFG_1 = "UTILS-CFG-001" # synthetic dataset miss required param
+    SYNTHETIC_DS_MISS_REQUIRED_PARAM = "UTILS-CFG-001" # synthetic dataset miss required param

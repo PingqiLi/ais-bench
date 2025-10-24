@@ -6,7 +6,7 @@ from mmengine.config import Config, ConfigDict
 
 from ais_bench.benchmark.registry import PARTITIONERS
 from ais_bench.benchmark.utils import get_infer_output_path, model_abbr_from_cfg, dataset_abbr_from_cfg
-
+from ais_bench.benchmark.utils.error_codes import PARTI_CODES
 from .base import BasePartitioner
 
 
@@ -76,6 +76,7 @@ class NaivePartitioner(BasePartitioner):
                         stat_info = os.stat(filename)
                         if stat_info.st_uid != os.getuid():
                             self.logger.error(
+                                PARTI_CODES.OUT_DIR_PERMISSION_DENIED,
                                 f"Current user can't modify {filename}, reuse will not enable."
                             )
                             continue

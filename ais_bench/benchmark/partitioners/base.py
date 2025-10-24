@@ -8,6 +8,10 @@ from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.utils import (dataset_abbr_from_cfg, get_logger,
                                model_abbr_from_cfg, task_abbr_from_cfg)
+from ais_bench.benchmark.utils.logger import AISLogger
+from ais_bench.benchmark.utils.exceptions import ConfigError
+from ais_bench.benchmark.utils.error_codes import PARTI_CODES
+from ais_bench.benchmark.global_consts import LOG_LEVEL
 from ais_bench.benchmark.tasks.utils import ONLY_PERF_DATASETS, MM_DATASETS, MM_APIS
 
 
@@ -26,7 +30,7 @@ class BasePartitioner:
     """
 
     def __init__(self, out_dir: str, keep_keys: Optional[List[str]] = None):
-        self.logger = get_logger()
+        self.logger = AISLogger(level=LOG_LEVEL)
         self.out_dir = out_dir
         if keep_keys is None:
             self.keep_keys = [
@@ -126,7 +130,7 @@ class BasePartitioner:
         if len(filtered_tasks) == 0:
             raise ValueError("No executable task found; please check the configuration!")
         return filtered_tasks
-    
+
     def parse_model_dataset_args(self, cfg: ConfigDict):
         models = cfg['models']
         datasets = cfg['datasets']
@@ -145,14 +149,16 @@ class BasePartitioner:
                 for comb in combs:
                     for model in comb['models']:
                         if model_abbr_from_cfg(model) not in model_abbrs:
-                            raise ValueError(
-                                f'Model {model_abbr_from_cfg(model)} '
-                                'not found in config.')
+                            raise ConfigError(
+                                PARTI_CODES.UNKNOWN_ERROR,
+                                f'Model {model_abbr_from_cfg(model)} not found in config.'
+                            )
                     for dataset in comb['datasets']:
                         if dataset_abbr_from_cfg(dataset) not in dataset_abbrs:
-                            raise ValueError(
-                                f'Dataset {dataset_abbr_from_cfg(dataset)} '
-                                'not found in config.')
+                            raise ConfigError(
+                                PARTI_CODES.UNKNOWN_ERROR,
+                                f'Dataset {dataset_abbr_from_cfg(dataset)} not found in config.'
+                            )
             used_kwargs = {'model_dataset_combinations': combs}
         else:
             if cfg.get('model_dataset_combinations', None) is not None:
