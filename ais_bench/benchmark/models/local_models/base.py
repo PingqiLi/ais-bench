@@ -173,7 +173,7 @@ class BaseModel:
             tokens = self.encode(inputs)
             length = self.get_token_len(inputs)
             if length > 2048:
-                from ais_bench.benchmark.utils import get_logger
+                from ais_bench.benchmark.utils.logging import get_logger
                 get_logger().info(f'Large tokens nums: {length}')
             size = torch.tensor([tokens.shape], dtype=torch.long)
         else:

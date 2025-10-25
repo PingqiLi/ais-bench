@@ -18,7 +18,7 @@ from ais_bench.benchmark.summarizers.subjective.compass_arena import (
     check_position_bias, model_abbr_from_cfg_used_in_summarizer)
 from ais_bench.benchmark.summarizers.subjective.utils import (
     get_judgeanswer_and_reference, get_outdir)
-from ais_bench.benchmark.utils import dataset_abbr_from_cfg, model_abbr_from_cfg
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, model_abbr_from_cfg
 
 
 def post_process_wildbench_pair(judgement: str):

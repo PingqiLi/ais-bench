@@ -1,7 +1,7 @@
 import pytest
 import sys
 
-from ais_bench.benchmark.utils import valid_global_consts
+from ais_bench.benchmark.utils.core import valid_global_consts
 
 class DummyLogger:
     def __init__(self):

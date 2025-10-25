@@ -3,7 +3,7 @@ from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import ARCDataset
-from ais_bench.benchmark.utils.text_postprocessors import last_option_postprocess
+from ais_bench.benchmark.utils.postprocess.text_postprocessors import last_option_postprocess
 
 ARC_e_reader_cfg = dict(
     input_columns=['question', 'textA', 'textB', 'textC', 'textD'],

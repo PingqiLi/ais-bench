@@ -1,18 +1,17 @@
 import os
+import time
 import psutil
 import shutil
 from tqdm import tqdm
-
 from abc import abstractmethod
 from typing import Any, Dict, List, Tuple
 
-from mmengine.config import Config, ConfigDict
-
-from ais_bench.benchmark.utils import get_logger
 import curses
-import time
 from tabulate import tabulate
 from datetime import datetime, timedelta
+from mmengine.config import Config, ConfigDict
+
+from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.file import read_and_clear_statuses
 
 

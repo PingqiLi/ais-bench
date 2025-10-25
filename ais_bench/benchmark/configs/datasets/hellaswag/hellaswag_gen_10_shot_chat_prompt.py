@@ -3,7 +3,7 @@ from ais_bench.benchmark.openicl.icl_retriever import FixKRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccwithDetailsEvaluator
 from ais_bench.benchmark.datasets import HellaswagDatasetwithICE
-from ais_bench.benchmark.utils.text_postprocessors import first_option_postprocess
+from ais_bench.benchmark.utils.postprocess.text_postprocessors import first_option_postprocess
 
 hellaswag_reader_cfg = dict(
     input_columns=['ctx', 'A', 'B', 'C', 'D'],

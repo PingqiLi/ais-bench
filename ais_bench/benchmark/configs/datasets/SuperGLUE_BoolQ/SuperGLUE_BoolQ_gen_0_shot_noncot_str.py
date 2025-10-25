@@ -3,7 +3,7 @@ from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import BoolQDatasetV2
-from ais_bench.benchmark.utils.text_postprocessors import first_option_postprocess
+from ais_bench.benchmark.utils.postprocess.text_postprocessors import first_option_postprocess
 
 QUERY_TEMPLATE = """
 Answer the following question. The last line of your response should be of the following format: 'ANSWER: $LETTER' (without quotes) where LETTER is one of AB.

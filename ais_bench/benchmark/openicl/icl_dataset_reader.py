@@ -7,8 +7,7 @@ from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.registry import ICL_DATASET_READERS
-from ais_bench.benchmark.utils.types import (_check_dataset, _check_str,
-                                     _check_type_list)
+from ais_bench.benchmark.utils.core.types import (check_dataset, check_str, check_type_list)
 
 @ICL_DATASET_READERS.register_module()
 class DatasetReader:
@@ -63,17 +62,17 @@ class DatasetReader:
                  train_range: Optional[Union[int, float, str]] = None,
                  test_split: str = 'test',
                  test_range: Optional[Union[int, float, str]] = None) -> None:
-        self.input_columns = _check_type_list(input_columns, [List, str])
+        self.input_columns = check_type_list(input_columns, [List, str])
         if isinstance(self.input_columns, str):
             self.input_columns = self.input_columns.split()
         self.output_column = None
         if output_column:
-            self.output_column = _check_str(output_column)
+            self.output_column = check_str(output_column)
         self.max_tokens_column = None
         if max_tokens_column:
-            self.max_tokens_column = _check_str(max_tokens_column)
-        train_range = _check_type_list(train_range, [None, int, float, str])
-        test_range = _check_type_list(test_range, [None, int, float, str])
+            self.max_tokens_column = check_str(max_tokens_column)
+        train_range = check_type_list(train_range, [None, int, float, str])
+        test_range = check_type_list(test_range, [None, int, float, str])
 
         if input_template is not None:
             self.input_template = PromptTemplate._check_prompt_template(
@@ -82,7 +81,7 @@ class DatasetReader:
             self.output_template = PromptTemplate._check_prompt_template(
                 output_template)
 
-        self.dataset = _check_dataset(dataset)
+        self.dataset = check_dataset(dataset)
         if isinstance(self.dataset, Dataset):
             self.dataset = DatasetDict({
                 'train': self.dataset,

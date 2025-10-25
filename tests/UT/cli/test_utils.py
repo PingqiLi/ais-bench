@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
 from ais_bench.benchmark.cli.utils import fill_model_path_if_datasets_need, get_config_type
-from ais_bench.benchmark.utils.exceptions import ConfigError
-from ais_bench.benchmark.utils.error_codes import UTILS_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
+from ais_bench.benchmark.utils.logging.error_codes import UTILS_CODES
 
 
 class TestUtils(unittest.TestCase):

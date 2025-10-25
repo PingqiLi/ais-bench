@@ -3,7 +3,7 @@ from typing import Dict, Hashable, List, Optional, Union
 
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
 from ais_bench.benchmark.utils.prompt import PromptList
-from ais_bench.benchmark.utils.types import _check_type_list
+from ais_bench.benchmark.utils.core.types import check_type_list
 
 PromptType = Union[PromptList, str, dict]
 
@@ -36,8 +36,8 @@ class BasePromptTemplate:
     ) -> None:
         self.template = template
         assert isinstance(self.template, (str, Dict))
-        self.ice_token = _check_type_list(ice_token, [None, str])
-        self.sep_token = _check_type_list(sep_token, [None, str])
+        self.ice_token = check_type_list(ice_token, [None, str])
+        self.sep_token = check_type_list(sep_token, [None, str])
         # A sign used to distinguish the prompt type
         self.prompt_type = 'origin'
         self._check_template_legacy()

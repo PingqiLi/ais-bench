@@ -14,7 +14,7 @@ try:
 except ImportError:
     from_csv = None
 
-from ais_bench.benchmark.utils import model_abbr_from_cfg
+from ais_bench.benchmark.utils.core.abbr import model_abbr_from_cfg
 
 from .subjective_post_process import post_process_autoj, post_process_judgelm
 from .utils import get_judgeanswer_and_reference, get_outdir
@@ -60,7 +60,7 @@ def extract_missing_rating(text, search_type):
             if re.findall(r'\d{1,2}', match):
                 result_dict[k] = int(re.findall(r'\d{1,2}', match)[-1])
                 break
-    overall_number = re.findall('\d{1,2}', text)
+    overall_number = re.findall(r'\d{1,2}', text)
     try:
         result_dict['综合得分'] = int(overall_number[-1])
     except:

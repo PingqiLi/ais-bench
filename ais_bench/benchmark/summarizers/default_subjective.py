@@ -12,9 +12,8 @@ import mmengine
 import tabulate
 from mmengine import ConfigDict
 
-from ais_bench.benchmark.utils import (dataset_abbr_from_cfg,
-                               get_infer_output_path, get_logger,
-                               model_abbr_from_cfg)
+from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, get_infer_output_path, model_abbr_from_cfg
 from ais_bench.benchmark.utils.prompt import get_prompt_hash
 
 METRIC_WHITELIST = ['score', 'auc_score', 'accuracy', 'humaneval_pass@1', 'rouge1', 'avg_toxicity_score', 'bleurt_diff', 'matthews_correlation', 'truth', 'f1', 'exact_match', 'extract_rate']

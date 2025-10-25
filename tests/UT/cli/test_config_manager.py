@@ -10,8 +10,8 @@ import shutil
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..')))
 
 from ais_bench.benchmark.cli.config_manager import CustomConfigChecker, ConfigManager
-from ais_bench.benchmark.utils.exceptions import CommandError, ConfigError
-from ais_bench.benchmark.utils.error_codes import TMAN_CODES
+from ais_bench.benchmark.utils.logging.exceptions import CommandError, ConfigError
+from ais_bench.benchmark.utils.logging.error_codes import TMAN_CODES
 
 class TestCustomConfigChecker(unittest.TestCase):
     def setUp(self):

@@ -3,7 +3,7 @@ from ais_bench.benchmark.openicl.icl_retriever import FixKRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccwithDetailsEvaluator
 from ais_bench.benchmark.datasets import WinograndeDatasetV3
-from ais_bench.benchmark.utils.text_postprocessors import last_option_postprocess
+from ais_bench.benchmark.utils.postprocess.text_postprocessors import last_option_postprocess
 
 winogrande_reader_cfg = dict(
     input_columns=['prompt', 'only_option1', 'only_option2'],

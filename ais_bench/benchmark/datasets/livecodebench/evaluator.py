@@ -11,15 +11,14 @@ from tqdm import tqdm
 
 from ais_bench.benchmark.openicl.icl_evaluator import BaseEvaluator
 from ais_bench.benchmark.registry import ICL_EVALUATORS
-from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.logging import get_logger
 
-from .execute_utils import BASE_IMPORTS, codeexecute_check_correctness
-from .extract_utils import (extract_code_execution, extract_code_generation,
+from ais_bench.benchmark.datasets.livecodebench.execute_utils import BASE_IMPORTS, codeexecute_check_correctness
+from ais_bench.benchmark.datasets.livecodebench.extract_utils import (extract_code_execution, extract_code_generation,
                             extract_code_generation_v2,
                             extract_test_output_code)
-from .livecodebench import LCBCodeGenerationDataset
-from .pass_k_utils import compute_metrics_from_results
-from concurrent.futures import ProcessPoolExecutor, TimeoutError as FutureTimeoutError
+from ais_bench.benchmark.datasets.livecodebench.livecodebench import LCBCodeGenerationDataset
+from ais_bench.benchmark.datasets.livecodebench.pass_k_utils import compute_metrics_from_results
 
 
 def codegen_check_correctness(sample, generation, timeout, debug=True):

@@ -5,8 +5,8 @@ from typing import Dict, List, Optional
 from mmengine.config import Config, ConfigDict
 
 from ais_bench.benchmark.registry import PARTITIONERS
-from ais_bench.benchmark.utils import get_infer_output_path, model_abbr_from_cfg, dataset_abbr_from_cfg
-from ais_bench.benchmark.utils.error_codes import PARTI_CODES
+from ais_bench.benchmark.utils.core.abbr import get_infer_output_path, model_abbr_from_cfg, dataset_abbr_from_cfg
+from ais_bench.benchmark.utils.logging.error_codes import PARTI_CODES
 from .base import BasePartitioner
 
 

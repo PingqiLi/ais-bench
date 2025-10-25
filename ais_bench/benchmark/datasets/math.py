@@ -8,7 +8,7 @@ from datasets import Dataset, DatasetDict
 from ais_bench.benchmark.openicl.icl_evaluator import BaseEvaluator
 from ais_bench.benchmark.registry import (ICL_EVALUATORS, LOAD_DATASET,
                                   TEXT_POSTPROCESSORS)
-from ais_bench.benchmark.utils import get_data_path
+from ais_bench.benchmark.datasets.utils.datasets import get_data_path
 
 from .base import BaseDataset
 
@@ -59,7 +59,7 @@ def extract_boxed_answer(pred_str, strip_double_curly_brace=False):
     if answer is None:
         return None
     if strip_double_curly_brace:
-        match = re.match('^\{(.*)\}$', answer)  # noqa: W605
+        match = re.match(r'^\{(.*)\}$', answer)  # noqa: W605
         if match:
             answer = match.group(1)
     return answer
@@ -319,7 +319,7 @@ class MATHEvaluator(BaseEvaluator):
 
         # remove percentage
         string = string.replace('\\%', '')
-        string = string.replace('\%', '')  # noqa: W605
+        string = string.replace(r'\%', '')  # noqa: W605
 
         # " 0." equivalent to " ." and "{0." equivalent to "{." Alternatively,
         # add "0" if "." is the start of the string
@@ -398,7 +398,7 @@ class MATHEvaluator(BaseEvaluator):
 
         # remove percentage
         string = string.replace('\\%', '')
-        string = string.replace('\%', '')  # noqa: W605
+        string = string.replace(r'\%', '')  # noqa: W605
         string = string.replace('%', '')
 
         # " 0." equivalent to " ." and "{0." equivalent to "{." Alternatively,

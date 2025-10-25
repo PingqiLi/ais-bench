@@ -8,11 +8,9 @@ import mmengine
 from mmengine.config import Config, ConfigDict
 
 from ais_bench.benchmark.registry import PARTITIONERS
-from ais_bench.benchmark.utils import (build_dataset_from_cfg, dataset_abbr_from_cfg,
-                               get_infer_output_path)
-
-from .base import BasePartitioner
-
+from ais_bench.benchmark.utils.config import build_dataset_from_cfg
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, get_infer_output_path
+from ais_bench.benchmark.partitioners.base import BasePartitioner
 
 @PARTITIONERS.register_module()
 class SizePartitioner(BasePartitioner):

@@ -1,17 +1,14 @@
 import json
 import os
-import re
-from os import environ
 from pathlib import Path
 
-from datasets import Dataset, DatasetDict
+from datasets import Dataset
 
 from ais_bench.benchmark.openicl import BaseEvaluator
-from ais_bench.benchmark.registry import LOAD_DATASET, TEXT_POSTPROCESSORS
-from ais_bench.benchmark.utils import get_data_path
-from ais_bench.benchmark.utils.video import VideoAsset, image_to_base64
-
-from .base import BaseDataset
+from ais_bench.benchmark.registry import LOAD_DATASET
+from ais_bench.benchmark.datasets.utils.datasets import get_data_path
+from ais_bench.benchmark.datasets.utils.video import VideoAsset, image_to_base64
+from ais_bench.benchmark.datasets.base import BaseDataset
 
 TEXT_MAP = {
             2: 'two', 

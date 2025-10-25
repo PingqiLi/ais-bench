@@ -15,7 +15,7 @@ try:
 except ImportError:
     from_csv = None
 
-from ais_bench.benchmark.utils import dataset_abbr_from_cfg, model_abbr_from_cfg
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, model_abbr_from_cfg
 
 from .compass_arena import CompassArenaSummarizer
 from .utils import get_judgeanswer_and_reference, get_outdir

@@ -18,7 +18,7 @@ from ais_bench.benchmark.openicl.icl_inferencer.icl_base_api_inferencer import B
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_local_inferencer import BaseLocalInferencer
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.gen_inferencer_output_handler import GenInferencerOutputHandler
 from ais_bench.benchmark.utils.prompt import PromptList
-from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.logging import get_logger
 
 
 logger = get_logger(__name__)

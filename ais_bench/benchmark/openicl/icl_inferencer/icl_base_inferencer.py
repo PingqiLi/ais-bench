@@ -15,11 +15,9 @@ from ais_bench.benchmark.openicl.icl_inferencer.output_handler.base_handler impo
 )
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
-from ais_bench.benchmark.utils import (
-    get_logger,
-    build_model_from_cfg,
-    model_abbr_from_cfg,
-)
+from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.config import build_model_from_cfg
+from ais_bench.benchmark.utils.core.abbr import model_abbr_from_cfg
 
 
 MAX_BATCH_SIZE = 100000

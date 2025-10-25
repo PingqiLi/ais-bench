@@ -8,7 +8,7 @@ from typing import List, Optional
 
 from mmengine.config import ConfigDict
 
-from ais_bench.benchmark.utils import get_infer_output_path, task_abbr_from_cfg
+from ais_bench.benchmark.utils.core.abbr import get_infer_output_path, task_abbr_from_cfg
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils.file import write_status
 

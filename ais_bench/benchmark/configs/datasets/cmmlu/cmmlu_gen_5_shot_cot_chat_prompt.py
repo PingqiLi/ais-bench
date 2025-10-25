@@ -3,7 +3,7 @@ from ais_bench.benchmark.openicl.icl_retriever import FixKRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import CMMLUDataset
-from ais_bench.benchmark.utils.text_postprocessors import match_answer_pattern
+from ais_bench.benchmark.utils.postprocess.text_postprocessors import match_answer_pattern
 
 cmmlu_subject_mapping = {
     'agronomy': '农学',

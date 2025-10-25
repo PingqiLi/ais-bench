@@ -9,7 +9,7 @@ from datasets import Dataset
 from scipy.stats import hypergeom
 
 from ais_bench.benchmark.registry import TEXT_POSTPROCESSORS
-from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.logging import get_logger
 
 
 def compute_pass_at_k(n, c, k):

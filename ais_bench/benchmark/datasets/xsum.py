@@ -5,7 +5,7 @@ from os import environ
 from datasets import Dataset
 
 from ais_bench.benchmark.registry import LOAD_DATASET, TEXT_POSTPROCESSORS
-from ais_bench.benchmark.utils import get_data_path
+from ais_bench.benchmark.datasets.utils.datasets import get_data_path
 
 from .base import BaseDataset
 

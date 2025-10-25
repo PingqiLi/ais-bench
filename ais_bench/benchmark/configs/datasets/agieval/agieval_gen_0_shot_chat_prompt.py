@@ -3,7 +3,7 @@ from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import AGIEvalDataset_v2, AGIEvalEvaluator
-from ais_bench.benchmark.utils.text_postprocessors import first_option_postprocess, first_capital_postprocess_multi
+from ais_bench.benchmark.utils.postprocess.text_postprocessors import first_option_postprocess, first_capital_postprocess_multi
 
 agieval_reader_cfg = dict(
     input_columns=['question', 'options'], output_column='label')

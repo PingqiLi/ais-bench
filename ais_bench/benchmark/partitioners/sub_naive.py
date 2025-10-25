@@ -7,8 +7,7 @@ from typing import Dict, List, Optional, Tuple
 from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.registry import PARTITIONERS
-from ais_bench.benchmark.utils  import (deal_with_judge_model_abbr,
-                               get_infer_output_path, model_abbr_from_cfg)
+from ais_bench.benchmark.utils.core.abbr import deal_with_judge_model_abbr, get_infer_output_path
 
 from .naive import NaivePartitioner
 

@@ -12,9 +12,9 @@ from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator, BaseEvaluato
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.registry import LOAD_DATASET
-from ais_bench.benchmark.utils import get_data_path, get_meta_json, get_logger
-from ais_bench.benchmark.utils.datasets import get_sample_data
-from ais_bench.benchmark.utils.types import check_meta_json_dict, check_output_config_from_meta_json
+from ais_bench.benchmark.datasets.utils.datasets import get_data_path, get_meta_json, get_logger
+from ais_bench.benchmark.datasets.utils.datasets import get_sample_data
+from ais_bench.benchmark.utils.core.types import check_meta_json_dict, check_output_config_from_meta_json
 
 from .base import BaseDataset
 
@@ -43,8 +43,7 @@ class OptionSimAccEvaluator(BaseEvaluator):
     def match_any_label(self, pred, test_item):
         from rapidfuzz.distance import Levenshtein as L
 
-        from ais_bench.benchmark.utils.text_postprocessors import \
-            first_option_postprocess
+        from ais_bench.benchmark.utils.postprocess.text_postprocessors import first_option_postprocess
 
         pred = pred.strip()
         if any([pred == i for i in self.options]):

@@ -6,7 +6,6 @@ from ais_bench.benchmark.summarizers.subjective.arenahard import ArenaHardSummar
 from ais_bench.benchmark.summarizers.subjective.charm import CharmMemSummarizer
 from ais_bench.benchmark.summarizers.subjective.common_summarizer import CommonSummarizer
 from ais_bench.benchmark.summarizers.subjective.compass_arena import CompassArenaSummarizer
-from ais_bench.benchmark.summarizers.subjective.compass_arena_bradley_terry import CompassArenaBradleyTerrySummarizer
 from ais_bench.benchmark.summarizers.subjective.compassbench import CompassBenchSummarizer
 from ais_bench.benchmark.summarizers.subjective.corev2 import Corev2Summarizer
 from ais_bench.benchmark.summarizers.subjective.creationbench import CreationBenchSummarizer

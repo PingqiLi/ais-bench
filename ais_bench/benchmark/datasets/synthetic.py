@@ -6,12 +6,12 @@ from tqdm import tqdm
 
 import numpy as np
 import torch
+from transformers import AutoTokenizer
 
 from datasets import Dataset
 from ais_bench.benchmark.registry import LOAD_DATASET
-from ais_bench.benchmark.utils import get_data_path, get_logger
-from ais_bench.benchmark.utils.tokenizer import BenchmarkTokenizer
-from .base import BaseDataset
+from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.datasets.base import BaseDataset
 
 
 @dataclass
@@ -295,8 +295,11 @@ class SyntheticDataset(BaseDataset):
 
             model_path_value = normalize_file_path(model_path_value)
             tokenizer_file_path = self.find_first_file_path(model_path_value, "tokenizer_config.json")
-            tokenizer = BenchmarkTokenizer(os.path.dirname(tokenizer_file_path), trust_remote_code=trust_remote_code)
-            tokenizer_model = tokenizer.tokenizer.tokenizer_model
+
+            tokenizer_model = AutoTokenizer.from_pretrained(
+                os.path.dirname(tokenizer_file_path), 
+                trust_remote_code=trust_remote_code
+            )
 
             vocab_size = tokenizer_model.vocab_size
             vocab_size = tokenid_config.get("VocabSize", None) if not vocab_size else vocab_size # The vocab_size defined in the model has higher priority
@@ -319,7 +322,7 @@ class SyntheticDataset(BaseDataset):
 
             for _ in tqdm(range(request_count), desc="Constructing synthetic tokenid datasets ..."):
                 input_ids = self.generate_valid_random_ids(valid_indices, request_size)
-                decode_str = tokenizer.decode(input_ids)
+                decode_str = tokenizer_model.decode(input_ids)
                 dataset.append({"question":decode_str,"answer":"aaa"})
 
         else:

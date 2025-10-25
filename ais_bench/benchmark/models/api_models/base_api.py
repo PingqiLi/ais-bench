@@ -12,7 +12,7 @@ from transformers import AutoTokenizer
 import requests
 import aiohttp
 
-from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.prompt import PromptList
 from ais_bench.benchmark.models import BaseModel
 from ais_bench.benchmark.models.output import Output

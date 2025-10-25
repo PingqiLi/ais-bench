@@ -1,5 +1,5 @@
 import importlib
-import pkg_resources
+from importlib.metadata import entry_points
 from typing import Callable, List, Optional, Type, Union
 
 from mmengine.registry import METRICS as MMENGINE_METRICS
@@ -21,18 +21,22 @@ def load_class(class_path):
 
 def get_locations(module_dir):
     locations = [f'ais_bench.benchmark.{module_dir}']
-    for entry_point in pkg_resources.iter_entry_points('ais_bench.benchmark_plugins'):
-        try:
-            pkg = entry_point.load()
-            pkg_dir = pkg.__name__
-            custom_loc = f'{pkg_dir}.{module_dir}'
+    try:
+        # 使用 .select() 方法替代已弃用的 .get() 方法
+        for entry_point in entry_points().select(group='ais_bench.benchmark_plugins'):
             try:
-                _ = __import__(custom_loc, fromlist=["*"])
-                locations.append(custom_loc)
-            except ImportError:
+                pkg = entry_point.load()
+                pkg_dir = pkg.__name__
+                custom_loc = f'{pkg_dir}.{module_dir}'
+                try:
+                    _ = __import__(custom_loc, fromlist=["*"])
+                    locations.append(custom_loc)
+                except ImportError:
+                    continue
+            except Exception:
                 continue
-        except Exception:
-            continue
+    except Exception:
+        pass
     return locations
 
 
@@ -54,9 +58,9 @@ MODELS = Registry('model', locations=get_locations('models'))
 # TODO: LOAD_DATASET -> DATASETS
 LOAD_DATASET = Registry('load_dataset', locations=get_locations('datasets'))
 TEXT_POSTPROCESSORS = Registry(
-    'text_postprocessors', locations=get_locations('utils.text_postprocessors'))
+    'text_postprocessors', locations=get_locations('utils.postprocess.text_postprocessors'))
 DICT_POSTPROCESSORS = Registry(
-    'dict_postprocessors', locations=get_locations('utils.dict_postprocessors'))
+    'base_postprocessors', locations=get_locations('utils.postprocess.base_postprocessors'))
 
 EVALUATORS = Registry('evaluators', locations=get_locations('evaluators'))
 

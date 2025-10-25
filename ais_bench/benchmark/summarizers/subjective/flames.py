@@ -10,7 +10,7 @@ from datetime import datetime
 import numpy as np
 from mmengine import ConfigDict
 
-from ais_bench.benchmark.utils import dataset_abbr_from_cfg, model_abbr_from_cfg
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, model_abbr_from_cfg
 
 from .subjective_post_process import post_process_autoj
 from .utils import get_judgeanswer_and_reference, get_outdir

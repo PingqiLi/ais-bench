@@ -6,11 +6,10 @@ from typing import Dict, List, Optional
 
 from mmengine.config import ConfigDict
 
-from ais_bench.benchmark.utils import (dataset_abbr_from_cfg, get_logger,
-                               model_abbr_from_cfg, task_abbr_from_cfg)
-from ais_bench.benchmark.utils.logger import AISLogger
-from ais_bench.benchmark.utils.exceptions import ConfigError
-from ais_bench.benchmark.utils.error_codes import PARTI_CODES
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, model_abbr_from_cfg, task_abbr_from_cfg
+from ais_bench.benchmark.utils.logging import AISLogger
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
+from ais_bench.benchmark.utils.logging.error_codes import PARTI_CODES
 from ais_bench.benchmark.global_consts import LOG_LEVEL
 from ais_bench.benchmark.tasks.utils import ONLY_PERF_DATASETS, MM_DATASETS, MM_APIS
 

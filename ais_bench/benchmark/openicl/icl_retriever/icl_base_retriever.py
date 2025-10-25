@@ -9,8 +9,8 @@ from mmengine.config import Config
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.utils.prompt import PromptList
-from ais_bench.benchmark.utils import build_dataset_from_cfg
-from ais_bench.benchmark.utils.abbr import dataset_abbr_from_cfg
+from ais_bench.benchmark.utils.config.build import build_dataset_from_cfg
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg
 
 
 class BaseRetriever:

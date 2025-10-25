@@ -10,7 +10,6 @@ import time
 
 
 import numpy as np
-from multiprocessing import Pool
 import orjson
 import tabulate
 from tqdm import tqdm
@@ -19,17 +18,12 @@ from mmengine import ConfigDict
 from ais_bench.benchmark.calculators.base_perf_metric_calculator import (
     BasePerfMetricCalculator,
 )
-from ais_bench.benchmark.utils import (
-    get_logger,
-    model_abbr_from_cfg,
-    plot_sorted_request_timelines,
-)
-from ais_bench.benchmark.utils.build import (
-    build_perf_metric_calculator_from_cfg,
-    build_model_from_cfg,
-)
+from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.core.abbr import model_abbr_from_cfg
+from ais_bench.benchmark.utils.config import build_perf_metric_calculator_from_cfg, build_model_from_cfg
 from ais_bench.benchmark.utils.prompt import is_mm_prompt
 from ais_bench.benchmark.utils.results import dump_results_dict
+from ais_bench.benchmark.utils.visualization import plot_sorted_request_timelines
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import init_db, load_all_numpy_from_db
 
 

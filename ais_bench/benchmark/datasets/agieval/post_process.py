@@ -135,7 +135,7 @@ def parse_math_answer(setting_name, raw_string):
         return retval
 
     def get_answer_with_dollar_sign(s):
-        first_pattern = '\$(.*)\$'
+        first_pattern = r'\$(.*)\$'
         last_match = None
         matches = re.findall(first_pattern, s)
         if matches:
@@ -151,7 +151,7 @@ def parse_math_answer(setting_name, raw_string):
             if '\\n' in last_match:
                 last_match = last_match.split('\\n')[0]
         else:
-            pattern = '(?:\\$)?\d+(?:\.\d+)?(?![\w\d])'
+            pattern = r'(?:\\$)?\d+(?:\.\d+)?(?![\w\d])'
             matches = re.findall(pattern, s)
             if matches:
                 last_match = matches[-1]
@@ -170,7 +170,7 @@ def parse_math_answer(setting_name, raw_string):
 def parse_qa_multiple_answer(string, setting_name):
     if setting_name == 'few-shot-CoT':
         string = extract_last_line(string)
-    pattern = '\(*([A-Z])\)*'
+    pattern = r'\(*([A-Z])\)*'
     match = re.findall(pattern, string)
     if match:
         return match

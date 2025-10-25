@@ -5,7 +5,7 @@ import random
 import threading
 import sys
 import time
-from typing import Any, List
+from typing import Any
 
 from mmengine.config import Config, ConfigDict
 from mmengine.utils import mkdir_or_exist
@@ -13,12 +13,10 @@ from mmengine.utils import mkdir_or_exist
 from ais_bench.benchmark.registry import (ICL_INFERENCERS, ICL_PROMPT_TEMPLATES,
                                   ICL_RETRIEVERS, TASKS)
 from ais_bench.benchmark.tasks.base import BaseTask
-from ais_bench.benchmark.utils import (build_dataset_from_cfg, build_model_from_cfg,
-                               get_infer_output_path, get_logger,
-                               model_abbr_from_cfg, task_abbr_from_cfg)
-from ais_bench.benchmark.utils.types import _check_type
+from ais_bench.benchmark.utils.config import build_dataset_from_cfg, build_model_from_cfg
+from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.core.abbr import get_infer_output_path, task_abbr_from_cfg, model_abbr_from_cfg
 from ais_bench.benchmark.tasks.base import TaskStateManager
-from ais_bench.benchmark.utils.abbr import task_abbr_from_cfg
 
 
 

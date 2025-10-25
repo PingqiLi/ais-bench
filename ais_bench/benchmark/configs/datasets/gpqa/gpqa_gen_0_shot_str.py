@@ -2,7 +2,7 @@ from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.datasets import GPQADataset, GPQAEvaluator
-from ais_bench.benchmark.utils import first_option_postprocess
+from ais_bench.benchmark.utils.postprocess.text_postprocessors import first_option_postprocess
 
 gpqa_reader_cfg = dict(
     input_columns=['question', 'A', 'B', 'C', 'D'],

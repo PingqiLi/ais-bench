@@ -1,6 +1,6 @@
 import unittest
 from enum import Enum
-from ais_bench.benchmark.utils.error_codes import (
+from ais_bench.benchmark.utils.logging.error_codes import (
     ErrorModule,
     ErrorType,
     BaseErrorCode,

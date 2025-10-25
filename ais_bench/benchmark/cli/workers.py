@@ -6,8 +6,8 @@ from collections import defaultdict
 from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
-from ais_bench.benchmark.utils.run import get_config_type, get_models_attr
-from ais_bench.benchmark.utils.logger import logger
+from ais_bench.benchmark.utils.config.run import get_config_type
+from ais_bench.benchmark.utils.logging.logger import logger
 from ais_bench.benchmark.partitioners import NaivePartitioner
 from ais_bench.benchmark.runners import LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLApiInferTask

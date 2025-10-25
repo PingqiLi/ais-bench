@@ -3,7 +3,7 @@ import os.path as osp
 
 import mmengine
 
-from ais_bench.benchmark.utils import dataset_abbr_from_cfg
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg
 
 
 def get_outdir(cfg, time_str):

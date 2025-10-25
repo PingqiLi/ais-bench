@@ -21,12 +21,9 @@ from ais_bench.benchmark.tasks.utils import (
     ProgressBar,
     TokenProducer,
 )
-from ais_bench.benchmark.utils import (
-    get_logger,
-    task_abbr_from_cfg,
-    build_dataset_from_cfg,
-)
-from ais_bench.benchmark.utils.abbr import task_abbr_from_cfg
+from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.core.abbr import task_abbr_from_cfg
+from ais_bench.benchmark.utils.config import build_dataset_from_cfg
 
 CONCURRENCY_PER_PROCESS = 500
 MAX_WORKERS_NUM = mp.cpu_count() * 0.8

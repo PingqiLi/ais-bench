@@ -1,9 +1,9 @@
 import unittest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, call
 import os
 from ais_bench.benchmark.utils.file import match_cfg_file
-from ais_bench.benchmark.utils.exceptions import FileMatchError
-from ais_bench.benchmark.utils.error_codes import UTILS_CODES
+from ais_bench.benchmark.utils.logging import FileMatchError
+from ais_bench.benchmark.utils.logging import UTILS_CODES
 
 
 class TestMatchCfgFile(unittest.TestCase):

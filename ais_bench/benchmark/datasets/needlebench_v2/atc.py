@@ -12,7 +12,7 @@ from ais_bench.benchmark.datasets.needlebench_v2.atc_elder_only import (
     NeedleBenchATCEvaluator, clean_atc_answer, needlebench_atc_postprocess_v2)
 from ais_bench.benchmark.registry import (ICL_EVALUATORS, LOAD_DATASET,
                                   TEXT_POSTPROCESSORS)
-from ais_bench.benchmark.utils import get_data_path
+from ais_bench.benchmark.datasets.utils.datasets import get_data_path
 
 
 # 定义问题类型枚举

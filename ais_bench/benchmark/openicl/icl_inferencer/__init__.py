@@ -1,3 +1,2 @@
 from ais_bench.benchmark.openicl.icl_inferencer.icl_gen_inferencer import GenInferencer  # noqa
-from ais_bench.benchmark.openicl.icl_inferencer.icl_model_perf_inferencer import GenModelPerfInferencer
 from ais_bench.benchmark.openicl.icl_inferencer.icl_multiturn_inferencer import MultiTurnGenInferencer

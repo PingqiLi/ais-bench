@@ -10,7 +10,7 @@ import sys
 import time
 from collections import Counter
 from inspect import signature
-from typing import List, Iterable
+from typing import List
 import mmap
 import orjson
 
@@ -21,13 +21,13 @@ from mmengine.utils import mkdir_or_exist
 from ais_bench.benchmark.registry import (ICL_EVALUATORS, MODELS, TASKS,
                                   TEXT_POSTPROCESSORS)
 from ais_bench.benchmark.tasks.base import BaseTask, extract_role_pred
-from ais_bench.benchmark.utils import (build_dataset_from_cfg, dataset_abbr_from_cfg,
-                               get_infer_output_path, get_logger,
-                               task_abbr_from_cfg)
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, get_infer_output_path
+from ais_bench.benchmark.utils.config import build_dataset_from_cfg
+from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.core.abbr import task_abbr_from_cfg
 
-from ais_bench.benchmark.utils.types import _check_type
+from ais_bench.benchmark.utils.core.types import check_type
 from ais_bench.benchmark.tasks.base import TaskStateManager
-from ais_bench.benchmark.utils.abbr import task_abbr_from_cfg
 
 
 @TASKS.register_module()
@@ -90,9 +90,9 @@ class OpenICLEvalTask(BaseTask):
         k = self.dataset_cfg.get('k', num_return_sequences)
         n = self.dataset_cfg.get('n', num_return_sequences)
 
-        _check_type(k, int)
+        check_type(k, int)
         assert k > 0, f"k expected a positive integer, but got {k}"
-        _check_type(n, int)
+        check_type(n, int)
         assert n > 0, f"n expected a positive integer, but got {n}"
 
         self.dataset_cfg.update({

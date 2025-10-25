@@ -4,7 +4,7 @@ from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import AccEvaluator
 from ais_bench.benchmark.datasets import MMLUProDataset
-from ais_bench.benchmark.utils.text_postprocessors import match_answer_pattern
+from ais_bench.benchmark.utils.postprocess.text_postprocessors import match_answer_pattern
 
 with read_base():
     from .mmlu_pro_categories import categories

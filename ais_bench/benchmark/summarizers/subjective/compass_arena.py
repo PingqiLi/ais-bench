@@ -12,7 +12,7 @@ from mmengine import ConfigDict
 from tabulate import tabulate
 
 from ais_bench.benchmark.partitioners.sub_naive import remove_duplicate_pairs
-from ais_bench.benchmark.utils import dataset_abbr_from_cfg, model_abbr_from_cfg
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, model_abbr_from_cfg
 
 from .utils import get_judgeanswer_and_reference, get_outdir
 

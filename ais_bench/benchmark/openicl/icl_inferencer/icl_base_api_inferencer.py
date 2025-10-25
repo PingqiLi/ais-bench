@@ -15,11 +15,8 @@ from typing import Any, Dict, Optional, Tuple
 import aiohttp
 import janus
 from tqdm import tqdm
-from ais_bench.benchmark.global_consts import (
-    MAX_CHUNK_SIZE,
-    REQUEST_TIME_OUT,
-)
-from ais_bench.benchmark.openicl.utils import get_logger
+from ais_bench.benchmark.utils.core.valid_global_consts import get_request_time_out, get_max_chunk_size
+from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.tasks.utils import STATUS_REPORT_INTERVAL, MESSAGE_INFO
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import (
     BaseInferencer,
@@ -282,9 +279,9 @@ class BaseApiInferencer(BaseInferencer):
         semaphore = asyncio.Semaphore(num_workers) if num_workers else None
         # Reuse session to improve concurrency
         connector = aiohttp.TCPConnector(limit=num_workers + 1)
-        timeout = aiohttp.ClientTimeout(total=REQUEST_TIME_OUT)
+        timeout = aiohttp.ClientTimeout(total=get_request_time_out())
         session = aiohttp.ClientSession(
-            connector=connector, timeout=timeout, max_line_size=MAX_CHUNK_SIZE
+            connector=connector, timeout=timeout, max_line_size=get_max_chunk_size()
         )
         start_time = time.perf_counter()
         

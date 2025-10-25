@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 import sqlite3
 from .base_handler import BaseInferencerOutputHandler
 from ais_bench.benchmark.models.output import Output
-from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.logging import get_logger
 
 logger = get_logger(__name__)
 

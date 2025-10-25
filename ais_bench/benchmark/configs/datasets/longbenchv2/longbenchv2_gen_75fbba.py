@@ -2,7 +2,7 @@ from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.datasets import LongBenchv2Dataset, LongBenchv2Evaluator
-from ais_bench.benchmark.utils.text_postprocessors import first_option_postprocess
+from ais_bench.benchmark.utils.postprocess.text_postprocessors import first_option_postprocess
 
 LongBenchv2_reader_cfg = dict(
     input_columns=['context', 'question', 'choice_A', 'choice_B', 'choice_C', 'choice_D', 'difficulty', 'length'],

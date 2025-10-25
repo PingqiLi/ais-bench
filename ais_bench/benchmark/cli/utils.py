@@ -1,7 +1,7 @@
 import sys
 from datetime import datetime
-from ais_bench.benchmark.utils.exceptions import ConfigError
-from ais_bench.benchmark.utils.error_codes import UTILS_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
+from ais_bench.benchmark.utils.logging.error_codes import UTILS_CODES
 
 DATASETS_NEED_MODELS = ["ais_bench.benchmark.datasets.synthetic.SyntheticDataset",
                       "ais_bench.benchmark.datasets.sharegpt.ShareGPTDataset"]

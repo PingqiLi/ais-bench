@@ -6,7 +6,7 @@ from os import environ
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.registry import LOAD_DATASET
-from ais_bench.benchmark.utils import get_data_path
+from ais_bench.benchmark.datasets.utils.datasets import get_data_path
 
 from .base import BaseDataset
 

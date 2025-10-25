@@ -4,7 +4,7 @@ import math
 import numpy as np
 from abc import abstractmethod, ABC
 
-from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.logging import get_logger
 
 DEFAULT_STATS = [
     "Average", "Min", "Max", "Median", "P75", "P90", "P99",

@@ -15,7 +15,7 @@ import numpy as np
 import janus
 
 from ais_bench.benchmark.models.output import Output
-from ais_bench.benchmark.utils import get_logger
+from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.results import safe_write
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import init_db, save_numpy_to_db
 logger = get_logger(__name__)

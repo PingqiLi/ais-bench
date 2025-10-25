@@ -4,7 +4,7 @@ import os
 import tempfile
 from unittest.mock import patch, MagicMock
 
-from ais_bench.benchmark.utils.logger import (
+from ais_bench.benchmark.utils.logging import (
     Colors,
     ColoredLevelFormatter,
     to_error_code_format,
@@ -13,7 +13,7 @@ from ais_bench.benchmark.utils.logger import (
     get_formatted_log_content,
     AISLogger
 )
-from ais_bench.benchmark.utils.error_codes import error_manager, ErrorType
+from ais_bench.benchmark.utils.logging.error_codes import error_manager, ErrorType
 from ais_bench.benchmark.global_consts import LOG_LEVEL
 
 

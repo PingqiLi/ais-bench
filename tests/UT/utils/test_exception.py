@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 # 导入被测试的模块
-from ais_bench.benchmark.utils.exceptions import (
+from ais_bench.benchmark.utils.logging.exceptions import (
     AISBenchBaseException,
     PerfResultCalcException
 )

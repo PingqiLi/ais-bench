@@ -3,13 +3,14 @@ import os
 import logging
 import os.path as osp
 import tabulate
-from mmengine.config import Config, DictAction
+from mmengine.config import Config
 
-from ais_bench.benchmark.utils.logger import AISLogger
-from ais_bench.benchmark.utils.error_codes import TMAN_CODES
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import TMAN_CODES
 from ais_bench.benchmark.datasets.custom import make_custom_dataset_config
-from ais_bench.benchmark.utils.run import (function_call_task_check, try_fill_in_custom_cfgs, match_cfg_file, )
-from ais_bench.benchmark.utils.exceptions import CommandError, ConfigError
+from ais_bench.benchmark.utils.file import match_cfg_file
+from ais_bench.benchmark.utils.config.run import try_fill_in_custom_cfgs
+from ais_bench.benchmark.utils.logging.exceptions import CommandError, ConfigError
 
 class CustomConfigChecker:
     MODEL_REQUIRED_FIELDS = ['type', 'abbr', 'attr']
@@ -326,6 +327,3 @@ class ConfigManager:
             self.cfg = Config.fromfile(output_config_path, format_python_code=False)
         except BaseException as e:
             raise ConfigError(TMAN_CODES.INVAILD_SYNTAX_IN_CFG_CONTENT, f'Config file {output_config_path} contain invaild syntax: {e}')
-
-        # check if the tasks all function call tasks
-        function_call_task_check(self.cfg, self.args.merge_ds)

@@ -12,7 +12,7 @@ from ais_bench.benchmark.datasets.needlebench_v2.atc import (
     relationship_templates_en, relationship_templates_zh_CN,
     relationship_terms_en, relationship_terms_zh_CN)
 from ais_bench.benchmark.registry import LOAD_DATASET
-from ais_bench.benchmark.utils import get_data_path
+from ais_bench.benchmark.datasets.utils.datasets import get_data_path
 
 
 def get_random_needles(counter, file_path, num_needles, language):

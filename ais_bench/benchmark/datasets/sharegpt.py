@@ -4,15 +4,15 @@ import random
 
 from datasets import Dataset
 
-from ais_bench.benchmark.openicl import BaseEvaluator
+from ais_bench.benchmark.openicl.icl_evaluator import BaseEvaluator
 from ais_bench.benchmark.registry import LOAD_DATASET
-from ais_bench.benchmark.utils import get_data_path
+from ais_bench.benchmark.datasets.utils.datasets import get_data_path
+from ais_bench.benchmark.utils.file import load_tokenizer
 from ais_bench.benchmark.utils.logging import get_logger
-from ais_bench.benchmark.utils.tokenizer import HuggingfaceTokenizer
+from ais_bench.benchmark.datasets.base import BaseDataset
 
-from .base import BaseDataset
-MIN_PROMPT_LEN=4
-MIN_OUTPUT_LEN=4
+MIN_PROMPT_LEN = 4
+MIN_OUTPUT_LEN = 4
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -22,10 +22,7 @@ class ShareGPTDataset(BaseDataset):
     @staticmethod
     def load(path, disable_shuffle, **kwargs):
         tokenizer_path = kwargs.get("model_path", None)
-        try:
-            tokenizer = HuggingfaceTokenizer(tokenizer_path)
-        except Exception as e:
-            raise ValueError(f"Load tokenizer failed: {e}, Please check your model path in api configs!")
+        tokenizer = load_tokenizer(tokenizer_path)
         path = get_data_path(path, local_mode=True)
         with open(path) as f:
             dataset = json.load(f)
@@ -39,26 +36,31 @@ class ShareGPTDataset(BaseDataset):
                 continue
             if data["conversations"][0]["from"] != "human":
                 continue
-            chat = {"question":[], "answer":[], "max_out_len":[]}
-            chat['id'] = data['id']
+            chat = {"question": [], "answer": [], "max_out_len": []}
+            chat["id"] = data["id"]
             total_len = len(data["conversations"])
             cnt_turn += total_len
             for i in range(0, total_len, 2):
                 # One user One Assistant
                 chat["question"].append(data["conversations"][i]["value"])
                 try:
-                    output_len = len(tokenizer.encode(data["conversations"][i + 1]["value"]))
+                    output_len = len(
+                        tokenizer.encode(data["conversations"][i + 1]["value"])
+                    )
                 except:
                     output_len = None
                 chat["max_out_len"] = output_len
                 chat["answer"].append(data["conversations"][i + 1]["value"])
             new_dataset.append(chat)
-        logger.info(f"Number of conversations: {len(dataset)}; Number of requests: {cnt_turn // 2}")
+        logger.info(
+            f"Number of conversations: {len(dataset)}; Number of requests: {cnt_turn // 2}"
+        )
         if not disable_shuffle:
             # Shuffle the dataset.
             random.shuffle(new_dataset)
-                
+
         return Dataset.from_list(new_dataset)
+
 
 class ShareGPTEvaluator(BaseEvaluator):
 
@@ -86,13 +88,13 @@ class ShareGPTEvaluator(BaseEvaluator):
         count = 0
         details = []
         for i, j in zip(predictions, references):
-            detail = {'pred': i, 'answer': j, 'correct': False}
+            detail = {"pred": i, "answer": j, "correct": False}
             if len(i) > 1:
                 i = self.find_choice(i[0])
             count += 1
             if i == j:
                 correct += 1
-                detail['correct'] = True
+                detail["correct"] = True
             details.append(detail)
-        result = {'accuracy': 100 * correct / count, 'details': details}
+        result = {"accuracy": 100 * correct / count, "details": details}
         return result
