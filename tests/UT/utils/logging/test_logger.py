@@ -303,7 +303,7 @@ class TestAISLogger(unittest.TestCase):
         mock_logger.root = mock_root
 
         # 由于get_formatted_log_content是直接调用的，我们可以模拟error_manager.get
-        with patch('ais_bench.benchmark.utils.error_codes.error_manager.get') as mock_error_manager_get:
+        with patch('ais_bench.benchmark.utils.logging.error_codes.error_manager.get') as mock_error_manager_get:
             # 创建一个模拟的error_code对象
             mock_error_code = MagicMock()
             mock_error_code.err_type = ErrorType.UNKNOWN

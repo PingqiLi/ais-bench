@@ -22,8 +22,8 @@ class TestAISBenchBaseException(unittest.TestCase):
         # 模拟格式化后的日志内容
         self.formatted_log_content = "格式化后的日志内容"
 
-    @patch('ais_bench.benchmark.utils.exceptions.error_manager')
-    @patch('ais_bench.benchmark.utils.exceptions.get_formatted_log_content')
+    @patch('ais_bench.benchmark.utils.logging.exceptions.error_manager')
+    @patch('ais_bench.benchmark.utils.logging.exceptions.get_formatted_log_content')
     def test_init_with_existing_error_code(self, mock_get_formatted, mock_manager):
         """测试使用存在的错误码初始化异常"""
         # 设置模拟对象的返回值
@@ -40,8 +40,8 @@ class TestAISBenchBaseException(unittest.TestCase):
         # 验证异常的message属性
         self.assertEqual(str(exception), self.formatted_log_content)
 
-    @patch('ais_bench.benchmark.utils.exceptions.error_manager')
-    @patch('ais_bench.benchmark.utils.exceptions.get_formatted_log_content')
+    @patch('ais_bench.benchmark.utils.logging.exceptions.error_manager')
+    @patch('ais_bench.benchmark.utils.logging.exceptions.get_formatted_log_content')
     def test_init_with_message(self, mock_get_formatted, mock_manager):
         """测试提供message参数的情况"""
         # 设置模拟对象的返回值
@@ -59,7 +59,7 @@ class TestAISBenchBaseException(unittest.TestCase):
         # 验证异常的message属性
         self.assertEqual(str(exception), self.formatted_log_content)
 
-    @patch('ais_bench.benchmark.utils.exceptions.error_manager')
+    @patch('ais_bench.benchmark.utils.logging.exceptions.error_manager')
     def test_init_with_nonexistent_error_code(self, mock_manager):
         """测试使用不存在的错误码初始化异常时抛出ValueError"""
         # 设置模拟对象返回None，表示错误码不存在
@@ -76,8 +76,8 @@ class TestAISBenchBaseException(unittest.TestCase):
         # 验证调用了error_manager.get
         mock_manager.get.assert_called_once_with(nonexistent_error_str)
 
-    @patch('ais_bench.benchmark.utils.exceptions.error_manager')
-    @patch('ais_bench.benchmark.utils.exceptions.get_formatted_log_content')
+    @patch('ais_bench.benchmark.utils.logging.exceptions.error_manager')
+    @patch('ais_bench.benchmark.utils.logging.exceptions.get_formatted_log_content')
     def test_inheritance(self, mock_get_formatted, mock_manager):
         """测试异常类的继承关系"""
         # 设置模拟对象的返回值
@@ -95,8 +95,8 @@ class TestAISBenchBaseException(unittest.TestCase):
 class TestPerfResultCalcException(unittest.TestCase):
     """测试PerfResultCalcException类"""
 
-    @patch('ais_bench.benchmark.utils.exceptions.error_manager')
-    @patch('ais_bench.benchmark.utils.exceptions.get_formatted_log_content')
+    @patch('ais_bench.benchmark.utils.logging.exceptions.error_manager')
+    @patch('ais_bench.benchmark.utils.logging.exceptions.get_formatted_log_content')
     def test_inheritance(self, mock_get_formatted, mock_manager):
         """测试PerfResultCalcException类的继承关系"""
         # 设置模拟对象的返回值

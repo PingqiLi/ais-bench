@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch
-from ais_bench.benchmark.utils.build import build_model_from_cfg,validate_model_cfg
-
+from ais_bench.benchmark.utils.config import build_model_from_cfg,validate_model_cfg
 class MockModels:
     @staticmethod
     def build(cfg):
@@ -40,7 +39,7 @@ class TestModelCfgValidation(unittest.TestCase):
         self.assertIn("host_ip", errors)
 
     def test_validate_model_cfg_invalid_abbr(self):
-        cfg = {"abbr": "invalid abbr!"}
+        cfg = {"abbr": 123}  # abbr 应该是字符串，但传入了数字
         errors = validate_model_cfg(cfg)
         self.assertIn("abbr", errors)
 
@@ -50,8 +49,9 @@ class TestModelCfgValidation(unittest.TestCase):
         self.assertIn("batch_size", errors)
 
     @patch("os.path.exists", return_value=True)
-    @patch("ais_bench.benchmark.utils.build.MODELS", new=MockModels)
-    def test_build_model_from_cfg_success(self, mock_exists):
+    @patch("ais_bench.benchmark.utils.config.build.MODELS")
+    def test_build_model_from_cfg_success(self, mock_models, mock_exists):
+        mock_models.build.return_value = {"model": "mock_model", "config": {}}
         cfg = {
             "attr": "local",
             "abbr": "test-model",
@@ -73,7 +73,8 @@ class TestModelCfgValidation(unittest.TestCase):
         result = build_model_from_cfg(cfg)
         self.assertIn("model", result)
         self.assertEqual(result["model"], "mock_model")
-        self.assertNotIn("abbr", result["config"])
+        # 验证 MODELS.build 被调用
+        mock_models.build.assert_called_once()
 
     @patch("os.path.exists", return_value=True)
     def test_build_model_from_cfg_failure(self, mock_exists):

@@ -72,7 +72,7 @@ class TestMatchCfgFile(unittest.TestCase):
         # 验证错误代码
         self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_1)
 
-    @patch('ais_bench.benchmark.utils.file.logger')
+    @patch('ais_bench.benchmark.utils.file.file.logger')
     @patch('os.walk')
     def test_match_cfg_file_pattern_multiple_matches(self, mock_os_walk, mock_logger):
         """测试模式匹配多个文件的情况（模糊匹配）"""
@@ -94,7 +94,7 @@ class TestMatchCfgFile(unittest.TestCase):
         # 验证logger.warning被调用
         mock_logger.warning.assert_called_once()
 
-    @patch('ais_bench.benchmark.utils.file.logger')
+    @patch('ais_bench.benchmark.utils.file.file.logger')
     @patch('os.walk')
     def test_match_cfg_file_mixed_scenarios(self, mock_os_walk, mock_logger):
         """测试混合场景：有些模式匹配，有些匹配多个"""

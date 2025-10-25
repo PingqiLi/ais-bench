@@ -1,5 +1,5 @@
 import unittest
-from ais_bench.benchmark.utils.types import check_meta_json_dict, check_output_config_from_meta_json
+from ais_bench.benchmark.utils.core.types import check_meta_json_dict, check_output_config_from_meta_json
 
 
 class TestCheckMetaJsonDict(unittest.TestCase):

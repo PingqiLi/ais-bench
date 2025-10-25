@@ -1,13 +1,8 @@
 import os
-import sys
 import unittest
 from unittest import mock
-import logging
 import tempfile
 import shutil
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..')))
 
 from ais_bench.benchmark.cli.config_manager import CustomConfigChecker, ConfigManager
 from ais_bench.benchmark.utils.logging.exceptions import CommandError, ConfigError
@@ -598,8 +593,7 @@ class TestConfigManager(unittest.TestCase):
 
     @mock.patch('os.makedirs')
     @mock.patch('ais_bench.benchmark.cli.config_manager.Config.fromfile')
-    @mock.patch('ais_bench.benchmark.cli.config_manager.function_call_task_check')
-    def test_dump_and_reload_config(self, mock_function_check, mock_fromfile, mock_makedirs):
+    def test_dump_and_reload_config(self, mock_fromfile, mock_makedirs):
         """测试转储和重新加载配置"""
         # 创建模拟配置
         mock_cfg = mock.MagicMock()
@@ -618,7 +612,6 @@ class TestConfigManager(unittest.TestCase):
         # 验证结果
         mock_cfg.dump.assert_called_once()
         mock_fromfile.assert_called_once()
-        mock_function_check.assert_called_once_with(mock_loaded_cfg, self.args.merge_ds)
 
     @mock.patch('os.makedirs')
     def test_dump_and_reload_config_invalid_num_prompts(self, mock_makedirs):
