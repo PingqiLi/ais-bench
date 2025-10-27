@@ -8,7 +8,6 @@ from typing import List, Optional
 
 import aiohttp
 import torch
-from tqdm import tqdm
 
 from ais_bench.benchmark.models.output import RequestOutput
 from ais_bench.benchmark.registry import ICL_INFERENCERS
@@ -61,14 +60,14 @@ class GenInferencer(BaseApiInferencer, BaseLocalInferencer):
         self.stopping_criteria = list(stopping_criteria) if stopping_criteria else []
         self.gen_field_replace_token = gen_field_replace_token or ""
 
-        self.output_handler = GenInferencerOutputHandler(perf_mode=self.perf_mode, 
+        self.output_handler = GenInferencerOutputHandler(perf_mode=self.perf_mode,
                                                         save_every=self.save_every)
 
     async def do_request(
         self, data: dict, token_bucket: BoundedSemaphore, session: aiohttp.ClientSession
     ):
         """Execute a single inference request.
-        
+
         Args:
             data: Dictionary containing request data
             token_bucket: Semaphore for rate limiting
@@ -95,41 +94,42 @@ class GenInferencer(BaseApiInferencer, BaseLocalInferencer):
 
     def batch_inference(
         self,
-        dataloader: torch.utils.data.DataLoader,
-    ) -> List:
+        datum,
+    ) -> None:
         """Perform batch inference on the given dataloader.
-        
+
         Args:
             dataloader: DataLoader containing the inference data
-            
+
         Returns:
             List of inference results
         """
-        logger.info("Starting inference process...")
-        for datum in tqdm(dataloader, disable=not self.is_main_process):
-            indexs = datum.pop("index")
-            inputs = datum.pop("prompt")
-            data_abbrs = datum.pop("data_abbr")
-            max_out_lens = datum.pop("max_out_len")
-            golds = datum.pop("gold", [None] * len(inputs))
+        indexs = datum.pop("index")
+        inputs = datum.pop("prompt")
+        data_abbrs = datum.pop("data_abbr")
+        max_out_lens = datum.pop("max_out_len")
+        golds = datum.pop("gold", [None] * len(inputs))
+        if self.model.is_api:
             outputs = self.model.generate(inputs, max_out_lens, **datum)
-            # TODO: save output to json
-            for index, input, output, data_abbr, gold in zip(
-                indexs, inputs, outputs, data_abbrs, golds
-            ):
-                self.output_handler.report_cache_info(
-                    index, input, output, data_abbr, gold
-                )
+        else:
+            outputs = self.model.generate(inputs, self.model.max_out_len, **datum)
+        # TODO: save output to json
+        for index, input, output, data_abbr, gold in zip(
+            indexs, inputs, outputs, data_abbrs, golds
+        ):
+            self.output_handler.report_cache_info_sync(
+                index, input, output, data_abbr, gold
+            )
 
     def get_data_list(
         self,
         retriever: BaseRetriever,
     ):
         """Generate data list for inference.
-        
+
         Args:
             retriever: The retriever instance to get data from
-            
+
         Returns:
             List of data dictionaries for inference
         """

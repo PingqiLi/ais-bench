@@ -46,7 +46,7 @@ class BaseInferencerOutputHandler:
         self.cache_queue = janus.Queue()
         self.all_success = True
         self.save_every = save_every
-        
+
     @abstractmethod
     def get_result(
         self,
@@ -141,6 +141,43 @@ class BaseInferencerOutputHandler:
         try:
             item = (id, data_abbr, input, output, gold)
             await self.cache_queue.async_q.put_nowait(item)
+            return True
+        except queue.Full:
+            return False
+        except Exception as e:
+            return False
+
+    def report_cache_info_sync(
+        self,
+        id: int,
+        input: Union[List[str], str],
+        output: Union[Output, str],
+        data_abbr: str,
+        gold: Optional[str] = None,
+    ) -> bool:
+        """
+        Synchronously and non-blockingly add a record to the queue.
+
+        Supports queue.Queue, multiprocessing.Queue (if they implement
+        put_nowait / put(block=False)). Returns True if successfully queued (or
+        scheduled for queuing), False if failed (e.g., full queue or unable to schedule).
+
+        Args:
+            id (int): The index of the current result
+            input (Union[List[str], str]): Input data for the inference
+            output (Union[Output, str]): Output result from inference
+            data_abbr (str): Abbreviation for the dataset
+            gold (Optional[str]): Ground truth data for comparison
+
+        Returns:
+            bool: True if successfully queued, False otherwise
+
+        Raises:
+            queue.Full: If queue is full and cannot accept new items
+        """
+        try:
+            item = (id, data_abbr, input, output, gold)
+            self.cache_queue.sync_q.put_nowait(item)
             return True
         except queue.Full:
             return False
@@ -267,7 +304,7 @@ class BaseInferencerOutputHandler:
                                 "data_abbr": data_abbr,
                                 "id": id,
                             }
-                            
+
                             json_data.update(result_data)
                             if perf_mode:
                                 json_data["db_name"] = db_name

@@ -61,21 +61,24 @@ class BaseInferencer:
 
         # identify whether the current process is the main process (avoid covering the method with boolean)
         self.is_main_process = self._is_main_process()
+        self.perf_mode = False
+        self.task_state_manager = None
 
     @abstractmethod
     def get_data_list(
         self,
         retriever: BaseRetriever,
-        ice_template: Optional[PromptTemplate] = None,
-        prompt_template: Optional[PromptTemplate] = None,
     ) -> List:
         """Get the data list for inference."""
 
         raise NotImplementedError(f"{self.__class__.__name__} should be implemented")
 
+    def set_task_state_manager(self, task_state_manager):
+        self.task_state_manager = task_state_manager
+
     def get_finish_data_list(self) -> Dict[str, Dict[str, Dict]]:
         """Get the finish data list, which will not infer again in reuse mode.
-        
+
         Returns:
             Dict[str, Dict[str, Dict]]: The finish data list, which is a dictionary of data_abbr and data_id to data_dict.
         """
@@ -86,7 +89,7 @@ class BaseInferencer:
             return {}
         tmp_dir = os.path.join(output_dir, "tmp")
         finish_data_cache = defaultdict(dict)
-        
+
         for finish_data in os.listdir(output_dir):
             if not  finish_data.endswith(".jsonl"):
                 continue
@@ -98,7 +101,7 @@ class BaseInferencer:
                         continue
                     finish_data_cache[data_abbr][data.get("id")] = data
         load_data_abbrs = set(finish_data_cache.keys())
-                    
+
         if os.path.exists(tmp_dir):
             for file in os.listdir(tmp_dir):
                 if file.endswith(".jsonl"):
@@ -119,7 +122,7 @@ class BaseInferencer:
                 for data in data_dict.values():
                     f.write(json.dumps(data) + "\n")
         return finish_data_cache
-                            
+
     def _is_main_process(self):
         if "ASCEND_RT_VISIBLE_DEVICES" in os.environ:
             return int(os.getenv("RANK", "0")) == 0

@@ -10,7 +10,7 @@ from ais_bench.benchmark.utils.config.run import get_config_type
 from ais_bench.benchmark.utils.logging.logger import logger
 from ais_bench.benchmark.partitioners import NaivePartitioner
 from ais_bench.benchmark.runners import LocalRunner
-from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLApiInferTask
+from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLApiInferTask, OpenICLInferTask
 from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
 from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
 from ais_bench.benchmark.cli.utils import fill_model_path_if_datasets_need
@@ -33,6 +33,12 @@ class BaseWorker(ABC):
 
 class Infer(BaseWorker):
     def update_cfg(self, cfg: ConfigDict) -> None:
+        def get_task_type() -> str:
+            if cfg["models"][0]["attr"] == "service":
+                return get_config_type(OpenICLApiInferTask)
+            else:
+                return get_config_type(OpenICLInferTask)
+
         new_cfg = dict(
             infer=dict(
                 partitioner=dict(type=get_config_type(NaivePartitioner)),
@@ -40,7 +46,7 @@ class Infer(BaseWorker):
                     max_num_workers=self.args.max_num_workers,
                     max_workers_per_gpu=self.args.max_workers_per_gpu,
                     debug=self.args.debug,
-                    task=dict(type=get_config_type(OpenICLApiInferTask)),
+                    task=dict(type=get_task_type()),
                     type=get_config_type(LocalRunner),
                 ),
             ),

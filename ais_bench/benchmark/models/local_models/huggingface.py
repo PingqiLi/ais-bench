@@ -104,7 +104,8 @@ class HuggingFace(BaseModel):
                  pad_token_id: Optional[int] = None,
                  mode: str = 'none',
                  use_fastchat_template: bool = False,
-                 end_str: Optional[str] = None):
+                 end_str: Optional[str] = None,
+                 **other_kwargs):
         super().__init__(path=path,
                          max_seq_len=max_seq_len,
                          tokenizer_only=tokenizer_only,
@@ -115,6 +116,7 @@ class HuggingFace(BaseModel):
         self.pad_token_id = pad_token_id
         assert mode in ['none', 'mid']
         self.mode = mode
+        self.max_out_len = other_kwargs.get('max_out_len', None)
         self._load_tokenizer(path=path,
                              tokenizer_path=tokenizer_path,
                              tokenizer_kwargs=tokenizer_kwargs)

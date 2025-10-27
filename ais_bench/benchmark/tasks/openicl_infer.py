@@ -33,15 +33,13 @@ class OpenICLInferTask(BaseTask):
 
     def __init__(self, cfg: ConfigDict):
         super().__init__(cfg)
-        run_cfg = self.model_cfgs[0].get('run_cfg', {})
+        run_cfg = self.model_cfg.get('run_cfg', {})
         self.num_gpus = run_cfg.get('num_gpus', 0)
         self.num_procs = run_cfg.get('num_procs', 1)
         self.nnodes = run_cfg.get('nnodes', 1)
         self.node_rank = run_cfg.get('node_rank', 0)
         self.master_addr = run_cfg.get('master_addr', "localhost")
         self.logger = get_logger()
-        self.inferencer = None
-        self.model_cfg =None
 
     def get_command(self, cfg_path, template):
         """Get the command template for the task.
@@ -55,8 +53,8 @@ class OpenICLInferTask(BaseTask):
         script_path = __file__
         backend_keys = ['VLLM', 'Lmdeploy']
         use_backend = any(
-            key in str(self.model_cfgs[0].get('type', ''))
-            or key in str(self.model_cfgs[0].get('llm', {}).get('type', ''))
+            key in str(self.model_cfg.get('type', ''))
+            or key in str(self.model_cfg.get('llm', {}).get('type', ''))
             for key in backend_keys)
         if self.num_gpus > 1 and not use_backend and self.nnodes == 1:
             port = random.randint(12000, 32000)
@@ -77,41 +75,34 @@ class OpenICLInferTask(BaseTask):
 
         return template.format(task_cmd=command)
 
-    def run(self, cur_model=None, cur_model_abbr=None):
+    def run(self, task_state_manager):
+        self.task_state_manager = task_state_manager
         self.logger.info(f'Task {task_abbr_from_cfg(self.cfg)}')
-        for model_cfg, dataset_cfgs in zip(self.model_cfgs, self.dataset_cfgs):
-            self.max_out_len = model_cfg.get('max_out_len', None)
-            self.batch_size = model_cfg.get('batch_size', None)
-            self.min_out_len = model_cfg.get('min_out_len', None)
-            if cur_model and cur_model_abbr == model_abbr_from_cfg(model_cfg):
-                self.model = cur_model
-            else:
-                self.model = build_model_from_cfg(model_cfg)
 
-            num_return_sequences = getattr(model_cfg, 'generation_kwargs', {}).pop('num_return_sequences', 1)
-            _check_type(num_return_sequences, int)
-            assert num_return_sequences > 0, f"num_return_sequences expected a positive integer, but got {num_return_sequences}"
+        self.max_out_len = self.model_cfg.get('max_out_len', None)
+        self.batch_size = self.model_cfg.get('batch_size', None)
+        self.min_out_len = self.model_cfg.get('min_out_len', None)
 
-            for dataset_cfg in dataset_cfgs:
-                self.model_cfg = model_cfg
-                self.dataset_cfg = dataset_cfg
+        num_return_sequences = getattr(self.model_cfg, 'generation_kwargs', {}).pop('num_return_sequences', 1)
+        assert isinstance(num_return_sequences, int), f"num_return_sequences expected an integer, but got {num_return_sequences}"
+        assert num_return_sequences > 0, f"num_return_sequences expected a positive integer, but got {num_return_sequences}"
 
-                if 'n' not in self.dataset_cfg:
-                    self.dataset_cfg['n'] = num_return_sequences
-                _check_type(self.dataset_cfg['n'], int)
-                assert self.dataset_cfg['n'] > 0, f"n expected a positive integer, but got {self.dataset_cfg['n']}"
+        for dataset_cfg in self.dataset_cfgs:
+            if 'n' not in dataset_cfg:
+                dataset_cfg['n'] = num_return_sequences
+            assert isinstance(dataset_cfg['n'], int), f"n expected an integer, but got {dataset_cfg['n']}"
+            assert dataset_cfg['n'] > 0, f"n expected a positive integer, but got {dataset_cfg['n']}"
 
-                self.infer_cfg = self.dataset_cfg['infer_cfg']
-                self.dataset = build_dataset_from_cfg(self.dataset_cfg)
-                self.sub_cfg = {
-                    'models': [self.model_cfg],
-                    'datasets': [[self.dataset_cfg]],
-                }
-                self._inference()
+        self.infer_cfg = self.dataset_cfgs[0]['infer_cfg']
+        self.sub_cfg = {
+            'models': [self.model_cfg],
+            'datasets': [self.dataset_cfgs],
+        }
+        self._inference()
 
     def build_inference(self):
         inferencer_cfg = self.infer_cfg['inferencer']
-        inferencer_cfg['model'] = self.model
+        inferencer_cfg['model_cfg'] = self.model_cfg
         self._set_default_value(inferencer_cfg, 'max_out_len',
                                 self.max_out_len)
         self._set_default_value(inferencer_cfg, 'min_out_len',
@@ -119,54 +110,36 @@ class OpenICLInferTask(BaseTask):
         self._set_default_value(inferencer_cfg, 'batch_size', self.batch_size)
         inferencer_cfg['max_seq_len'] = self.model_cfg.get('max_seq_len')
         self.inferencer = ICL_INFERENCERS.build(inferencer_cfg)
+        self.inferencer.set_task_state_manager(self.task_state_manager)
 
     def _inference(self):
         self.logger.info(
             f'Start inferencing {task_abbr_from_cfg(self.sub_cfg)}')
 
-        assert hasattr(self.infer_cfg, 'ice_template') or hasattr(self.infer_cfg, 'prompt_template'), \
-            'Both ice_template and prompt_template cannot be None simultaneously.'  # noqa: E501
-        if hasattr(self.infer_cfg, 'ice_template'):
-            ice_template = ICL_PROMPT_TEMPLATES.build(
-                self.infer_cfg['ice_template'])
-
-        if hasattr(self.infer_cfg, 'prompt_template'):
-            prompt_template = ICL_PROMPT_TEMPLATES.build(
-                self.infer_cfg['prompt_template'])
-
-        retriever_cfg = self.infer_cfg['retriever'].copy()
-        retriever_cfg['dataset'] = self.dataset
-        retriever = ICL_RETRIEVERS.build(retriever_cfg)
+        retrievers = []
+        for dataset_cfg in self.dataset_cfgs:
+            infer_cfg = dataset_cfg["infer_cfg"]
+            dataset = build_dataset_from_cfg(dataset_cfg)
+            retriever_cfg = infer_cfg["retriever"].copy()
+            retriever_cfg["dataset"] = dataset
+            retriever_cfg["prompt_template"] = infer_cfg.get("prompt_template", None)
+            retriever_cfg["ice_template"] = infer_cfg.get("ice_template", None)
+            retriever = ICL_RETRIEVERS.build(retriever_cfg)
+            retrievers.append(retriever)
 
         # set inferencer's default value according to model's config'
+        self.task_state_manager.update_task_state(
+            {
+                "status": "load model",
+            }
+        )
         self.build_inference()
 
-        self.inferencer.update_model_cfg(self.model_cfg)
-
-        out_path = get_infer_output_path(
-            self.model_cfg, self.dataset_cfg,
-            osp.join(self.work_dir, 'predictions'))
-        out_dir, out_file = osp.split(out_path)
+        out_dir = osp.join(self.work_dir, 'predictions', model_abbr_from_cfg(self.model_cfg))
         mkdir_or_exist(out_dir)
 
-        if hasattr(self.infer_cfg, 'prompt_template') and \
-                hasattr(self.infer_cfg, 'ice_template'):
-            self.inferencer.inference(retriever,
-                                 ice_template=ice_template,
-                                 prompt_template=prompt_template,
-                                 output_json_filepath=out_dir,
-                                 output_json_filename=out_file)
-        elif hasattr(self.infer_cfg, 'prompt_template'):
-            self.inferencer.inference(retriever,
-                                 prompt_template=prompt_template,
-                                 output_json_filepath=out_dir,
-                                 output_json_filename=out_file)
-        else:
-            self.inferencer.inference(retriever,
-                                 ice_template=ice_template,
-                                 output_json_filepath=out_dir,
-                                 output_json_filename=out_file)
-
+        self.inferencer.inference(retrievers,
+                                 output_json_filepath=out_dir)
     def _set_default_value(self, cfg: ConfigDict, key: str, value: Any):
         if key not in cfg:
             cfg[key] = value
@@ -201,7 +174,7 @@ if __name__ == '__main__':
     start_time = time.perf_counter()
     try:
         inferencer = OpenICLInferTask(cfg)
-        inferencer.run()
+        inferencer.run(task_state_manager)
     except Exception as e:
         task_state_manager.update_task_state(
             {
