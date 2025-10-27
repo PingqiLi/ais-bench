@@ -11,7 +11,7 @@ from ais_bench.benchmark.utils.logging import AISLogger
 from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 from ais_bench.benchmark.utils.logging.error_codes import PARTI_CODES
 from ais_bench.benchmark.global_consts import LOG_LEVEL
-from ais_bench.benchmark.tasks.utils import ONLY_PERF_DATASETS, MM_DATASETS, MM_APIS
+from ais_bench.benchmark.datasets.utils.datasets import ONLY_PERF_DATASETS, MM_DATASETS, MM_APIS
 
 
 class BasePartitioner:

@@ -13,7 +13,6 @@ from ais_bench.benchmark.openicl.utils import get_logger
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import BaseInferencer
 
 
-MAX_BATCH_SIZE = 100000
 logger = get_logger(__name__)
 
 
