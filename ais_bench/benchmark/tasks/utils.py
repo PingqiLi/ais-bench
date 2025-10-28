@@ -20,16 +20,6 @@ WAIT_FLAG = 2
 # Using signed integers to support -1 for data_index
 FMT = "5I1B1i"
 MESSAGE_SIZE = struct.calcsize(FMT)
-# These datasets can only be used to evaluate performance.
-ONLY_PERF_DATASETS = ["ais_bench.benchmark.datasets.MTBenchDataset", 
-                      "ais_bench.benchmark.datasets.ShareGPTDataset",
-                      "ais_bench.benchmark.datasets.SyntheticDataset"]
-# Multimodal datasets.
-MM_DATASETS = ["ais_bench.benchmark.datasets.TEXTVQADataset", 
-                "ais_bench.benchmark.datasets.VideoBenchDataset",
-                "ais_bench.benchmark.datasets.VocalSoundDataset"]
-# Multimodal APIs.
-MM_APIS = ["ais_bench.benchmark.models.VLLMCustomAPIChat"]
 
 logger = get_logger()
 
@@ -72,22 +62,35 @@ def update_global_data_index(
     """Update data index for shared memory."""
     shms = [shared_memory.SharedMemory(name=shm_name) for shm_name in shm_names]
     global_data_index = 0
-    while True:
+    
+    def set_data_index(shm: shared_memory.SharedMemory, data_index: int):
+        shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 0)  # set status to 0 before update data_index
+        shm.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]] = struct.pack("i", data_index)
+        shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 1)  # set status to 1 after update data_index, ensure data consist
+        new_data_index = (data_index + 1) % data_num
+        if not pressure and new_data_index == 0:
+            new_data_index = data_num - 1
+        return new_data_index
+    try:
+        while True:
+
+            for shm in shms:
+                status, _, _, _, _, _, data_index = struct.unpack(FMT, shm.buf)
+                while data_index != INDEX_READ_FLAG:
+                    if status == 1:
+                        break
+                    time.sleep(0.01)
+                    status, _, _, _, _, _, data_index = struct.unpack(FMT, shm.buf)
+                if status == 1:
+                    for shm in shms:
+                        shm.close()
+                    return
+                global_data_index = set_data_index(shm, global_data_index)
+    except KeyboardInterrupt:
+        pass
+    finally:
         for shm in shms:
-            status, _, _, _, _, _, data_index = struct.unpack(FMT, shm.buf)
-            if status == 1:
-                for shm in shms:
-                    shm.close()
-                return
-            if (
-                data_index == INDEX_READ_FLAG
-            ):  # if data_index is -1, it means the data is read by sub-process
-                shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 0)  # set status to 0 before update data_index
-                shm.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]] = struct.pack("i", global_data_index)
-                shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 1)  # set status to 1 after update data_index, ensure data consist
-                global_data_index = (global_data_index + 1) % data_num
-                if not pressure and global_data_index == 0:
-                    global_data_index = data_num - 1
+            shm.close()
 
 
 def create_message_share_memory():

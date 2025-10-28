@@ -3,7 +3,22 @@ import random
 import json
 
 from ais_bench.benchmark.utils.logging.logging import get_logger
+
 logger = get_logger()
+# These datasets can only be used to evaluate performance.
+ONLY_PERF_DATASETS = [
+    "ais_bench.benchmark.datasets.MTBenchDataset",
+    "ais_bench.benchmark.datasets.ShareGPTDataset",
+    "ais_bench.benchmark.datasets.SyntheticDataset",
+]
+# Multimodal datasets.
+MM_DATASETS = [
+    "ais_bench.benchmark.datasets.TEXTVQADataset",
+    "ais_bench.benchmark.datasets.VideoBenchDataset",
+    "ais_bench.benchmark.datasets.VocalSoundDataset",
+]
+# Multimodal APIs.
+MM_APIS = ["ais_bench.benchmark.models.VLLMCustomAPIChat"]
 
 def get_cache_dir(default_dir):
     # TODO Add any necessary supplementary information for here

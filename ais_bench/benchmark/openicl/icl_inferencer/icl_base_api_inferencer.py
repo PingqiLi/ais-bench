@@ -24,7 +24,6 @@ from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import (
 
 MESSAGE_TYPE_NUM = 4  # post_req, get_req, failed_req, finish_req
 BLOCK_INTERVAL = 0.005  # Avoid request burst accumulation when RR is not configured
-MAX_BATCH_SIZE = 100000  # Maximum concurrency
 DEFAULT_SAVE_EVERY_FACTOR = 0.1 # default save every factor is 0.1 of batch size
 logger = get_logger(__name__)
 
@@ -299,7 +298,7 @@ class BaseApiInferencer(BaseInferencer):
                     while time.perf_counter() - start_time < self.pressure_time:
                         if stop_event.is_set():
                             break
-                        data = await async_queue.get(timeout=1)
+                        data = await async_queue.get()
 
                         # Main process interrupt -> put sentinel -> exit pressure test
                         if data is None:
