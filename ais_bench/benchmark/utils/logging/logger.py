@@ -36,7 +36,6 @@ LOG_COLORS = {
 }
 
 LOG_NAME = "ais_bench"
-DEFAULT_LOG_LEVEL = logging.INFO
 SUBPROCESS_LOG_LEVEL = logging.ERROR
 LOG_NORMAL_FORMATTER = '[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s'
 LOG_DEBUG_FORMATTER = '[%(asctime)s] [%(name)s] [%(levelname)s] [%(pathname)s:%(lineno)d] %(message)s'
@@ -78,11 +77,11 @@ def get_formatted_log_content(code_str, msg):
 
 
 class AISLogger:
-    def __init__(self, name=LOG_NAME, level=DEFAULT_LOG_LEVEL, is_main_process=True, log_file=None, file_mode='w'):
+    def __init__(self, name=LOG_NAME, level=LOG_LEVEL, is_main_process=True, log_file=None, file_mode='w'):
         """
         Args:
             name (str): Logger name.
-            level (int): Log level. Default: logging.INFO.
+            level (int): Log level. Default: LOG_LEVEL.
             is_main_process (bool): Whether the logger is used in main process. Default: True.
             log_file (str): Log file path. Default: None.
             file_mode (str): Log file mode. Default: 'w'.
@@ -129,5 +128,3 @@ class AISLogger:
     def error(self, code_str, msg, *args, **kwargs):
         formatted_msg = get_formatted_log_content(code_str, msg)
         self.logger.error(formatted_msg, stacklevel=2, *args, **kwargs)
-
-logger = AISLogger(level=LOG_LEVEL)

@@ -7,13 +7,15 @@ from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.registry import PARTITIONERS, RUNNERS, build_from_cfg
 from ais_bench.benchmark.utils.config.run import get_config_type
-from ais_bench.benchmark.utils.logging.logger import logger
+from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.partitioners import NaivePartitioner
 from ais_bench.benchmark.runners import LocalRunner
 from ais_bench.benchmark.tasks import OpenICLEvalTask, OpenICLApiInferTask, OpenICLInferTask
 from ais_bench.benchmark.summarizers import DefaultSummarizer, DefaultPerfSummarizer
 from ais_bench.benchmark.calculators import DefaultPerfMetricCalculator
 from ais_bench.benchmark.cli.utils import fill_model_path_if_datasets_need
+
+logger = AISLogger()
 
 
 class BaseWorker(ABC):

@@ -10,7 +10,6 @@ from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, model_abb
 from ais_bench.benchmark.utils.logging import AISLogger
 from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 from ais_bench.benchmark.utils.logging.error_codes import PARTI_CODES
-from ais_bench.benchmark.global_consts import LOG_LEVEL
 from ais_bench.benchmark.datasets.utils.datasets import ONLY_PERF_DATASETS, MM_DATASETS, MM_APIS
 
 
@@ -29,7 +28,7 @@ class BasePartitioner:
     """
 
     def __init__(self, out_dir: str, keep_keys: Optional[List[str]] = None):
-        self.logger = AISLogger(level=LOG_LEVEL)
+        self.logger = AISLogger()
         self.out_dir = out_dir
         if keep_keys is None:
             self.keep_keys = [

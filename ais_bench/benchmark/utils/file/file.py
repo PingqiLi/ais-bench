@@ -4,9 +4,11 @@ import os
 import json
 
 from typing import List, Tuple, Union
-from ais_bench.benchmark.utils.logging.logger import logger
+from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.logging.exceptions import FileMatchError
 from ais_bench.benchmark.utils.logging.error_codes import UTILS_CODES
+
+logger = AISLogger()
 
 def write_status(file_path, status):
     # read existing content

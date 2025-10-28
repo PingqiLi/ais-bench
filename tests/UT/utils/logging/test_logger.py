@@ -4,7 +4,7 @@ import os
 import tempfile
 from unittest.mock import patch, MagicMock
 
-from ais_bench.benchmark.utils.logging import (
+from ais_bench.benchmark.utils.logging.logger import (
     Colors,
     ColoredLevelFormatter,
     to_error_code_format,
@@ -260,7 +260,7 @@ class TestAISLogger(unittest.TestCase):
         logger = AISLogger()
         logger.info("Test info message")
 
-        mock_logger.info.assert_called_with("Test info message")
+        mock_logger.info.assert_called_with("Test info message", stacklevel=2)
 
     @patch('logging.getLogger')
     def test_debug_method(self, mock_getLogger):
@@ -275,7 +275,7 @@ class TestAISLogger(unittest.TestCase):
         logger = AISLogger(level=logging.DEBUG)
         logger.debug("Test debug message")
 
-        mock_logger.debug.assert_called_with("Test debug message")
+        mock_logger.debug.assert_called_with("Test debug message", stacklevel=2)
 
     @patch('logging.getLogger')
     def test_warning_method(self, mock_getLogger):
@@ -290,7 +290,7 @@ class TestAISLogger(unittest.TestCase):
         logger = AISLogger()
         logger.warning("Test warning message")
 
-        mock_logger.warning.assert_called_with("Test warning message")
+        mock_logger.warning.assert_called_with("Test warning message", stacklevel=2)
 
     @patch('logging.getLogger')
     def test_error_method(self, mock_getLogger):

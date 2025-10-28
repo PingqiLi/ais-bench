@@ -71,7 +71,7 @@ class CustomConfigChecker:
 class ConfigManager:
     def __init__(self, args):
         self.args = args
-        self.logger = AISLogger(level=logging.DEBUG if args.debug else logging.INFO)
+        self.logger = AISLogger()
 
     def search_configs_location(self):
         """Get the config object given args.
