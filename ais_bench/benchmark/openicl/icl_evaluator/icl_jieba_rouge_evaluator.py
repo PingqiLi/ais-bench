@@ -4,7 +4,7 @@ from rouge_chinese import Rouge
 from ais_bench.benchmark.registry import ICL_EVALUATORS
 from ais_bench.benchmark.utils.postprocess.text_postprocessors import general_postprocess
 
-from .icl_base_evaluator import BaseEvaluator
+from ais_bench.benchmark.openicl.icl_evaluator.icl_base_evaluator import BaseEvaluator
 
 
 @ICL_EVALUATORS.register_module()

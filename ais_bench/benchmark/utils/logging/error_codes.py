@@ -23,6 +23,7 @@ class ErrorModule(Enum):
 @unique
 class ErrorType(Enum):
     UNKNOWN = "UNK"     # unknown error type
+    THIRD_PARTY = "THIRD_PARTY"     # third party error type
     COMMAND = "CMD"     # command error type
     CONFIG = "CFG"     # config error type
     MATCH = "MATCH"     # pattern match error type
@@ -149,7 +150,7 @@ class UTILS_CODES:
     UNKNOWN_ERROR = BaseErrorCode("UTILS-UNK-001", ErrorModule.UTILS, ErrorType.UNKNOWN, 1, "unknown error of utils")
     MATCH_CONFIG_FILE_FAILED = BaseErrorCode("UTILS-MATCH-001", ErrorModule.UTILS, ErrorType.MATCH, 1, "match config file failed")
     SYNTHETIC_DS_MISS_REQUIRED_PARAM = BaseErrorCode("UTILS-CFG-001", ErrorModule.UTILS, ErrorType.CONFIG, 1, "synthetic dataset miss required param")
-
+    THIRD_PARTY_ERROR = BaseErrorCode("UTILS-THIRD_PARTY-001", ErrorModule.UTILS, ErrorType.THIRD_PARTY, 1, "third party error")
 class CALC_CODES:
     UNKNOWN_ERROR = BaseErrorCode("CALC-UNK-001", ErrorModule.CALCULATOR, ErrorType.UNKNOWN, 1, "unknown error of calculator")
     INVALID_METRIC_DATA = BaseErrorCode("CALC-MTRC-001", ErrorModule.CALCULATOR, ErrorType.METRIC, 1, "invalid content of metric data")

@@ -30,6 +30,10 @@ class ConfigError(AISBenchBaseException):
     pass
 
 
+class ImportError(AISBenchBaseException):
+    pass
+
+
 class FileMatchError(AISBenchBaseException):
     pass
 
@@ -48,6 +52,7 @@ class AISBenchDataContentError(AISBenchBaseException):
 
 class PerfResultCalcException(AISBenchBaseException):
     pass
+
 
 class PredictionInvalidException(AISBenchBaseException):
     pass

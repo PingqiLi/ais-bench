@@ -14,19 +14,45 @@ from ais_bench.benchmark.utils.logging.error_codes import ICLE_CODES
 from ais_bench.benchmark.utils.logging.exceptions import PredictionInvalidException
 
 
-def compute_pass_at_k(n, c, k):
+def compute_pass_at_k(n: int, c: int, k: int) -> float:
+    """Compute pass@k.
+    
+    Args:
+        n (int): Total number of samples.
+        c (int): Number of correct samples.
+        k (int): Top k samples.
+
+    Returns:
+        float: pass@k.
+    """
     if n - c < k:
         return 1.0
     return 1.0 - np.prod(1.0 - k / np.arange(n - c + 1, n + 1))
 
 
-def _compute_g_pass_at_k(n, c, k, m):
+def _compute_g_pass_at_k(n: int, c: int, k: int, m: int) -> float:
+    """Compute g pass@k.
+    
+    Args:
+        n (int): Total number of samples.
+        c (int): Number of correct samples.
+        k (int): Top k samples.
+        m (int): Top m samples.
+    """
     if m > min(c, k) or k > n or c < 0 or n <= 0 or m < 0:
         return 0.0
     return hypergeom.sf(m - 1, n, c, k)
 
 
-def compute_g_pass_at_k(n, c, k, t):
+def compute_g_pass_at_k(n: int, c: int, k: int, t: float) -> float:
+    """Compute g pass@k.
+    
+    Args:
+        n (int): Total number of samples.
+        c (int): Number of correct samples.
+        k (int): Top k samples.
+        t (float): Top t samples.
+    """
     m = max(int(np.ceil(k * t)), 1)
     return _compute_g_pass_at_k(n, c, k, m)
 
@@ -44,6 +70,16 @@ class BaseEvaluator:
 
     def group(self, n: int, details: List[Dict[str, Any]],
               test_set: Dataset) -> Dict[str, Any]:
+        """Group the details by the example abbreviation.
+        
+        Args:
+            n (int): Number of replicas.
+            details (List[Dict[str, Any]]): Details of the evaluation.
+            test_set (Dataset): Test dataset.
+
+        Returns:
+            Dict[str, Any]: Dictionary of example abbreviations and their replications.
+        """
         example2replications = {}
         for detail, example in zip(details, test_set):
             example_abbr = f"{example['subdivision']}_{example['idx']}"
@@ -61,8 +97,16 @@ class BaseEvaluator:
         return example2replications
 
     def reduce(self, details: List[Dict[str, Any]], k_list: List[int], n_val: int) -> Dict[str, Any]:
+        """Aggregate results.
+        
+        Args:
+            details (List[Dict[str, Any]]): Details of the evaluation.
+            k_list (List[int]): List of top k samples.
+            n_val (int): Number of replicas.
 
-        """Aggregate results"""
+        Returns:
+            dict: Aggregated results.
+        """
         eval_results = OrderedDict()
 
         # Step 1: Global Sample Accuracy
@@ -173,6 +217,17 @@ class BaseEvaluator:
         original_dataset: Dataset,
         **score_kwargs,
     ):
+        """Evaluate the predictions and references.
+        
+        Args:
+            k (Union[int, List[int]]): Top k samples.
+            n (int): Number of replicas.
+            original_dataset (Dataset): Original dataset.
+            **score_kwargs: Score kwargs.
+
+        Returns:
+            dict: Evaluation results.
+        """
         # Check if predictions and references have the
         # same length if both are provided
         if ('predictions' in score_kwargs and 'references' in score_kwargs
@@ -190,8 +245,17 @@ class BaseEvaluator:
         all_results = []
         k_list = [k] if isinstance(k, int) else k
 
-        def select_fn(i, real_size, n, x):
-            """Select the element from the i-th duplication within each group (choose one per group)"""
+        def select_fn(i: int, real_size: int, n: int, x: Any) -> Any:
+            """Select the element from the i-th duplication within each group (choose one per group).
+            
+            Args:
+                i (int): Index of the element.
+                real_size (int): Number of elements in each group.
+                n (int): Number of replicas.
+                x (Any): Element to select.
+            Returns:
+                Any: Selected element.
+            """
             if isinstance(x, Dataset):
                 # Computing non-consecutive indices: select the i-th element in each group
                 indices = [j * n + i for j in range(real_size)]

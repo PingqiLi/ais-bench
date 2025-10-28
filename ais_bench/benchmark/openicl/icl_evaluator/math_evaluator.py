@@ -1,5 +1,7 @@
 from ais_bench.benchmark.openicl.icl_evaluator import BaseEvaluator
 from ais_bench.benchmark.registry import ICL_EVALUATORS
+from ais_bench.benchmark.utils.logging.exceptions import ImportError
+from ais_bench.benchmark.utils.logging.error_codes import UTILS_CODES
 
 
 @ICL_EVALUATORS.register_module()
@@ -11,9 +13,7 @@ class MATHEvaluator(BaseEvaluator):
             from math_verify import (ExprExtractionConfig,
                                      LatexExtractionConfig, parse, verify)
         except ImportError:
-            raise ImportError('Failed to import required modules. Please '
-                              'install the necessary packages: '
-                              'pip install math_verify latex2sympy2_extended')
+            raise ImportError(UTILS_CODES.THIRD_PARTY_MODULE_IMPORT_ERROR, 'Failed to import required modules. Please install the necessary packages: pip install math_verify latex2sympy2_extended')
 
         self.is_num_equal(predictions, references)
 
@@ -79,7 +79,10 @@ class MATHEvaluator(BaseEvaluator):
 
 if __name__ == '__main__':
     import sympy
-    from math_verify import parse
+    try:
+        from math_verify import parse
+    except ImportError:
+        raise ImportError(UTILS_CODES.THIRD_PARTY_MODULE_IMPORT_ERROR, 'Failed to import required modules. Please install the necessary packages: pip install math_verify')
     test_cases = [
         # 1. Basic arithmetic operations
         r'Simple fraction: \boxed{\frac{1}{2}}',

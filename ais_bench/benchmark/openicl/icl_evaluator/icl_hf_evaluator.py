@@ -8,7 +8,7 @@ from datasets import Dataset
 
 from ais_bench.benchmark.registry import ICL_EVALUATORS
 
-from .icl_base_evaluator import BaseEvaluator
+from ais_bench.benchmark.openicl.icl_evaluator.icl_base_evaluator import BaseEvaluator
 
 
 class HuggingfaceEvaluator(BaseEvaluator):
@@ -137,9 +137,16 @@ class AccEvaluator(HuggingfaceEvaluator):
 class AccContaminationEvaluator(AccEvaluator):
     """Accuracy evaluator."""
 
-    def score(self, predictions: List, references: List,
-              test_set: Dataset) -> dict:
-        # group the predictions and references by their contamination status
+    def score(self, predictions: List, references: List, test_set: Dataset) -> dict:
+        """Evaluate the predictions and references by their contamination status.
+        
+        Args:
+            predictions (List): List of predictions of each sample.
+            references (List): List of targets for each sample.
+            test_set (Dataset): Test dataset.
+        Returns:
+            dict: Evaluation results.
+        """
         clean_predictions, clean_references = [], []
         input_contaminated_predictions, input_contaminated_references = [], []
         input_and_label_contaminated_predictions, \
