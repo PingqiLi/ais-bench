@@ -118,16 +118,16 @@ class AISLogger:
         self.logger.addHandler(stream_handler)
 
     def info(self, msg, *args, **kwargs):
-        self.logger.info(msg, *args, **kwargs)
+        self.logger.info(msg, stacklevel=2, *args, **kwargs)
 
     def debug(self, msg, *args, **kwargs):
-        self.logger.debug(msg, *args, **kwargs)
+        self.logger.debug(msg, stacklevel=2, *args, **kwargs)
 
     def warning(self, msg, *args, **kwargs):
-        self.logger.warning(msg, *args, **kwargs)
+        self.logger.warning(msg, stacklevel=2, *args, **kwargs)
 
     def error(self, code_str, msg, *args, **kwargs):
         formatted_msg = get_formatted_log_content(code_str, msg)
-        self.logger.error(formatted_msg, *args, **kwargs)
+        self.logger.error(formatted_msg, stacklevel=2, *args, **kwargs)
 
 logger = AISLogger(level=LOG_LEVEL)
