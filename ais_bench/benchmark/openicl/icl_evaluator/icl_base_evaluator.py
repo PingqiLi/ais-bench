@@ -9,7 +9,9 @@ from datasets import Dataset
 from scipy.stats import hypergeom
 
 from ais_bench.benchmark.registry import TEXT_POSTPROCESSORS
-from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import ICLE_CODES
+from ais_bench.benchmark.utils.logging.exceptions import PredictionInvalidException
 
 
 def compute_pass_at_k(n, c, k):
@@ -32,7 +34,7 @@ class BaseEvaluator:
 
     def __init__(self) -> None:
         self._dataset_replica_idx = 0  # Default value for dataset_replica_idx
-        self.logger = get_logger()
+        self.logger = AISLogger()
 
 
     @property
@@ -50,7 +52,11 @@ class BaseEvaluator:
             example.update({'detail': detail})
             example2replications[example_abbr].append(example)
         for _, replications in example2replications.items():
-            assert len(replications) == n, print(len(replications), n)
+                if len(replications) != n:
+                    raise PredictionInvalidException(
+                        ICLE_CODES.PREDICTION_INVALID,
+                        message=f"Replication length mismatch: {len(replications)} != {n}",
+                    )
 
         return example2replications
 
@@ -152,8 +158,7 @@ class BaseEvaluator:
         return eval_results
 
     def pred_postprocess(self, predictions: List) -> Dict:
-        if not hasattr(
-                self, 'pred_postprocessor') or self.pred_postprocessor is None:
+        if not hasattr(self, 'pred_postprocessor') or self.pred_postprocessor is None:
             return predictions
         else:
             kwargs = deepcopy(self.pred_postprocessor)
@@ -174,8 +179,11 @@ class BaseEvaluator:
                 and score_kwargs['references'] is not None):
             len_predictions, len_references = len(score_kwargs['predictions']), len(score_kwargs['references'])
             if len_predictions != len_references:
-                raise ValueError(f'Predictions and references must have the same length, '
-                                 f'but got prediction({len_predictions}) and references({len_references})')
+                raise PredictionInvalidException(
+                        ICLE_CODES.REPLICATION_LENGTH_MISMATCH,
+                        message=f'Predictions and references must have the same length, '
+                        f'but got prediction({len_predictions}) and references({len_references})',
+                    )
 
         real_size = len(original_dataset) // n  # dataset size of each replica
         all_details = []

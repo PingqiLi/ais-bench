@@ -48,3 +48,6 @@ class AISBenchDataContentError(AISBenchBaseException):
 
 class PerfResultCalcException(AISBenchBaseException):
     pass
+
+class PredictionInvalidException(AISBenchBaseException):
+    pass
