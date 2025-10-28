@@ -187,6 +187,7 @@ class HuggingFacewithChatTemplate(PerformanceModel):
         self.tokenizer_only = tokenizer_only
         self.template_parser = _get_meta_template(meta_template)
         self.max_seq_len = _get_possible_max_seq_len(max_seq_len, path)
+        self.max_out_len = other_kwargs.get('max_out_len', None)
         self._load_tokenizer(tokenizer_path or path, tokenizer_kwargs, pad_token_id)
         if not tokenizer_only:
             self._load_model(path=path, kwargs=model_kwargs, peft_path=peft_path, peft_kwargs=peft_kwargs)
@@ -197,10 +198,6 @@ class HuggingFacewithChatTemplate(PerformanceModel):
         self.mode = mode
         self.logger.info(f'using stop words: {self.stop_words}')
         self.latencies, self.counts, self.timestamps = [], [], []
-
-        for k, v in other_kwargs.items():
-            if v is not None:
-                self.logger.warning(f'Unused argument {k}={v}')
 
     def handle_perf_result(self, output_filepath, output_filename):
         e2e_latency = max(self.timestamps) - min(self.timestamps)
@@ -396,6 +393,7 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
         self.tokenizer_only = tokenizer_only
         self.template_parser = LMTemplateParser()
         self.max_seq_len = _get_possible_max_seq_len(max_seq_len, path)
+        self.max_out_len = other_kwargs.get('max_out_len', None)
         self.drop_middle = drop_middle
         self._load_tokenizer(tokenizer_path or path, tokenizer_kwargs, pad_token_id)
         if not tokenizer_only:
@@ -404,9 +402,6 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
         self.stop_words = stop_words
         self.latencies, self.counts, self.timestamps = [], [], []
         self.do_performance = False
-        for k, v in other_kwargs.items():
-            if v is not None:
-                self.logger.warning(f'Unused argument {k}={v}')
 
     def handle_perf_result(self, output_filepath, output_filename):
         e2e_latency = max(self.timestamps) - min(self.timestamps)

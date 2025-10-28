@@ -7,6 +7,7 @@ from typing import List, Optional
 
 import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
 from ais_bench.benchmark.openicl.utils import get_logger
@@ -30,7 +31,7 @@ class BaseLocalInferencer(BaseInferencer):
             `JSON` file.
     """
 
-    def batch_inference(self, dataloader: torch.utils.data.DataLoader) -> List:
+    def batch_inference(self, datum) -> List:
         raise NotImplementedError("Method hasn't been implemented yet")
 
     def inference(
@@ -56,12 +57,12 @@ class BaseLocalInferencer(BaseInferencer):
         # Output path format: output_json_filepath/performances|predictions/model_abbr/dataset_abbr.jsonl
         # Cache data path: output_json_filepath/performances|predictions/model_abbr/tmp/tmp_{timestamp}_{uuid}.jsonl
         # tmp_{timestamp}_{uuid}.json stores data from output_handler.results_dict, cached in single-line format: {data_abbr: {index: {}}}
-        out_path = self.get_output_dir(output_json_filepath)
+        out_path = output_json_filepath
         # Save temporary results
         tmp_json_filepath = os.path.join(out_path, "tmp")
         os.makedirs(tmp_json_filepath, exist_ok=True)
         tmp_file_name = (
-            f"tmp_{time.strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().split('-')[0]}.jsonl"
+            f"tmp_{time.strftime('%Y%m%d%H%M%S')}_{str(uuid.uuid4()).split('-')[0]}.jsonl"
         )
         cache_consumer_thread = threading.Thread(
             target=self.output_handler.run_cache_consumer,
@@ -75,9 +76,9 @@ class BaseLocalInferencer(BaseInferencer):
         ):
             data_list = []
             for r in retriever:
-                data_list.extend(self.get_data_list(r, self.gen_field_replace_token))
+                data_list.extend(self.get_data_list(r))
         elif isinstance(retriever, BaseRetriever):
-            data_list = self.get_data_list(retriever, self.gen_field_replace_token)
+            data_list = self.get_data_list(retriever)
         else:
             raise ValueError(
                 "retriever must be a BaseRetriever or a List of BaseRetriever"
@@ -86,7 +87,26 @@ class BaseLocalInferencer(BaseInferencer):
         dataloader = self.get_dataloader(data_list, self.batch_size)
         try:
             # Execute inference tasks according to batch size
-            self.batch_inference(dataloader)
+            logger.info("Starting inference process...")
+            if self.task_state_manager is not None and self.is_main_process:
+                self.task_state_manager.update_task_state(
+                    {
+                        "total_count": len(dataloader),
+                        "progress_description": "Infer progress",
+                        "finish_count": 0,
+                    }
+                )
+            for i, datum in enumerate(tqdm(dataloader, disable=not self.is_main_process)):
+                self.batch_inference(datum)
+                if self.task_state_manager is not None and self.is_main_process:
+                    current_state = {
+                        "status": "inferencing",
+                        "finish_count": i + 1,
+                        "other_kwargs": {
+                            "batch_size": self.batch_size,
+                        },
+                    }
+                    self.task_state_manager.update_task_state(current_state)
         finally:
             self.output_handler.stop_cache_consumer()
             cache_consumer_thread.join()
@@ -95,8 +115,7 @@ class BaseLocalInferencer(BaseInferencer):
         # Handle cache data
         if self.is_main_process:
             os.makedirs(out_path, exist_ok=True)
-            self.output_handler.write_to_json(out_path)
-            self.output_handler.clean_cache_dir(tmp_json_filepath)
+            self.output_handler.write_to_json(out_path, self.perf_mode)
 
     @staticmethod
     def get_dataloader(datalist: List[List], batch_size: int) -> DataLoader:
