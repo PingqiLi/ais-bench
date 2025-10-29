@@ -113,6 +113,7 @@ class BaseInferencerOutputHandler:
 
                 file_path = Path(save_dir) / raw_data_name
                 safe_write(results_dict, file_path)
+                logger.debug(f"Process {os.getpid()} write results to {file_path}")
         except Exception as e:
             raise FileOperationError(ICLI_CODES.FILE_OPERATION_ERROR, 
                           f"Failed to write results to {file_path}: {str(e)}")
