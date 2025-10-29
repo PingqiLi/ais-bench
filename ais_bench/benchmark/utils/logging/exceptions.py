@@ -37,6 +37,11 @@ class ImportError(AISBenchBaseException):
 class FileMatchError(AISBenchBaseException):
     pass
 
+class FileOperationError(AISBenchBaseException):
+    pass
+
+class ParameterValueError(AISBenchBaseException):
+    pass
 
 class AISBenchMetricError(AISBenchBaseException):
     pass
@@ -55,4 +60,7 @@ class PerfResultCalcException(AISBenchBaseException):
 
 
 class PredictionInvalidException(AISBenchBaseException):
+    pass
+
+class ImplementationErrorException(AISBenchBaseException):
     pass

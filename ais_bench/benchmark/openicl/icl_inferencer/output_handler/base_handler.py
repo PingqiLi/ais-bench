@@ -15,10 +15,13 @@ import numpy as np
 import janus
 
 from ais_bench.benchmark.models.output import Output
-from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.results import safe_write
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import init_db, save_numpy_to_db
-logger = get_logger(__name__)
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ImplementationErrorException, ParameterValueError, FileOperationError
+
+logger = AISLogger()
 
 DB_REF_KEY = "__db_ref__"
 DB_DATA_DIR = "db_data"
@@ -68,10 +71,11 @@ class BaseInferencerOutputHandler:
             gold (Optional[str]): Ground truth data for comparison
 
         Raises:
-            NotImplementedError: If not implemented by subclass
+            ImplementationErrorException: If not implemented by subclass
         """
 
-        raise NotImplementedError("Method hasn't been implemented yet")
+        raise ImplementationErrorException(ICLI_CODES.IMPLEMENTATION_ERROR, 
+                                           f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def write_to_json(self, save_dir: str, perf_mode: bool) -> None:
         """
@@ -89,9 +93,11 @@ class BaseInferencerOutputHandler:
             OSError: If unable to create directory or write files
             ValueError: If save_dir is invalid
         """
-        if not save_dir or not isinstance(save_dir, str):
-            raise ValueError("save_dir must be a non-empty string")
+        if not isinstance(save_dir, str) or not save_dir.strip():
+            raise ParameterValueError(ICLI_CODES.INVALID_PARAM_VALUE, 
+                                      f"'save_dir' must be a non-empty string representing a directory path.")
 
+        file_path = Path(save_dir)
         try:
             # Ensure directory exists
             Path(save_dir).mkdir(parents=True, exist_ok=True)
@@ -108,7 +114,8 @@ class BaseInferencerOutputHandler:
                 file_path = Path(save_dir) / raw_data_name
                 safe_write(results_dict, file_path)
         except Exception as e:
-            raise
+            raise FileOperationError(ICLI_CODES.FILE_OPERATION_ERROR, 
+                          f"Failed to write results to {file_path}: {str(e)}")
 
     async def report_cache_info(
         self,
@@ -142,9 +149,8 @@ class BaseInferencerOutputHandler:
             item = (id, data_abbr, input, output, gold)
             await self.cache_queue.async_q.put_nowait(item)
             return True
-        except queue.Full:
-            return False
         except Exception as e:
+            logger.error(f"Failed to report cache info: {str(e)}")
             return False
 
     def report_cache_info_sync(
@@ -179,9 +185,8 @@ class BaseInferencerOutputHandler:
             item = (id, data_abbr, input, output, gold)
             self.cache_queue.sync_q.put_nowait(item)
             return True
-        except queue.Full:
-            return False
         except Exception as e:
+            logger.error(f"Failed to report cache info: {str(e)}")
             return False
 
     def _extract_and_write_arrays(
@@ -270,104 +275,105 @@ class BaseInferencerOutputHandler:
             save_every (int): Number of items to batch before writing (default: 1)
 
         Raises:
-            OSError: If file operations fail
-            ValueError: If parameters are invalid
+            FileOperationError: If file operations fail
         """
-        try:
-            db_path = Path(save_dir) / (Path(file_name).stem + ".db")
-            db_name = db_path.name.replace("tmp_", "")
-            conn = init_db(db_path)
-            json_path = Path(save_dir) / file_name
+        logger.debug("Running cache consumer to process queued results,"
+                     f"save_dir: {save_dir}, "
+                     f"file_name: {file_name}, "
+                     f"perf_mode: {perf_mode}, "
+                     f"save_every: {save_every}")
+        db_path = Path(save_dir) / (Path(file_name).stem + ".db")
+        db_name = db_path.name.replace("tmp_", "")
+        conn = init_db(db_path)
+        json_path = Path(save_dir) / file_name
 
-            # Ensure directories exist
-            Path(save_dir).mkdir(parents=True, exist_ok=True)
+        # Ensure directories exist
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
 
-            with open(json_path, "a", encoding="utf-8") as f:
-                    cache_data = []
-                    processed_count = 0
+        with open(json_path, "a", encoding="utf-8") as f:
+                cache_data = []
 
-                    while True:
-                        try:
-                            item = self.cache_queue.sync_q.get(timeout=1)
-                        except queue.Empty:
-                            time.sleep(0.1)
-                            continue
+                while True:
+                    try:
+                        item = self.cache_queue.sync_q.get(timeout=1)
+                    except queue.Empty:
+                        time.sleep(0.1)
+                        continue
 
-                        if item is None:
-                            break
-                        try:
-                            uid = str(uuid.uuid4())[:8]
+                    if item is None:
+                        break
+                    try:
+                        uid = str(uuid.uuid4())[:8]
 
-                            result_data = self.get_result(conn, *item[2:])
-                            id, data_abbr = item[0], item[1]
-                            json_data = {
-                                "data_abbr": data_abbr,
-                                "id": id,
-                            }
+                        result_data = self.get_result(conn, *item[2:])
+                        id, data_abbr = item[0], item[1]
+                        json_data = {
+                            "data_abbr": data_abbr,
+                            "id": id,
+                        }
 
-                            json_data.update(result_data)
-                            if perf_mode:
-                                json_data["db_name"] = db_name
+                        json_data.update(result_data)
+                        if perf_mode:
+                            json_data["db_name"] = db_name
+                            self.results_dict[data_abbr][uid] = json_data
+                        else:
+                            # accuracy mode: only save successful results in data_abbr.jsonl. otherwise, save to tmp file.
+                            if result_data["success"]:
                                 self.results_dict[data_abbr][uid] = json_data
-                            else:
-                                # accuracy mode: only save successful results in data_abbr.jsonl. otherwise, save to tmp file.
-                                if result_data["success"]:
-                                    self.results_dict[data_abbr][uid] = json_data
 
-                            # Pre-compute JSON string to avoid repeated serialization
-                            json_str = json.dumps(json_data, ensure_ascii=False) + '\n'
-                            cache_data.append(json_str)
-                            processed_count += 1
+                        # Pre-compute JSON string to avoid repeated serialization
+                        json_str = json.dumps(json_data, ensure_ascii=False) + '\n'
+                        logger.debug(f"Saving result to cache_data: {json_str}")
+                        cache_data.append(json_str)
 
-                            # Write batch if reached save_every threshold
-                            if len(cache_data) == save_every:
-                                f.writelines(cache_data)
-                                f.flush()  # Ensure data is written
-                                cache_data = []
+                        # Write batch if reached save_every threshold
+                        if len(cache_data) == save_every:
+                            f.writelines(cache_data)
+                            f.flush()  # Ensure data is written
+                            cache_data = []
 
-                        except Exception as e:
-                            # Continue processing other items
-                            continue
+                    except Exception as e:
+                        # Continue processing other items
+                        logger.error(f"Failed to process item {item}: {str(e)}")
+                        continue
 
-                    # Write remaining cache data
-                    if cache_data:
-                        f.writelines(cache_data)
-                        f.flush()
+                # Write remaining cache data
+                if cache_data:
+                    f.writelines(cache_data)
+                    f.flush()
 
-            # Handle database file based on performance mode
-            conn.commit()
-            conn.close()
-            if not perf_mode:
-                if db_path.exists():
-                    os.remove(db_path)
-            else:
-                dest = db_path.parent.parent / DB_DATA_DIR
-                dest.mkdir(exist_ok=True)
-                if db_path.exists():
-                    shutil.move(str(db_path), str(dest / db_name))
+        # Handle database file based on performance mode
+        conn.commit()
+        conn.close()
+        if not perf_mode:
+            if db_path.exists():
+                os.remove(db_path)
+        else:
+            dest = db_path.parent.parent / DB_DATA_DIR
+            dest.mkdir(exist_ok=True)
+            if db_path.exists():
+                shutil.move(str(db_path), str(dest / db_name))
 
-            # Clean up JSON file if all operations were successful
-            if self.all_success:
-                if json_path.exists():
-                    os.remove(json_path)
-            else:
-                logger.warning(
-                    f"Not all items were successful, keeping JSON file for debugging: {json_path}"
-                )
+        # Clean up JSON file if all operations were successful
+        if self.all_success:
+            if json_path.exists():
+                os.remove(json_path)
+        else:
+            logger.warning(
+                f"Not all items were successful, keeping JSON file for debugging: {json_path}"
+            )
 
-            # Clean up empty directories
-            if json_path.parent.exists():
-                try:
-                    empty = next(Path(json_path.parent).iterdir(), None) is None
-                    if empty:
-                        shutil.rmtree(json_path.parent)
-                except Exception as e:
-                    logger.warning(
-                        f"Could not clean up directory {json_path.parent}: {str(e)}"
-                    )
+        # Clean up empty directories
+        if json_path.parent.exists():
+            try:
+                empty = next(Path(json_path.parent).iterdir(), None) is None
+                if empty:
+                    logger.debug(f"Cleaning up empty directory: {json_path.parent}")
+                    shutil.rmtree(json_path.parent)
+            except Exception as e:
+                logger.warning(f"Could not clean up directory {json_path.parent}: {str(e)}")
+        logger.debug(f"Process {os.getpid()} cache consumer finished")
 
-        except Exception as e:
-            raise
 
     def stop_cache_consumer(self) -> None:
         """
@@ -376,10 +382,6 @@ class BaseInferencerOutputHandler:
         This method signals the cache consumer to stop processing by
         adding a None item to the queue, which serves as a stop signal.
         """
-        try:
-            self.cache_queue.sync_q.put(None)
-            logger.debug("Stop signal sent to cache consumer")
-        except Exception as e:
-            logger.error(f"Error sending stop signal to cache consumer: {str(e)}")
-            logger.error(f"Exception details: {traceback.format_exc()}")
-            raise
+        self.cache_queue.sync_q.put(None)
+        logger.debug("Stop signal sent to cache consumer")
+

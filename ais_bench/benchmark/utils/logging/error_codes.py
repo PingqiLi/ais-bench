@@ -24,6 +24,7 @@ class ErrorModule(Enum):
 class ErrorType(Enum):
     UNKNOWN = "UNK"     # unknown error type
     THIRD_PARTY = "THIRD_PARTY"     # third party error type
+    IMPLEMENTATION = "IMPL"     # implementation error type
     COMMAND = "CMD"     # command error type
     CONFIG = "CFG"     # config error type
     MATCH = "MATCH"     # pattern match error type
@@ -31,8 +32,9 @@ class ErrorType(Enum):
     DATA = "DATA"     # data error type
     METRIC = "MTRC"     # metric error type
     TYPE = "TYPE"     # type error type
-
-
+    PARAMETER = "PARAM"     # parameter error type
+    
+    
 class BaseErrorCode:
     FAQ_BASE_URL = "https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/faqs/error_codes.html#"
 
@@ -126,13 +128,15 @@ class TEVAL_CODES:
 
 class ICLI_CODES:
     UNKNOWN_ERROR = BaseErrorCode("ICLI-UNK-001", ErrorModule.ICL_INFERENCER, ErrorType.UNKNOWN, 1, "unknown error of icl inferencer")
-
-
+    INVALID_PARAM_VALUE = BaseErrorCode("ICLI-PARAM-001", ErrorModule.ICL_INFERENCER, ErrorType.PARAMETER, 1, "invalid parameter value")
+    IMPLEMENTATION_ERROR = BaseErrorCode("ICLI-IMPL-001", ErrorModule.ICL_INFERENCER, ErrorType.IMPLEMENTATION, 1, "not implemented error")
+    FILE_OPERATION_ERROR = BaseErrorCode("ICLI-FILE-001", ErrorModule.ICL_INFERENCER, ErrorType.FILE, 1, "failed to write results files")
+    
 class ICLE_CODES:
     UNKNOWN_ERROR = BaseErrorCode("ICLE-UNK-001", ErrorModule.ICL_EVALUATOR, ErrorType.UNKNOWN, 1, "unknown error of icl evaluator")
     PREDICTION_INVALID = BaseErrorCode("ICLE-DATA-001", ErrorModule.ICL_EVALUATOR, ErrorType.DATA, 1, "prediction invalid")
     REPLICATION_LENGTH_MISMATCH = BaseErrorCode("ICLE-DATA-002", ErrorModule.ICL_EVALUATOR, ErrorType.DATA, 2, "replication length mismatch")
-
+    IMPLEMENTATION_ERROR = BaseErrorCode("ICLE-IMPL-001", ErrorModule.ICL_EVALUATOR, ErrorType.IMPLEMENTATION, 1, "not implemented error")
 
 class ICLR_CODES:
     UNKNOWN_ERROR = BaseErrorCode("ICLR-UNK-001", ErrorModule.ICL_RETRIEVER, ErrorType.UNKNOWN, 1, "unknown error of icl retriever")

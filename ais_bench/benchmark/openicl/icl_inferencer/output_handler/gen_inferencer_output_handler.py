@@ -1,11 +1,14 @@
 from typing import List, Optional, Union
 
 import sqlite3
-from .base_handler import BaseInferencerOutputHandler
-from ais_bench.benchmark.models.output import Output
-from ais_bench.benchmark.utils.logging import get_logger
 
-logger = get_logger(__name__)
+from ais_bench.benchmark.openicl.icl_inferencer.output_handler.base_handler import BaseInferencerOutputHandler
+from ais_bench.benchmark.models.output import Output
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ImplementationErrorException
+
+logger = AISLogger()
 
 
 class GenInferencerOutputHandler(BaseInferencerOutputHandler):
@@ -38,7 +41,7 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
         """
         Load temporary results from file.
 
-        This method is currently not implemented and raises NotImplementedError.
+        This method is currently not implemented and raises ImplementationErrorException.
         Future implementation should handle loading of temporary result files.
 
         Args:
@@ -46,9 +49,10 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
             file_format (str): Format of the file (default: "jsonl")
 
         Raises:
-            NotImplementedError: This method is not yet implemented
+            ImplementationErrorException: If not implemented by subclass
         """
-        raise NotImplementedError("load_tmp_result is not implemented")
+        raise ImplementationErrorException(ICLI_CODES.IMPLEMENTATION_ERROR, 
+                                           f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def get_result(
         self,
@@ -103,8 +107,9 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
             self.all_success = False
             if isinstance(output, Output) and hasattr(output, "error_info"):
                 result_data["error_info"] = output.error_info
+                logger.debug(f"Failed operation at data id {output.uuid}, error info: {result_data['error_info']}")
             else:
                 logger.warning(
-                    f"No error info available for failed operation at data id {id}"
+                    f"No error info available for failed operation at data id {output.uuid}"
                 )
         return result_data
