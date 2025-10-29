@@ -1,6 +1,7 @@
 import logging
 from ais_bench.benchmark.utils.logging.error_codes import error_manager, ErrorType
 from ais_bench.benchmark.global_consts import LOG_LEVEL
+from ais_bench.benchmark.utils.logging.error_codes import BaseErrorCode
 
 # custom color
 class Colors:
@@ -125,6 +126,8 @@ class AISLogger:
     def warning(self, msg, *args, **kwargs):
         self.logger.warning(msg, stacklevel=2, *args, **kwargs)
 
-    def error(self, code_str, msg, *args, **kwargs):
-        formatted_msg = get_formatted_log_content(code_str, msg)
+    def error(self, error_code, msg, *args, **kwargs):
+        if not isinstance(error_code, BaseErrorCode):
+            raise ValueError(f"error_code {error_code} is not instance of BaseErrorCode!")
+        formatted_msg = get_formatted_log_content(error_code.full_code, msg)
         self.logger.error(formatted_msg, stacklevel=2, *args, **kwargs)

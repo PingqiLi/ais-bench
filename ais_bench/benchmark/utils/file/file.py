@@ -131,7 +131,7 @@ def match_cfg_file(workdir: Union[str, List[str]],
             logger.warning(warning_msg)
             return ambiguous_return_list
 
-        raise FileMatchError(UTILS_CODES.MATCH_1, err_msg)
+        raise FileMatchError(UTILS_CODES.MATCH_CONFIG_FILE_FAILED, err_msg)
     return files
 
 def search_configs_from_args(args):

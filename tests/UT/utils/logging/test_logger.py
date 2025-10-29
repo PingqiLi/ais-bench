@@ -302,22 +302,45 @@ class TestAISLogger(unittest.TestCase):
         mock_root.handlers = []
         mock_logger.root = mock_root
 
-        # 由于get_formatted_log_content是直接调用的，我们可以模拟error_manager.get
-        with patch('ais_bench.benchmark.utils.logging.error_codes.error_manager.get') as mock_error_manager_get:
-            # 创建一个模拟的error_code对象
-            mock_error_code = MagicMock()
-            mock_error_code.err_type = ErrorType.UNKNOWN
-            mock_error_code.message = "Unknown error"
-            mock_error_manager_get.return_value = mock_error_code
+        # 测试使用BaseErrorCode对象
+        from ais_bench.benchmark.utils.logging.error_codes import BaseErrorCode, ErrorModule
+        mock_error_code = MagicMock(spec=BaseErrorCode)
+        mock_error_code.full_code = "UTILS-UNK-001"
+        mock_error_code.err_type = ErrorType.UNKNOWN
+        mock_error_code.message = "Unknown error"
 
+        # 模拟get_formatted_log_content函数
+        with patch('ais_bench.benchmark.utils.logging.logger.get_formatted_log_content') as mock_formatted_log:
+            mock_formatted_log.return_value = "Formatted error message"
+            
             logger = AISLogger()
-            try:
-                logger.error("UTILS-UNK-001", "Test error message")
-            except Exception:
-                # 我们只是检查是否正确调用了error方法，不关心格式化的细节
-                pass
-
-            mock_logger.error.assert_called_once()
+            logger.error(mock_error_code, "Test error message")
+            
+            # 验证调用了get_formatted_log_content和logger.error
+            mock_formatted_log.assert_called_once_with("UTILS-UNK-001", "Test error message")
+            mock_logger.error.assert_called_once_with("Formatted error message", stacklevel=2)
+    
+    @patch('logging.getLogger')
+    def test_error_method_with_invalid_error_code(self, mock_getLogger):
+        # 测试使用非BaseErrorCode对象时抛出ValueError
+        mock_logger = MagicMock()
+        mock_getLogger.return_value = mock_logger
+        mock_logger.handlers = []
+        mock_root = MagicMock()
+        mock_root.handlers = []
+        mock_logger.root = mock_root
+        
+        logger = AISLogger()
+        
+        # 使用字符串作为错误码应该抛出ValueError
+        with self.assertRaises(ValueError) as context:
+            logger.error("UTILS-UNK-001", "Test error message")
+        
+        self.assertIn("error_code UTILS-UNK-001 is not instance of BaseErrorCode!", str(context.exception))
+        
+        # 使用其他类型的对象也应该抛出ValueError
+        with self.assertRaises(ValueError):
+            logger.error(123, "Test error message")
 
 
 if __name__ == '__main__':
