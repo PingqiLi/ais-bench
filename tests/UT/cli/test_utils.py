@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from ais_bench.benchmark.cli.utils import (
-    fill_model_path_if_datasets_need, 
-    get_config_type, 
-    is_running_in_background, 
+    fill_model_path_if_datasets_need,
+    get_config_type,
+    is_running_in_background,
     get_current_time_str
 )
 from ais_bench.benchmark.utils.logging.exceptions import ConfigError
@@ -52,7 +52,7 @@ class TestUtils(unittest.TestCase):
             fill_model_path_if_datasets_need(model_cfg, dataset_cfg)
 
         # 验证错误信息
-        self.assertIn(UTILS_CODES.SYNTHETIC_DS_MISS_REQUIRED_PARAM, str(context.exception))
+        self.assertIn(UTILS_CODES.SYNTHETIC_DS_MISS_REQUIRED_PARAM.full_code, str(context.exception))
         self.assertIn("[path] in model config is required", str(context.exception))
 
     def test_fill_model_path_if_datasets_need_not_required_dataset(self):
@@ -146,7 +146,7 @@ class TestUtils(unittest.TestCase):
         mock_datetime.now.return_value = mock_now
 
         result = get_current_time_str()
-        
+
         # 验证结果
         self.assertEqual(result, "20231201_143022")
         mock_now.strftime.assert_called_once_with("%Y%m%d_%H%M%S")

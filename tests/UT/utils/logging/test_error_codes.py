@@ -39,6 +39,7 @@ class TestErrorType(unittest.TestCase):
         self.assertEqual(ErrorType.COMMAND.value, "CMD")
         self.assertEqual(ErrorType.CONFIG.value, "CFG")
         self.assertEqual(ErrorType.MATCH.value, "MATCH")
+        self.assertEqual(ErrorType.FILE.value, "FILE")
 
     def test_error_type_type(self):
         """测试ErrorType是否为Enum类型"""
@@ -49,6 +50,7 @@ class TestBaseErrorCode(unittest.TestCase):
     def setUp(self):
         """设置测试环境"""
         self.error_code = BaseErrorCode(
+            code_name="UTILS-CFG-001",
             module=ErrorModule.UTILS,
             err_type=ErrorType.CONFIG,
             code=1,
@@ -83,16 +85,23 @@ class TestBaseErrorCode(unittest.TestCase):
     def test_full_code_formatting(self):
         """测试full_code的格式化是否正确，特别是数字补零"""
         # 测试代码小于10的情况
-        error_code_single = BaseErrorCode(ErrorModule.UTILS, ErrorType.CONFIG, 5, "test")
+        error_code_single = BaseErrorCode("UTILS-CFG-005", ErrorModule.UTILS, ErrorType.CONFIG, 5, "test")
         self.assertEqual(error_code_single.full_code, "UTILS-CFG-005")
 
         # 测试代码大于等于10的情况
-        error_code_double = BaseErrorCode(ErrorModule.UTILS, ErrorType.CONFIG, 12, "test")
+        error_code_double = BaseErrorCode("UTILS-CFG-012", ErrorModule.UTILS, ErrorType.CONFIG, 12, "test")
         self.assertEqual(error_code_double.full_code, "UTILS-CFG-012")
 
         # 测试代码大于等于100的情况
-        error_code_triple = BaseErrorCode(ErrorModule.UTILS, ErrorType.CONFIG, 123, "test")
+        error_code_triple = BaseErrorCode("UTILS-CFG-123", ErrorModule.UTILS, ErrorType.CONFIG, 123, "test")
         self.assertEqual(error_code_triple.full_code, "UTILS-CFG-123")
+        
+    def test_invalid_code_name(self):
+        """测试code_name与full_code不匹配时抛出ValueError"""
+        with self.assertRaises(ValueError) as context:
+            BaseErrorCode("INVALID-CODE", ErrorModule.UTILS, ErrorType.CONFIG, 1, "test")
+        
+        self.assertIn("code_name INVALID-CODE is not equal to full_code UTILS-CFG-001", str(context.exception))
 
 
 class TestErrorCodeManager(unittest.TestCase):
@@ -100,12 +109,14 @@ class TestErrorCodeManager(unittest.TestCase):
         """设置测试环境"""
         self.manager = ErrorCodeManager()
         self.error_code1 = BaseErrorCode(
+            code_name="UTILS-CFG-001",
             module=ErrorModule.UTILS,
             err_type=ErrorType.CONFIG,
             code=1,
             message="test error message 1"
         )
         self.error_code2 = BaseErrorCode(
+            code_name="UTILS-MATCH-001",
             module=ErrorModule.UTILS,
             err_type=ErrorType.MATCH,
             code=1,
@@ -183,6 +194,7 @@ class TestIntegration(unittest.TestCase):
         """测试完整的错误码工作流程"""
         # 创建错误码
         error_code = BaseErrorCode(
+            code_name="MODEL-CMD-005",
             module=ErrorModule.MODEL,
             err_type=ErrorType.COMMAND,
             code=5,

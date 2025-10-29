@@ -1,9 +1,10 @@
 from typing import Optional
 from ais_bench.benchmark.utils.logging.error_codes import error_manager
 from ais_bench.benchmark.utils.logging import get_formatted_log_content
+from ais_bench.benchmark.utils.logging.error_codes import BaseErrorCode
 
 class AISBenchBaseException(Exception):
-    def __init__(self, error_str: str,
+    def __init__(self, error_code: BaseErrorCode,
                  message: Optional[str] = None):
         """
         Args:
@@ -11,11 +12,14 @@ class AISBenchBaseException(Exception):
             message (Optional[str], optional): error message. Defaults to None.
 
         """
-        error_code = error_manager.get(error_str)
-        self.error_code_str = error_str
-        if not error_code:
-            raise ValueError(f"error_code {error_str} is not exist!")
-        super().__init__(get_formatted_log_content(error_str, message))
+        if not isinstance(error_code, BaseErrorCode):
+            raise ValueError(f"error_code {error_code} is not instance of BaseErrorCode!")
+        if not error_manager.get(error_code.full_code):
+            raise ValueError(f"error_code {error_code.full_code} is not exist!")
+
+        self.error_code_str = error_code.full_code
+
+        super().__init__(get_formatted_log_content(error_code.full_code, message))
 
 
 class CommandError(AISBenchBaseException):

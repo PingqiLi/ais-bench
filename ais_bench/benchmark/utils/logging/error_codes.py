@@ -15,6 +15,7 @@ class ErrorModule(Enum):
     ICL_EVALUATOR = "ICLE"                       # icl_evaluator
     ICL_RETRIEVER = "ICLR"                       # icl_retriever
     MODEL = "MODEL"                              # model
+    CALCULATOR = "CALC"                        # calculator
     UTILS = "UTILS"                              # other utils func
     UNKNOWN = "UNK"                              # unknown module
 
@@ -26,14 +27,19 @@ class ErrorType(Enum):
     CONFIG = "CFG"     # config error type
     MATCH = "MATCH"     # pattern match error type
     FILE = "FILE"     # file error type
+    DATA = "DATA"     # data error type
+    METRIC = "MTRC"     # metric error type
+    TYPE = "TYPE"     # type error type
+
 
 class BaseErrorCode:
     FAQ_BASE_URL = "https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/faqs/error_codes.html#"
 
-    def __init__(self, module: ErrorModule, err_type: ErrorType, code: int,
+    def __init__(self, code_name: str, module: ErrorModule, err_type: ErrorType, code: int,
                  message: str):
         """
         Args:
+            code_name (str): error code name (just for developer to check full_code)
             module (ErrorModule): error module
             err_type (ErrorType): error type
             code (int): error code number
@@ -45,9 +51,12 @@ class BaseErrorCode:
         self.code = code
         self.message = message
         self.faq_url = self.FAQ_BASE_URL + self.heading_id
+        if code_name != self.full_code:
+            raise ValueError(f"code_name {code_name} is not equal to full_code {self.full_code}")
 
     @property
     def full_code(self) -> str:
+
         return f"{self.module.value}-{self.err_type.value}-{self.code:03d}"
     @property
     def heading_id(self) -> str:
@@ -73,145 +82,91 @@ class ErrorCodeManager:
     def list_all(self) -> Dict[str, BaseErrorCode]:
         return self._error_codes.copy()
 
+# error code consts
+class TMAN_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("TMAN-UNK-001", ErrorModule.TASK_MANAGER, ErrorType.UNKNOWN, 1, "unknown error of task manager")
+    CMD_MISS_REQUIRED_ARG = BaseErrorCode("TMAN-CMD-001", ErrorModule.TASK_MANAGER, ErrorType.COMMAND, 1, "command miss required argument")
+    INVALID_ARG_VALUE_IN_CMD = BaseErrorCode("TMAN-CMD-002", ErrorModule.TASK_MANAGER, ErrorType.COMMAND, 2, "invalid argument value in command")
+    INVAILD_SYNTAX_IN_CFG_CONTENT = BaseErrorCode("TMAN-CFG-001", ErrorModule.TASK_MANAGER, ErrorType.CONFIG, 1, "invaild syntax in config content")
+    CFG_CONTENT_MISS_REQUIRED_PARAM = BaseErrorCode("TMAN-CFG-002", ErrorModule.TASK_MANAGER, ErrorType.CONFIG, 2, "config content miss required param")
+    TYPE_ERROR_IN_CFG_PARAM = BaseErrorCode("TMAN-CFG-003", ErrorModule.TASK_MANAGER, ErrorType.CONFIG, 3, "type error in config param")
+
+
+class PARTI_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("PARTI-UNK-001", ErrorModule.PARTITIONER, ErrorType.UNKNOWN, 1, "unknown error of partitioner")
+    OUT_DIR_PERMISSION_DENIED = BaseErrorCode("PARTI-FILE-001", ErrorModule.PARTITIONER, ErrorType.FILE, 1, "out dir permission denied")
+
+
+class SUMM_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("SUMM-UNK-001", ErrorModule.SUMMARY, ErrorType.UNKNOWN, 1, "unknown error of summary")
+
+class RUNNER_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("RUNNER-UNK-001", ErrorModule.RUNNER, ErrorType.UNKNOWN, 1, "unknown error of runner")
+
+
+class TMON_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("TMON-UNK-001", ErrorModule.TASK_MONITOR, ErrorType.UNKNOWN, 1, "unknown error of task monitor")
+
+
+class TSMAN_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("TSMAN-UNK-001", ErrorModule.TASK_STATUS_MANAGER, ErrorType.UNKNOWN, 1, "unknown error of task state manager")
+
+
+class TINFER_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("TINFER-UNK-001", ErrorModule.TASK_INFER, ErrorType.UNKNOWN, 1, "unknown error of infer task")
+
+class TEVAL_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("TEVAL-UNK-001", ErrorModule.TASK_EVALUATE, ErrorType.UNKNOWN, 1, "unknown error of evaluate task")
+
+
+class ICLI_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("ICLI-UNK-001", ErrorModule.ICL_INFERENCER, ErrorType.UNKNOWN, 1, "unknown error of icl inferencer")
+
+
+class ICLE_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("ICLE-UNK-001", ErrorModule.ICL_EVALUATOR, ErrorType.UNKNOWN, 1, "unknown error of icl evaluator")
+
+
+class ICLR_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("ICLR-UNK-001", ErrorModule.ICL_RETRIEVER, ErrorType.UNKNOWN, 1, "unknown error of icl retriever")
+
+
+class MODEL_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("MODEL-UNK-001", ErrorModule.MODEL, ErrorType.UNKNOWN, 1, "unknown error of model")
+
+
+class UNK_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("UNK-UNK-001", ErrorModule.UNKNOWN, ErrorType.UNKNOWN, 1, "unknown error")
+
+
+class UTILS_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("UTILS-UNK-001", ErrorModule.UTILS, ErrorType.UNKNOWN, 1, "unknown error of utils")
+    MATCH_CONFIG_FILE_FAILED = BaseErrorCode("UTILS-MATCH-001", ErrorModule.UTILS, ErrorType.MATCH, 1, "match config file failed")
+    SYNTHETIC_DS_MISS_REQUIRED_PARAM = BaseErrorCode("UTILS-CFG-001", ErrorModule.UTILS, ErrorType.CONFIG, 1, "synthetic dataset miss required param")
+
+
+ERROR_CODES_CLASSES = [
+    TMAN_CODES,
+    PARTI_CODES,
+    SUMM_CODES,
+    RUNNER_CODES,
+    TMON_CODES,
+    TSMAN_CODES,
+    TINFER_CODES,
+    TEVAL_CODES,
+    ICLI_CODES,
+    ICLE_CODES,
+    ICLR_CODES,
+    MODEL_CODES,
+    UNK_CODES,
+    UTILS_CODES,
+]
 
 # init error code manager
 error_manager = ErrorCodeManager()
 
-# regist application layer errors
-APPLICATION_LAYER_ERRORS = [
-    # TaskManager
-    BaseErrorCode(ErrorModule.TASK_MANAGER, ErrorType.UNKNOWN, 1, "unknown error of task manager"), # TMAN-UNK-001
-
-    BaseErrorCode(ErrorModule.TASK_MANAGER, ErrorType.COMMAND, 1, "command miss required argument"), # TMAN-CMD-001
-    BaseErrorCode(ErrorModule.TASK_MANAGER, ErrorType.COMMAND, 2, "invalid argument value in command"), # TMAN-CMD-002
-
-    BaseErrorCode(ErrorModule.TASK_MANAGER, ErrorType.CONFIG, 1, "invaild syntax in config content"), # TMAN-CFG-001
-    BaseErrorCode(ErrorModule.TASK_MANAGER, ErrorType.CONFIG, 2, "config content miss required param"), # TMAN-CFG-002
-    BaseErrorCode(ErrorModule.TASK_MANAGER, ErrorType.CONFIG, 3, "type error in config param"), # TMAN-CFG-003
-
-    # Partitioner
-    BaseErrorCode(ErrorModule.PARTITIONER, ErrorType.UNKNOWN, 1, "unknown error of partitioner"), # PARTI-UNK-001
-    BaseErrorCode(ErrorModule.PARTITIONER, ErrorType.FILE, 1, "out dir permission denied"), # PARTI-FILE-001
-
-    # Summary
-    BaseErrorCode(ErrorModule.SUMMARY, ErrorType.UNKNOWN, 1, "unknown error of summary"), # SUMM-UNK-001
-
-]
-
-# regist business logic layer errors
-BUSINESS_LOGIC_LAYER_ERRORS = [
-    # Runner
-    BaseErrorCode(ErrorModule.RUNNER, ErrorType.UNKNOWN, 1, "unknown error of runner"), # RUNNER-UNK-001
-
-    # TaskMonitor
-    BaseErrorCode(ErrorModule.TASK_MONITOR, ErrorType.UNKNOWN, 1, "unknown error of task monitor"), # TMON-UNK-001
-
-    # TaskStateManager
-    BaseErrorCode(ErrorModule.TASK_STATUS_MANAGER, ErrorType.UNKNOWN, 1, "unknown error of task state manager"), # TSMAN-UNK-001
-
-    # Infer Task
-    BaseErrorCode(ErrorModule.TASK_INFER, ErrorType.UNKNOWN, 1, "unknown error of infer task"), # TINFER-UNK-001
-
-    # Eval Task
-    BaseErrorCode(ErrorModule.TASK_EVALUATE, ErrorType.UNKNOWN, 1, "unknown error of evaluate task"), # TEVAL-UNK-001
-
-]
-
-# regist icl layer errors
-ICL_LAYER_ERRORS = [
-    # icl_inferencer
-    BaseErrorCode(ErrorModule.ICL_INFERENCER, ErrorType.UNKNOWN, 1, "unknown error of icl inferencer"), # ICLI-UNK-001
-
-    # icl_evaluator
-    BaseErrorCode(ErrorModule.ICL_EVALUATOR, ErrorType.UNKNOWN, 1, "unknown error of icl evaluator"), # ICLE-UNK-001
-
-    # icl_retriever
-    BaseErrorCode(ErrorModule.ICL_RETRIEVER, ErrorType.UNKNOWN, 1, "unknown error of icl retriever"), # ICLR-UNK-001
-
-    # model
-    BaseErrorCode(ErrorModule.MODEL, ErrorType.UNKNOWN, 1, "unknown error of model"), # MODEL-UNK-001
-
-]
-
-
-# regist other errors
-OTHER_ERRORS = [
-    # unknown
-    BaseErrorCode(ErrorModule.UNKNOWN, ErrorType.UNKNOWN, 1, "unknown error"), # UNK-UNK-001
-
-    # utils
-    BaseErrorCode(ErrorModule.UTILS, ErrorType.UNKNOWN, 1, "unknown error of utils"), # UTILS-UNK-001
-
-    BaseErrorCode(ErrorModule.UTILS, ErrorType.MATCH, 1, "match config file failed"), # UTILS-MATCH-001
-    BaseErrorCode(ErrorModule.UTILS, ErrorType.CONFIG, 1, "synthetic dataset miss required param"), # UTILS-CFG-001
-]
-
-
 # regist all errors
-for error in APPLICATION_LAYER_ERRORS + BUSINESS_LOGIC_LAYER_ERRORS + ICL_LAYER_ERRORS + OTHER_ERRORS:
-    error_manager.register(error)
-
-
-# error code consts
-class TMAN_CODES:
-    UNKNOWN_ERROR = "TMAN-UNK-001" # unknown error of task manager
-    CMD_MISS_REQUIRED_ARG = "TMAN-CMD-001" # command miss required argument
-    INVALID_ARG_VALUE_IN_CMD = "TMAN-CMD-002" # invalid argument value in command
-    INVAILD_SYNTAX_IN_CFG_CONTENT = "TMAN-CFG-001" # invaild syntax in config content
-    CFG_CONTENT_MISS_REQUIRED_PARAM = "TMAN-CFG-002" # config content miss required param
-    TYPE_ERROR_IN_CFG_PARAM = "TMAN-CFG-003" # type error in config param
-
-
-class PARTI_CODES:
-    UNKNOWN_ERROR = "PARTI-UNK-001" # unknown error of partitioner
-    OUT_DIR_PERMISSION_DENIED = "PARTI-FILE-001" # out dir permission denied
-
-
-class SUMM_CODES:
-    UNKNOWN_ERROR = "SUMM-UNK-001" # unknown error of summary
-
-
-class RUNNER_CODES:
-    UNKNOWN_ERROR = "RUNNER-UNK-001" # unknown error of runner
-
-
-class TMON_CODES:
-    UNKNOWN_ERROR = "TMON-UNK-001" # unknown error of task monitor
-
-
-class TSMAN_CODES:
-    UNKNOWN_ERROR = "TSMAN-UNK-001" # unknown error of task state manager
-
-
-class TINFER_CODES:
-    UNKNOWN_ERROR = "TINFER-UNK-001" # unknown error of infer task
-
-
-class TEVAL_CODES:
-    UNKNOWN_ERROR = "TEVAL-UNK-001" # unknown error of evaluate task
-
-
-class ICLI_CODES:
-    UNKNOWN_ERROR = "ICLI-UNK-001" # unknown error of icl inferencer
-
-
-class ICLE_CODES:
-    UNKNOWN_ERROR = "ICLE-UNK-001" # unknown error of icl evaluator
-
-
-class ICLR_CODES:
-    UNKNOWN_ERROR = "ICLR-UNK-001" # unknown error of icl retriever
-
-
-class MODEL_CODES:
-    UNKNOWN_ERROR = "MODEL-UNK-001" # unknown error of model
-
-
-class UNK_CODES:
-    UNKNOWN_ERROR = "UNK-UNK-001" # unknown error of utils
-
-
-class UTILS_CODES:
-    UNKNOWN_ERROR = "UTILS-UNK-001" # unknown error of utils
-    MATCH_1 = "UTILS-MATCH-001" # match config file failed
-    SYNTHETIC_DS_MISS_REQUIRED_PARAM = "UTILS-CFG-001" # synthetic dataset miss required param
+for error_codes_class in ERROR_CODES_CLASSES:
+    for error_code in error_codes_class.__dict__.values():
+        if isinstance(error_code, BaseErrorCode):
+            error_manager.register(error_code)

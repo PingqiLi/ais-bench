@@ -70,7 +70,7 @@ class TestMatchCfgFile(unittest.TestCase):
             match_cfg_file('/test/dir', 'config1')
 
         # 验证错误代码
-        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_1)
+        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_CONFIG_FILE_FAILED.full_code)
 
     @patch('ais_bench.benchmark.utils.file.file.logger')
     @patch('os.walk')
@@ -193,7 +193,7 @@ class TestMatchCfgFile(unittest.TestCase):
             match_cfg_file('/test/dir', ['config1', 'nonexistent_config'])
 
         # 验证错误代码
-        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_1)
+        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_CONFIG_FILE_FAILED.full_code)
 
     @patch('ais_bench.benchmark.utils.file.logger')
     def test_match_cfg_file_empty_pattern(self, mock_logger):
@@ -203,7 +203,7 @@ class TestMatchCfgFile(unittest.TestCase):
             match_cfg_file('/test/dir', '')
 
         # 验证错误代码
-        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_1)
+        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_CONFIG_FILE_FAILED.full_code)
 
     @patch('ais_bench.benchmark.utils.file.logger')
     @patch('os.walk')
@@ -217,7 +217,7 @@ class TestMatchCfgFile(unittest.TestCase):
             match_cfg_file('', 'config1')
 
         # 验证错误代码
-        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_1)
+        self.assertEqual(context.exception.error_code_str, UTILS_CODES.MATCH_CONFIG_FILE_FAILED.full_code)
 
 
 if __name__ == '__main__':
