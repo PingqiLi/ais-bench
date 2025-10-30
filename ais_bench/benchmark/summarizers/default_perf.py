@@ -18,13 +18,16 @@ from mmengine import ConfigDict
 from ais_bench.benchmark.calculators.base_perf_metric_calculator import (
     BasePerfMetricCalculator,
 )
-from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.core.abbr import model_abbr_from_cfg
 from ais_bench.benchmark.utils.config import build_perf_metric_calculator_from_cfg, build_model_from_cfg
 from ais_bench.benchmark.utils.prompt import is_mm_prompt
 from ais_bench.benchmark.utils.results import dump_results_dict
 from ais_bench.benchmark.utils.visualization import plot_sorted_request_timelines
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import init_db, load_all_numpy_from_db
+
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchDataContentError, FileMatchError
+from ais_bench.benchmark.utils.logging.error_codes import SUMM_CODES
 
 
 def model_abbr_from_cfg_used_in_summarizer(model):
@@ -57,7 +60,7 @@ class DefaultPerfSummarizer:
     def __init__(self, config: ConfigDict, calculator: ConfigDict) -> None:
         self.tasks = []
         self.cfg = config
-        self.logger = get_logger()
+        self.logger = AISLogger()
 
         self.model_cfgs = self.cfg["models"]
         self.dataset_cfgs = self.cfg["datasets"]
@@ -155,7 +158,7 @@ class DefaultPerfSummarizer:
             perf_data.pop("input")
             perf_data.pop("prediction")
             perf_data.pop("db_name")
-            
+
             perf_data["start_time"] = time_points[0]
             perf_data["end_time"] = time_points[-1]
             perf_data["latency"] = time_points[-1] - time_points[0]
@@ -216,7 +219,7 @@ class DefaultPerfSummarizer:
         model_abbr = model_abbr_from_cfg_used_in_summarizer(model_cfg)
 
         db_perf_data_map = defaultdict(list)
-        
+
         unfound_data_abbrs = []
 
         for dataset_cfg in dataset_group:
@@ -234,16 +237,17 @@ class DefaultPerfSummarizer:
                     if db_name:
                         db_perf_data_map[db_name].append(perf_data)
         if unfound_data_abbrs:
-            self.logger.info(f"Can't find details perf data of [{model_abbr}/{','.join(unfound_data_abbrs)}] in "
+            self.logger.warning(f"Can't find details perf data of [{model_abbr}/{','.join(unfound_data_abbrs)}] in "
                              f"{self.work_dir}, use tmp cache data.")
             tmp_cache_data = self._load_tmp_result(model_abbr, unfound_data_abbrs)
             for db_name, perf_datas in tmp_cache_data.items():
                 for perf_data in perf_datas:
                     db_perf_data_map[db_name].append(perf_data)
-                
+
         if not db_perf_data_map:
-            raise RuntimeError(
-                f"Not found any details perf data in work_dir, please check {self.work_dir}."
+            raise FileMatchError(
+                SUMM_CODES.NO_PERF_DATA_FILE,
+                f"Can't find find any details perf data file in work_dir, please check {self.work_dir}."
             )
 
         details_perf_datas = defaultdict(list)
@@ -288,7 +292,8 @@ class DefaultPerfSummarizer:
             if key != "success"
         }
         if len(set(list(lens.values()))) != 1:
-            raise ValueError(
+            raise AISBenchDataContentError(
+                SUMM_CODES.DIFF_STRUCTURE_OF_PERF_DATA,
                 f"The length of details perf datas is not the same: {lens}, "
                 f"each perf data should have same data structure"
             )
@@ -444,14 +449,8 @@ class DefaultPerfSummarizer:
                     build_perf_metric_calculator_from_cfg(self.calculator_conf)
                 )
                 calculators_per_model[dataset_abbr] = calculator
-                try:
-                    calculator._init_datas(details_perf_datas, max_concurrency)
-                except RuntimeError as e:
-                    self.logger.error(
-                        f'Failed to calculate performance data, detail error is: "{e}", '
-                        f"please check {plot_file_path} to do further analysis."
-                    )
-                    raise RuntimeError("Calculate perf data failed!")
+
+                calculator._init_datas(details_perf_datas, max_concurrency)
 
             self.calculators[model_abbr] = calculators_per_model
         self._dump_calculated_perf_data()
