@@ -8,10 +8,10 @@ from mmengine.dist import is_main_process
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
 from ais_bench.benchmark.utils.prompt import PromptList
 from ais_bench.benchmark.utils.logging.logger import AISLogger
-from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.error_codes import ICLR_CODES
 from ais_bench.benchmark.utils.logging.exceptions import (
-    ValueTypeError,
-    ImplementationErrorException,
+    AisBenchValueError,
+    AisBenchImplementationError,
 )
 
 
@@ -70,8 +70,8 @@ class BaseRetriever:
     @abstractmethod
     def retrieve(self) -> List[List[int]]:
         """Retrieve the in-context example index for each test example."""
-        raise ImplementationErrorException(
-            ICLI_CODES.IMPLEMENTATION_ERROR,
+        raise AisBenchImplementationError(
+            ICLR_CODES.IMPLEMENTATION_ERROR,
             f"{self.__class__.__name__} hasn't been implemented yet",
         )
 
@@ -120,8 +120,8 @@ class BaseRetriever:
                 test example.
         """
         if self.ice_template is None:
-            raise ValueTypeError(
-                ICLI_CODES.TEMPLATE_ICE_TOKEN_NOT_IN_TEMPLATE,
+            raise AisBenchValueError(
+                ICLR_CODES.TEMPLATE_ICE_TOKEN_NOT_IN_TEMPLATE,
                 f"You have not specified ice_template while retrieving examples \
                                  from train set! Please either specify ice_template or use `ZeroRetriever`.",
             )
@@ -175,8 +175,8 @@ class BaseRetriever:
                     self.test_ds[idx], ice, label, remain_sep
                 )
             else:
-                raise ImplementationErrorException(
-                    ICLI_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
+                raise AisBenchImplementationError(
+                    ICLR_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
                     f"ice_token of prompt_template is not provided",
                 )
         elif self.ice_template is not None and self.prompt_template is None:
@@ -185,8 +185,8 @@ class BaseRetriever:
                     self.test_ds[idx], ice, label, remain_sep
                 )
             else:
-                raise ImplementationErrorException(
-                    ICLI_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
+                raise AisBenchImplementationError(
+                    ICLR_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
                     f"ice_token of ice_template is not provided",
                 )
         elif self.ice_template is None and self.prompt_template is not None:
@@ -194,8 +194,8 @@ class BaseRetriever:
                 self.test_ds[idx], ice, label, remain_sep
             )
         else:
-            raise ImplementationErrorException(
-                ICLI_CODES.IMPLEMENTATION_ERROR_PROMPT_TEMPLATE_NOT_PROVIDED,
+            raise AisBenchImplementationError(
+                ICLR_CODES.IMPLEMENTATION_ERROR_PROMPT_TEMPLATE_NOT_PROVIDED,
                 f"Leaving prompt as empty is not supported",
             )
 
@@ -226,8 +226,8 @@ class BaseRetriever:
                     ice_field_replace_token=ice,
                 )
             else:
-                raise ImplementationErrorException(
-                    ICLI_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
+                raise AisBenchImplementationError(
+                    ICLR_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
                     f"ice_token of prompt_template is not provided",
                 )
 
@@ -240,8 +240,8 @@ class BaseRetriever:
                     ice_field_replace_token=ice,
                 )
             else:
-                raise ImplementationErrorException(
-                    ICLI_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
+                raise AisBenchImplementationError(
+                    ICLR_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
                     f"ice_token of ice_template is not provided",
                 )
         elif self.ice_template is None and self.prompt_template is not None:
@@ -252,7 +252,7 @@ class BaseRetriever:
                 ice_field_replace_token=ice,
             )
         else:
-            raise ImplementationErrorException(
-                ICLI_CODES.IMPLEMENTATION_ERROR_PROMPT_TEMPLATE_NOT_PROVIDED,
+            raise AisBenchImplementationError(
+                ICLR_CODES.IMPLEMENTATION_ERROR_PROMPT_TEMPLATE_NOT_PROVIDED,
                 f"Leaving prompt as empty is not supported",
             )

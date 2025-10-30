@@ -46,8 +46,9 @@ def save_numpy_to_db(conn: sqlite3.Connection, arr: np.ndarray, batch_size: int 
             conn.commit()
         return cur_id
     except sqlite3.Error as e:
-        raise FileOperationError(ICLI_CODES.FILE_OPERATION_ERROR, 
-                                 f"Failed to save numpy array to database: {str(e)}")
+        raise FileOperationError(ICLI_CODES.SQLITE_WRITE_ERROR, 
+                                 f"Failed to save numpy array to database: {str(e)}",
+            )
         
 def load_all_numpy_from_db(conn: sqlite3.Connection) -> dict[int, np.ndarray]:
     """

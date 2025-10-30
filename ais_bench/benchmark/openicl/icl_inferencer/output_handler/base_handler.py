@@ -19,9 +19,7 @@ from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.results import safe_write
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import init_db, save_numpy_to_db
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import ImplementationErrorException, ParameterValueError, FileOperationError
-
-logger = AISLogger()
+from ais_bench.benchmark.utils.logging.exceptions import AisBenchImplementationError, ParameterValueError, FileOperationError
 
 DB_REF_KEY = "__db_ref__"
 DB_DATA_DIR = "db_data"
@@ -45,6 +43,7 @@ class BaseInferencerOutputHandler:
         """
         Initialize the base output handler.
         """
+        self.logger = AISLogger()
         self.results_dict = defaultdict(dict)
         self.cache_queue = janus.Queue()
         self.all_success = True
@@ -71,10 +70,10 @@ class BaseInferencerOutputHandler:
             gold (Optional[str]): Ground truth data for comparison
 
         Raises:
-            ImplementationErrorException: If not implemented by subclass
+            AisBenchImplementationError: If not implemented by subclass
         """
 
-        raise ImplementationErrorException(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AisBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def write_to_json(self, save_dir: str, perf_mode: bool) -> None:
@@ -95,7 +94,7 @@ class BaseInferencerOutputHandler:
         """
         if not isinstance(save_dir, str) or not save_dir.strip():
             raise ParameterValueError(ICLI_CODES.INVALID_PARAM_VALUE, 
-                                      f"'save_dir' must be a non-empty string representing a directory path.")
+                                      f"'save_dir' must be a non-empty string representing a directory path")
 
         file_path = Path(save_dir)
         try:
@@ -113,10 +112,12 @@ class BaseInferencerOutputHandler:
 
                 file_path = Path(save_dir) / raw_data_name
                 safe_write(results_dict, file_path)
-                logger.debug(f"Process {os.getpid()} write results to {file_path}")
+                self.logger.debug(f"Process {os.getpid()} write results to {file_path}")
         except Exception as e:
-            raise FileOperationError(ICLI_CODES.FILE_OPERATION_ERROR, 
-                          f"Failed to write results to {file_path}: {str(e)}")
+            raise FileOperationError(
+                ICLI_CODES.INFER_RESULT_WRITE_ERROR, 
+                f"Failed to write results to {file_path}: {str(e)}",
+            )
 
     async def report_cache_info(
         self,
@@ -151,7 +152,7 @@ class BaseInferencerOutputHandler:
             await self.cache_queue.async_q.put_nowait(item)
             return True
         except Exception as e:
-            logger.error(f"Failed to report cache info: {str(e)}")
+            self.logger.error(f"Failed to report cache info: {str(e)}")
             return False
 
     def report_cache_info_sync(
@@ -187,7 +188,7 @@ class BaseInferencerOutputHandler:
             self.cache_queue.sync_q.put_nowait(item)
             return True
         except Exception as e:
-            logger.error(f"Failed to report cache info: {str(e)}")
+            self.logger.error(f"Failed to report cache info: {str(e)}")
             return False
 
     def _extract_and_write_arrays(
@@ -223,7 +224,7 @@ class BaseInferencerOutputHandler:
             try:
                 id = save_numpy_to_db(conn, arr, self.save_every)
             except Exception as e:
-                logger.error(f"Failed to save numpy array to database: {str(e)}")
+                self.logger.error(f"Failed to save numpy array to database: {str(e)}")
                 return None
 
             # Return serializable placeholder
@@ -250,7 +251,7 @@ class BaseInferencerOutputHandler:
                 str_obj = str(obj)
                 return str_obj
             except Exception as str_error:
-                logger.error(
+                self.logger.error(
                     f"Failed to convert object to string: {str(str_error)}"
                 )
                 return None
@@ -278,7 +279,7 @@ class BaseInferencerOutputHandler:
         Raises:
             FileOperationError: If file operations fail
         """
-        logger.debug("Running cache consumer to process queued results,"
+        self.logger.debug("Running cache consumer to process queued results,"
                      f"save_dir: {save_dir}, "
                      f"file_name: {file_name}, "
                      f"perf_mode: {perf_mode}, "
@@ -324,7 +325,7 @@ class BaseInferencerOutputHandler:
 
                         # Pre-compute JSON string to avoid repeated serialization
                         json_str = json.dumps(json_data, ensure_ascii=False) + '\n'
-                        logger.debug(f"Saving result to cache_data: {json_str}")
+                        self.logger.debug(f"Saving result to cache_data: {json_str}")
                         cache_data.append(json_str)
 
                         # Write batch if reached save_every threshold
@@ -335,7 +336,7 @@ class BaseInferencerOutputHandler:
 
                     except Exception as e:
                         # Continue processing other items
-                        logger.error(f"Failed to process item {item}: {str(e)}")
+                        self.logger.error(f"Failed to process item {item}: {str(e)}")
                         continue
 
                 # Write remaining cache data
@@ -360,7 +361,7 @@ class BaseInferencerOutputHandler:
             if json_path.exists():
                 os.remove(json_path)
         else:
-            logger.warning(
+            self.logger.warning(
                 f"Not all items were successful, keeping JSON file for debugging: {json_path}"
             )
 
@@ -369,11 +370,11 @@ class BaseInferencerOutputHandler:
             try:
                 empty = next(Path(json_path.parent).iterdir(), None) is None
                 if empty:
-                    logger.debug(f"Cleaning up empty directory: {json_path.parent}")
+                    self.logger.debug(f"Cleaning up empty directory: {json_path.parent}")
                     shutil.rmtree(json_path.parent)
             except Exception as e:
-                logger.warning(f"Could not clean up directory {json_path.parent}: {str(e)}")
-        logger.debug(f"Process {os.getpid()} cache consumer finished")
+                self.logger.warning(f"Could not clean up directory {json_path.parent}: {str(e)}")
+        self.logger.debug(f"Process {os.getpid()} cache consumer finished")
 
 
     def stop_cache_consumer(self) -> None:
@@ -384,5 +385,5 @@ class BaseInferencerOutputHandler:
         adding a None item to the queue, which serves as a stop signal.
         """
         self.cache_queue.sync_q.put(None)
-        logger.debug("Stop signal sent to cache consumer")
+        self.logger.debug("Stop signal sent to cache consumer")
 

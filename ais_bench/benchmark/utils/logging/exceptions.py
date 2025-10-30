@@ -3,9 +3,9 @@ from ais_bench.benchmark.utils.logging.error_codes import error_manager
 from ais_bench.benchmark.utils.logging import get_formatted_log_content
 from ais_bench.benchmark.utils.logging.error_codes import BaseErrorCode
 
+
 class AISBenchBaseException(Exception):
-    def __init__(self, error_code: BaseErrorCode,
-                 message: Optional[str] = None):
+    def __init__(self, error_code: BaseErrorCode, message: Optional[str] = None):
         """
         Args:
             error_str (str): full code of error code
@@ -30,21 +30,29 @@ class ConfigError(AISBenchBaseException):
     pass
 
 
-class ImportError(AISBenchBaseException):
+class AISBenchImportError(AISBenchBaseException):
     pass
 
 
-class ValueTypeError(AISBenchBaseException):
+class AISBenchValueError(AISBenchBaseException):
     pass
+
+
+class AISBenchImplementationError(AISBenchBaseException):
+    pass
+
 
 class FileMatchError(AISBenchBaseException):
     pass
 
+
 class FileOperationError(AISBenchBaseException):
     pass
 
+
 class ParameterValueError(AISBenchBaseException):
     pass
+
 
 class AISBenchMetricError(AISBenchBaseException):
     pass
@@ -63,7 +71,4 @@ class PerfResultCalcException(AISBenchBaseException):
 
 
 class PredictionInvalidException(AISBenchBaseException):
-    pass
-
-class ImplementationErrorException(AISBenchBaseException):
     pass

@@ -11,7 +11,7 @@ from scipy.stats import hypergeom
 from ais_bench.benchmark.registry import TEXT_POSTPROCESSORS
 from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.logging.error_codes import ICLE_CODES
-from ais_bench.benchmark.utils.logging.exceptions import PredictionInvalidException, ImplementationErrorException
+from ais_bench.benchmark.utils.logging.exceptions import PredictionInvalidException, AisBenchImplementationError
 
 
 def compute_pass_at_k(n: int, c: int, k: int) -> float:
@@ -90,7 +90,7 @@ class BaseEvaluator:
         for _, replications in example2replications.items():
                 if len(replications) != n:
                     raise PredictionInvalidException(
-                        ICLE_CODES.PREDICTION_INVALID,
+                        ICLE_CODES.REPLICATION_LENGTH_MISMATCH,
                         message=f"Replication length mismatch: {len(replications)} != {n}",
                     )
 
@@ -235,7 +235,7 @@ class BaseEvaluator:
             len_predictions, len_references = len(score_kwargs['predictions']), len(score_kwargs['references'])
             if len_predictions != len_references:
                 raise PredictionInvalidException(
-                        ICLE_CODES.REPLICATION_LENGTH_MISMATCH,
+                        ICLE_CODES.PREDICTION_LENGTH_MISMATCH,
                         message=f'Predictions and references must have the same length, '
                         f'but got prediction({len_predictions}) and references({len_references})',
                     )
@@ -372,7 +372,7 @@ class BaseEvaluator:
     
 
     def score(self):
-        raise ImplementationErrorException(ICLE_CODES.IMPLEMENTATION_ERROR, 
+        raise AisBenchImplementationError(ICLE_CODES.IMPLEMENTATION_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     @staticmethod

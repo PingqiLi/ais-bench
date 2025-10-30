@@ -1,15 +1,18 @@
 """Multiturn Dialogue Prompt Template."""
+
 from typing import Dict, Hashable, Optional, Union
 
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
 from ais_bench.benchmark.utils.prompt import PromptList
-from ais_bench.benchmark.openicl.icl_prompt_template.icl_prompt_template_base import BasePromptTemplate, PromptType
-
+from ais_bench.benchmark.openicl.icl_prompt_template.icl_prompt_template_base import (
+    BasePromptTemplate,
+    PromptType,
+)
 
 
 @ICL_PROMPT_TEMPLATES.register_module()
 class MultiTurnPromptTemplate(BasePromptTemplate):
-    """ Multi-turn dialogue Prompt Template Class This class represents a
+    """Multi-turn dialogue Prompt Template Class This class represents a
     template that guides the generation of prompts in the retrieval or
     inference process.
 
@@ -28,11 +31,12 @@ class MultiTurnPromptTemplate(BasePromptTemplate):
     """
 
     def generate_item(
-            self,
-            entry: Dict,
-            output_field: Optional[Hashable] = None,
-            output_field_replace_token: Optional[str] = '',
-            ice_field_replace_token: Optional[str] = '') -> PromptType:
+        self,
+        entry: Dict,
+        output_field: Optional[Hashable] = None,
+        output_field_replace_token: Optional[str] = "",
+        ice_field_replace_token: Optional[str] = "",
+    ) -> PromptType:
         """Generate an item based on the provided :obj:`entry` data, as well as
         optional output field and ice field tokens.
 
@@ -58,10 +62,11 @@ class MultiTurnPromptTemplate(BasePromptTemplate):
         for question, answer in zip(entry["question"], entry["answer"]):
             cur_entry = {"question": question, "answer": answer}
             dialog_templates += template.format(**cur_entry)
-            
+
         return begin_template + dialog_templates + end_template
-    
 
     def __repr__(self):
-        return (f'MultiTurnPromptTemplate({{\n\ttemplate: {self.template},\n\t'
-                f'ice_token: {self.ice_token}\n}})')
+        return (
+            f"MultiTurnPromptTemplate({{\n\ttemplate: {self.template},\n\t"
+            f"ice_token: {self.ice_token}\n}})"
+        )

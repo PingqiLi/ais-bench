@@ -16,7 +16,7 @@ from ais_bench.benchmark.utils.config import build_model_from_cfg
 from ais_bench.benchmark.utils.core.abbr import model_abbr_from_cfg
 from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import ImplementationErrorException
+from ais_bench.benchmark.utils.logging.exceptions import AisBenchImplementationError, ParameterValueError
 
 
 MAX_BATCH_SIZE = 100000
@@ -46,7 +46,7 @@ class BaseInferencer:
         self.batch_size = int(batch_size) if batch_size else 1
 
         if self.batch_size < 1 or self.batch_size > MAX_BATCH_SIZE:
-            raise ValueError(
+            raise ParameterValueError(ICLI_CODES.BATCH_SIZE_OUT_OF_RANGE, 
                 f"The range of batch_size is [1, {MAX_BATCH_SIZE}], but got {self.batch_size}. "
                 "Please set it in datasets config"
             )
@@ -71,7 +71,7 @@ class BaseInferencer:
     ) -> List:
         """Get the data list for inference."""
 
-        raise ImplementationErrorException(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AisBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def set_task_state_manager(self, task_state_manager):

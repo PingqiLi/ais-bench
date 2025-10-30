@@ -11,7 +11,7 @@ from tqdm import tqdm
 from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import BaseInferencer
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import ImplementationErrorException, ParameterValueError
+from ais_bench.benchmark.utils.logging.exceptions import AisBenchImplementationError, ParameterValueError
 from ais_bench.benchmark.utils.logging.logger import AISLogger
 
 
@@ -30,7 +30,7 @@ class BaseLocalInferencer(BaseInferencer):
     """
 
     def batch_inference(self, datum) -> List:
-        raise ImplementationErrorException(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AisBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def inference(

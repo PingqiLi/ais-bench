@@ -19,7 +19,7 @@ from ais_bench.benchmark.utils.core.valid_global_consts import get_request_time_
 from ais_bench.benchmark.tasks.utils import STATUS_REPORT_INTERVAL, MESSAGE_INFO
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import BaseInferencer
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import ImplementationErrorException
+from ais_bench.benchmark.utils.logging.exceptions import AisBenchImplementationError, ParameterValueError
 from ais_bench.benchmark.utils.logging.logger import AISLogger
 
 MESSAGE_TYPE_NUM = 4  # post_req, get_req, failed_req, finish_req
@@ -112,7 +112,7 @@ class BaseApiInferencer(BaseInferencer):
         Raises:
             NotImplementedError: If not implemented in subclass
         """
-        raise ImplementationErrorException(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AisBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
                                    f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     async def warmup(self, data_list: list, warmup_times: int = 1):
@@ -299,7 +299,10 @@ class BaseApiInferencer(BaseInferencer):
             if semaphore is None:
                 await self.do_request(data, token_bucket, session)
                 if self.pressure_mode:
-                    raise RuntimeError("Concurrency not set in pressure mode!!!")
+                    raise ParameterValueError(
+                        ICLI_CODES.CONCURRENCY_NOT_SET_IN_PRESSEURE_MODE, 
+                        f"Concurrency not set in pressure mode, please set concurrency in model config",
+                    )
             async with semaphore:
                 await self.do_request(data, token_bucket, session)
                 # Pressure mode: continuously send requests until pressure_time
