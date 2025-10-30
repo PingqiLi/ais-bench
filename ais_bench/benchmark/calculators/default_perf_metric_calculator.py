@@ -3,6 +3,8 @@ from ais_bench.benchmark.calculators.base_perf_metric_calculator import (
 )
 from ais_bench.benchmark.registry import PERF_METRIC_CALCULATORS
 from ais_bench.benchmark.calculators.base_perf_metric_calculator import DEFAULT_STATS
+from ais_bench.benchmark.utils.logging.error_codes import CALC_CODES
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchDataContentError
 
 
 @PERF_METRIC_CALCULATORS.register_module()
@@ -30,10 +32,10 @@ class DefaultPerfMetricCalculator(BasePerfMetricCalculator):
             ValueError: If all requests failed
         """
         if sum(perf_details["success"]) == 0:
-            self.logger.error(
-                "All requests failed, cannot calculate performance results. Please check the error logs from responses!"
+            raise AISBenchDataContentError(
+                CALC_CODES.ALL_REQUEST_DATAS_INVALID,
+                "All requests failed, cannot calculate performance results. Please check the error logs from responses!",
             )
-            raise ValueError("All requests failed!")
         self.stage_dict = {"total": self._get_requests_id(perf_details)}
         self.result = {}
         self.max_concurrency = max_concurrency

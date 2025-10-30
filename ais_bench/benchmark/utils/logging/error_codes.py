@@ -99,6 +99,10 @@ class PARTI_CODES:
 
 class SUMM_CODES:
     UNKNOWN_ERROR = BaseErrorCode("SUMM-UNK-001", ErrorModule.SUMMARY, ErrorType.UNKNOWN, 1, "unknown error of summary")
+    NOT_SUPPORTED_DATASET_TYPES = BaseErrorCode("SUMM-TYPE-001", ErrorModule.SUMMARY, ErrorType.TYPE, 1, "not support mixed dataset_abbr type")
+    NO_PERF_DATA_FILE = BaseErrorCode("SUMM-FILE-001", ErrorModule.SUMMARY, ErrorType.FILE, 1, "can't find detail perf data file")
+    DIFF_STRUCTURE_OF_PERF_DATA = BaseErrorCode("SUMM-MTRC-001", ErrorModule.SUMMARY, ErrorType.METRIC, 1, "different structure of perf data")
+
 
 class RUNNER_CODES:
     UNKNOWN_ERROR = BaseErrorCode("RUNNER-UNK-001", ErrorModule.RUNNER, ErrorType.UNKNOWN, 1, "unknown error of runner")
@@ -143,6 +147,13 @@ class UTILS_CODES:
     UNKNOWN_ERROR = BaseErrorCode("UTILS-UNK-001", ErrorModule.UTILS, ErrorType.UNKNOWN, 1, "unknown error of utils")
     MATCH_CONFIG_FILE_FAILED = BaseErrorCode("UTILS-MATCH-001", ErrorModule.UTILS, ErrorType.MATCH, 1, "match config file failed")
     SYNTHETIC_DS_MISS_REQUIRED_PARAM = BaseErrorCode("UTILS-CFG-001", ErrorModule.UTILS, ErrorType.CONFIG, 1, "synthetic dataset miss required param")
+
+class CALC_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("CALC-UNK-001", ErrorModule.CALCULATOR, ErrorType.UNKNOWN, 1, "unknown error of calculator")
+    INVALID_METRIC_DATA = BaseErrorCode("CALC-MTRC-001", ErrorModule.CALCULATOR, ErrorType.METRIC, 1, "invalid content of metric data")
+    DUMPING_RESULT_FAILED = BaseErrorCode("CALC-FILE-001", ErrorModule.CALCULATOR, ErrorType.FILE, 1, "fail to dump result to file")
+    ALL_REQUEST_DATAS_INVALID = BaseErrorCode("CALC-DATA-001", ErrorModule.CALCULATOR, ErrorType.DATA, 1, "all request datas are invalid")
+    CAN_NOT_FIND_STABLE_STAGE = BaseErrorCode("CALC-DATA-002", ErrorModule.CALCULATOR, ErrorType.DATA, 2, "invalid response datas")
 
 
 ERROR_CODES_CLASSES = [
