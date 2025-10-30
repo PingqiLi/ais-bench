@@ -5,10 +5,9 @@ from typing import List, Optional, Dict
 from tqdm import trange
 
 from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
-from ais_bench.benchmark.openicl.utils.logging import get_logger
 from ais_bench.benchmark.registry import ICL_RETRIEVERS
-
-logger = get_logger(__name__)
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ValueTypeError
 
 
 @ICL_RETRIEVERS.register_module()
@@ -31,22 +30,38 @@ class FixKRetriever(BaseRetriever):
             when origin `PromptTemplate` is provided. Defaults to 1.
     """
 
-    def __init__(self,
-                 dataset,
-                 fix_id_list: List[int],
-                 ice_template: Optional[Dict] = None,
-                 prompt_template: Optional[Dict] = None,
-                 ice_separator: Optional[str] = '\n',
-                 ice_eos_token: Optional[str] = '\n',
-                 ice_num: Optional[int] = 1) -> None:
-        super().__init__(dataset, ice_template, prompt_template, ice_separator, ice_eos_token, ice_num)
+    def __init__(
+        self,
+        dataset,
+        fix_id_list: List[int],
+        ice_template: Optional[Dict] = None,
+        prompt_template: Optional[Dict] = None,
+        ice_separator: Optional[str] = "\n",
+        ice_eos_token: Optional[str] = "\n",
+        ice_num: Optional[int] = 1,
+    ) -> None:
+        super().__init__(
+            dataset,
+            ice_template,
+            prompt_template,
+            ice_separator,
+            ice_eos_token,
+            ice_num,
+        )
         self.fix_id_list = fix_id_list
+        self.logger.info(
+            f"Fix-K Retriever initialized with {len(self.fix_id_list)} in-context example indices for each test example"
+        )
 
     def retrieve(self):
         """Retrieve the in-context example index for each test example."""
         num_idx = len(self.index_ds)
         for idx in self.fix_id_list:
-            assert idx < num_idx, f'Index {idx} is out of range of {num_idx}'
+            if idx >= num_idx:
+                raise ValueTypeError(
+                    ICLI_CODES.FIX_K_RETRIEVER_INDEX_OUT_OF_RANGE,
+                    f"Fix-K retriever index {idx} is out of range of {num_idx}",
+                )
         rtr_idx_list = []
         for _ in trange(len(self.test_ds), disable=not self.is_main_process):
             rtr_idx_list.append(self.fix_id_list)

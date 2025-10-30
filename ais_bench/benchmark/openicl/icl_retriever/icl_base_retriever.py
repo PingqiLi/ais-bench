@@ -4,13 +4,15 @@ from abc import abstractmethod
 from typing import Dict, List, Optional
 
 from mmengine.dist import is_main_process
-from mmengine.config import Config
 
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
-from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.utils.prompt import PromptList
-from ais_bench.benchmark.utils.config.build import build_dataset_from_cfg
-from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import (
+    ValueTypeError,
+    ImplementationErrorException,
+)
 
 
 class BaseRetriever:
@@ -45,17 +47,18 @@ class BaseRetriever:
         ice_eos_token: Optional[str] = "\n",
         ice_num: Optional[int] = 1,
     ) -> None:
+        self.logger = AISLogger()
         self.dataset = dataset
         self.ice_template = (
-            None 
-            if ice_template is None 
-            else ICL_PROMPT_TEMPLATES.build(ice_template)
+            None if ice_template is None else ICL_PROMPT_TEMPLATES.build(ice_template)
         )
+        self.logger.debug(f"Ice template: {self.ice_template}")
         self.prompt_template = (
             None
             if prompt_template is None
             else ICL_PROMPT_TEMPLATES.build(prompt_template)
         )
+        self.logger.debug(f"Prompt template: {self.prompt_template}")
         self.ice_separator = ice_separator
         self.ice_eos_token = ice_eos_token
         self.ice_num = ice_num
@@ -67,6 +70,10 @@ class BaseRetriever:
     @abstractmethod
     def retrieve(self) -> List[List[int]]:
         """Retrieve the in-context example index for each test example."""
+        raise ImplementationErrorException(
+            ICLI_CODES.IMPLEMENTATION_ERROR,
+            f"{self.__class__.__name__} hasn't been implemented yet",
+        )
 
     def get_gold_ans(self):
         if self.dataset_reader.output_column:
@@ -113,9 +120,11 @@ class BaseRetriever:
                 test example.
         """
         if self.ice_template is None:
-            assert (
-                len(idx_list) == 0
-            ), "You have not specified ice_template while retrieving examples from train set! Please either specify ice_template or use `ZeroRetriever`."  # noqa
+            raise ValueTypeError(
+                ICLI_CODES.TEMPLATE_ICE_TOKEN_NOT_IN_TEMPLATE,
+                f"You have not specified ice_template while retrieving examples \
+                                 from train set! Please either specify ice_template or use `ZeroRetriever`.",
+            )
 
         if self.ice_template is not None and self.ice_template.prompt_type == "meta":
             ice_separator, ice_eos_token = "", ""
@@ -166,8 +175,9 @@ class BaseRetriever:
                     self.test_ds[idx], ice, label, remain_sep
                 )
             else:
-                raise NotImplementedError(
-                    "ice_token of prompt_template is not provided"
+                raise ImplementationErrorException(
+                    ICLI_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
+                    f"ice_token of prompt_template is not provided",
                 )
         elif self.ice_template is not None and self.prompt_template is None:
             if self.ice_template.ice_token is not None:
@@ -175,13 +185,19 @@ class BaseRetriever:
                     self.test_ds[idx], ice, label, remain_sep
                 )
             else:
-                raise NotImplementedError("ice_token of ice_template is not provided")
+                raise ImplementationErrorException(
+                    ICLI_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
+                    f"ice_token of ice_template is not provided",
+                )
         elif self.ice_template is None and self.prompt_template is not None:
             return self.prompt_template.generate_label_prompt_item(
                 self.test_ds[idx], ice, label, remain_sep
             )
         else:
-            raise NotImplementedError("Leaving prompt as empty is not supported")
+            raise ImplementationErrorException(
+                ICLI_CODES.IMPLEMENTATION_ERROR_PROMPT_TEMPLATE_NOT_PROVIDED,
+                f"Leaving prompt as empty is not supported",
+            )
 
     def generate_prompt_for_generate_task(
         self,
@@ -210,9 +226,11 @@ class BaseRetriever:
                     ice_field_replace_token=ice,
                 )
             else:
-                raise NotImplementedError(
-                    "ice_token of prompt_template is not provided"
+                raise ImplementationErrorException(
+                    ICLI_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
+                    f"ice_token of prompt_template is not provided",
                 )
+
         elif self.ice_template is not None and self.prompt_template is None:
             if self.ice_template.ice_token is not None:
                 return self.ice_template.generate_item(
@@ -222,7 +240,10 @@ class BaseRetriever:
                     ice_field_replace_token=ice,
                 )
             else:
-                raise NotImplementedError("ice_token of ice_template is not provided")
+                raise ImplementationErrorException(
+                    ICLI_CODES.IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED,
+                    f"ice_token of ice_template is not provided",
+                )
         elif self.ice_template is None and self.prompt_template is not None:
             return self.prompt_template.generate_item(
                 self.test_ds[idx],
@@ -231,4 +252,7 @@ class BaseRetriever:
                 ice_field_replace_token=ice,
             )
         else:
-            raise NotImplementedError("Leaving prompt as empty is not supported")
+            raise ImplementationErrorException(
+                ICLI_CODES.IMPLEMENTATION_ERROR_PROMPT_TEMPLATE_NOT_PROVIDED,
+                f"Leaving prompt as empty is not supported",
+            )
