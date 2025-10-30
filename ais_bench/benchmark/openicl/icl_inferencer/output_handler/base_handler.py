@@ -2,13 +2,12 @@ import json
 import os
 import queue
 import shutil
-import traceback
 import uuid
 import time
 from abc import abstractmethod
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import sqlite3
 import numpy as np
@@ -19,7 +18,7 @@ from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.results import safe_write
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import init_db, save_numpy_to_db
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AisBenchImplementationError, ParameterValueError, FileOperationError
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError, FileOperationError, AISRuntimeError
 
 DB_REF_KEY = "__db_ref__"
 DB_DATA_DIR = "db_data"
@@ -70,10 +69,10 @@ class BaseInferencerOutputHandler:
             gold (Optional[str]): Ground truth data for comparison
 
         Raises:
-            AisBenchImplementationError: If not implemented by subclass
+            AISBenchImplementationError: If not implemented by subclass
         """
 
-        raise AisBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def write_to_json(self, save_dir: str, perf_mode: bool) -> None:
@@ -149,10 +148,10 @@ class BaseInferencerOutputHandler:
         """
         try:
             item = (id, data_abbr, input, output, gold)
-            await self.cache_queue.async_q.put_nowait(item)
+            self.cache_queue.async_q.put_nowait(item)
             return True
         except Exception as e:
-            self.logger.error(f"Failed to report cache info: {str(e)}")
+            self.logger.debug(f"Failed to report cache info to async_q: {str(e)}")
             return False
 
     def report_cache_info_sync(
@@ -188,7 +187,7 @@ class BaseInferencerOutputHandler:
             self.cache_queue.sync_q.put_nowait(item)
             return True
         except Exception as e:
-            self.logger.error(f"Failed to report cache info: {str(e)}")
+            self.logger.debug(f"Failed to report cache info to sync_q: {str(e)}")
             return False
 
     def _extract_and_write_arrays(
@@ -224,7 +223,7 @@ class BaseInferencerOutputHandler:
             try:
                 id = save_numpy_to_db(conn, arr, self.save_every)
             except Exception as e:
-                self.logger.error(f"Failed to save numpy array to database: {str(e)}")
+                self.logger.warning(f"Failed to save numpy array to database: {str(e)}, will not save this array to database")
                 return None
 
             # Return serializable placeholder
@@ -251,7 +250,7 @@ class BaseInferencerOutputHandler:
                 str_obj = str(obj)
                 return str_obj
             except Exception as str_error:
-                self.logger.error(
+                self.logger.warning(
                     f"Failed to convert object to string: {str(str_error)}"
                 )
                 return None
@@ -336,7 +335,7 @@ class BaseInferencerOutputHandler:
 
                     except Exception as e:
                         # Continue processing other items
-                        self.logger.error(f"Failed to process item {item}: {str(e)}")
+                        self.logger.debug(f"Failed to process item {item}: {str(e)}")
                         continue
 
                 # Write remaining cache data
@@ -384,6 +383,9 @@ class BaseInferencerOutputHandler:
         This method signals the cache consumer to stop processing by
         adding a None item to the queue, which serves as a stop signal.
         """
-        self.cache_queue.sync_q.put(None)
+        try:
+            self.cache_queue.sync_q.put(None)
+        except Exception as e:
+            raise AISRuntimeError(ICLI_CODES.UNKNOWN_ERROR, f"Failed to send stop signal to cache consumer: {str(e)}")
         self.logger.debug("Stop signal sent to cache consumer")
 

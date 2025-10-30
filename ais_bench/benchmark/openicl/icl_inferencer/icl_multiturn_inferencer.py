@@ -235,7 +235,7 @@ class MultiTurnGenInferencer(BaseApiInferencer, BaseLocalInferencer):
         # Dataset-specified max_out_len has highest priority
         max_out_lens = retriever.dataset_reader.get_max_out_len()
         if max_out_lens is not None:
-            self.logger.info(f"Dataset-specified max_out_len has highest priority, use dataset-specified max_out_len")
+            self.logger.warning(f"Dataset-specified max_out_len has highest priority, use dataset-specified max_out_len")
             for index, max_out_len in enumerate(max_out_lens):
                 data_list[index]["max_out_len"] = (
                     max_out_len if max_out_len else self.model.max_out_len

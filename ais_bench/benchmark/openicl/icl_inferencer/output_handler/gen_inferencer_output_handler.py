@@ -5,7 +5,7 @@ import sqlite3
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.base_handler import BaseInferencerOutputHandler
 from ais_bench.benchmark.models.output import Output
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AisBenchImplementationError
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError
 
 class GenInferencerOutputHandler(BaseInferencerOutputHandler):
     """
@@ -37,7 +37,7 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
         """
         Load temporary results from file.
 
-        This method is currently not implemented and raises AisBenchImplementationError.
+        This method is currently not implemented and raises AISBenchImplementationError.
         Future implementation should handle loading of temporary result files.
 
         Args:
@@ -45,9 +45,9 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
             file_format (str): Format of the file (default: "jsonl")
 
         Raises:
-            AisBenchImplementationError: If not implemented by subclass
+            AISBenchImplementationError: If not implemented by subclass
         """
-        raise AisBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def get_result(

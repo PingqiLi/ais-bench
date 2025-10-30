@@ -1,7 +1,7 @@
 """Simple Dataset Reader."""
 
 import random
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from datasets import Dataset, DatasetDict
 
@@ -90,7 +90,7 @@ class DatasetReader:
         for origin_split, mapped_split, split_range in [[
                 train_split, 'train', train_range
         ], [test_split, 'test', test_range]]:
-            logger.debug("Loading %s split with range %s", mapped_split, split_range)
+            logger.debug(f"Loading {mapped_split} split with range {split_range}")
             self.dataset[mapped_split] = load_partial_dataset(
                 self.dataset[origin_split], size=split_range)
 
@@ -130,19 +130,20 @@ def load_partial_dataset(
     index_list = list(range(total_size))
     if isinstance(size, (int, float)):
         if size >= total_size or size <= 0:
-            logger.debug("Size is out of range, loaded entire dataset")
+            logger.debug(f"Size is out of range, loaded entire dataset")
             return dataset
         if size > 0 and size < 1:
             size = int(size * total_size)
         rand = random.Random(x=size)
         rand.shuffle(index_list)
         dataset = dataset.select(index_list[:size])
-        logger.debug("Loaded %d random examples from dataset", size)
+        logger.debug(f"Loaded {size} random examples from dataset")
     elif isinstance(size, str):
         try:
             dataset = dataset.select(eval(f'index_list{size}'))
         except Exception as e:
-            logger.warning("Cannot parse size string: %s, use entire dataset instead", size)
+            logger.warning(f"Cannot parse size string: {size}, use entire dataset instead")
     else:
-        logger.warning("Invalid size type: %s, use entire dataset instead", type(size))
+        if size is not None:
+            logger.warning(f"Invalid size type: {type(size)}, use entire dataset instead")
     return dataset

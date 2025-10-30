@@ -8,8 +8,8 @@ from ais_bench.benchmark.utils.core.types import check_type_list
 from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.logging.error_codes import ICLR_CODES
 from ais_bench.benchmark.utils.logging.exceptions import (
-    AisBenchValueError,
-    AisBenchImplementationError,
+    AISBenchValueError,
+    AISBenchImplementationError,
 )
 
 PromptType = Union[PromptList, str, dict]
@@ -44,7 +44,7 @@ class BasePromptTemplate:
         self.logger = AISLogger()
         self.template = template
         if not isinstance(self.template, (str, Dict)):
-            raise AisBenchValueError(
+            raise AISBenchValueError(
                 ICLR_CODES.TEMPLATE_TYPE_ERROR,
                 f"Prompt template must be a str or a dict, but got {type(self.template)}",
             )
@@ -66,7 +66,7 @@ class BasePromptTemplate:
             # Check if token exists in values of tp_dict
             for tp_dict_val in self.template.values():
                 if not isinstance(tp_dict_val, (str, list, dict)):
-                    raise AisBenchValueError(
+                    raise AISBenchValueError(
                         ICLR_CODES.TEMPLATE_VALUE_TYPE_ERROR,
                         f"dictionary of template expects a str, list or a dict, but got {type(tp_dict_val)}, value: {tp_dict_val}",
                     )
@@ -75,14 +75,14 @@ class BasePromptTemplate:
                     and self.ice_token
                     and self.ice_token not in tp_dict_val
                 ):
-                    raise AisBenchValueError(
+                    raise AISBenchValueError(
                         ICLR_CODES.TEMPLATE_ICE_TOKEN_NOT_IN_VALUE,
                         f"'{self.ice_token}' not in '{tp_dict_val}'",
                     )
 
         if isinstance(self.template, str):
             if self.ice_token and self.ice_token not in self.template:
-                raise AisBenchValueError(
+                raise AISBenchValueError(
                     ICLR_CODES.TEMPLATE_ICE_TOKEN_NOT_IN_VALUE,
                     f"'{self.ice_token}' not in '{self.template}'",
                 )
@@ -98,7 +98,7 @@ class BasePromptTemplate:
         Returns:
             PromptType: The generated in-context example.
         """
-        raise AisBenchImplementationError(
+        raise AISBenchImplementationError(
             ICLR_CODES.IMPLEMENTATION_ERROR,
             f"{self.__class__.__name__} does not supported to be called in base classes",
         )
@@ -110,7 +110,7 @@ class BasePromptTemplate:
         label: Hashable,
         remain_sep: Optional[bool] = False,
     ) -> str:
-        raise AisBenchImplementationError(
+        raise AISBenchImplementationError(
             ICLR_CODES.IMPLEMENTATION_ERROR,
             f"{self.__class__.__name__} does not supported to be called in base classes",
         )
@@ -122,7 +122,7 @@ class BasePromptTemplate:
         output_field_replace_token: Optional[str] = "",
         ice_field_replace_token: Optional[str] = "",
     ) -> PromptType:
-        raise AisBenchImplementationError(
+        raise AISBenchImplementationError(
             ICLR_CODES.IMPLEMENTATION_ERROR,
             f"{self.__class__.__name__} does not supported to be called in base classes",
         )
@@ -131,7 +131,7 @@ class BasePromptTemplate:
         if isinstance(obj, BasePromptTemplate):
             return obj
         else:
-            raise AisBenchValueError(
+            raise AISBenchValueError(
                 ICLR_CODES.TEMPLATE_TYPE_ERROR,
                 f"Expect a BasePromptTemplate object, but got {type(obj)}",
             )

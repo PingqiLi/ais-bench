@@ -19,7 +19,7 @@ from ais_bench.benchmark.utils.core.valid_global_consts import get_request_time_
 from ais_bench.benchmark.tasks.utils import STATUS_REPORT_INTERVAL, MESSAGE_INFO
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import BaseInferencer
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AisBenchImplementationError, ParameterValueError
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError
 from ais_bench.benchmark.utils.logging.logger import AISLogger
 
 MESSAGE_TYPE_NUM = 4  # post_req, get_req, failed_req, finish_req
@@ -92,7 +92,7 @@ class BaseApiInferencer(BaseInferencer):
             packed = struct.pack("<4I", post_req, get_req, failed_req, finish_req)
             message_buf[4 : 4 + len(packed)] = packed
         except Exception as e:
-            self.logger.error(f"Failed to update status counter: {str(e)}")
+            self.logger.debug(f"Failed to update status counter: {str(e)}")
             pass
 
     @abstractmethod
@@ -112,7 +112,7 @@ class BaseApiInferencer(BaseInferencer):
         Raises:
             NotImplementedError: If not implemented in subclass
         """
-        raise AisBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
                                    f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     async def warmup(self, data_list: list, warmup_times: int = 1):
@@ -222,33 +222,25 @@ class BaseApiInferencer(BaseInferencer):
             janus_queue: Janus queue for thread-async communication
             stop_event: Event to signal termination
         """
-        try:
-            # Continuous fill until stop_event or sentinel
-            while not stop_event.is_set():
-                data = self._get_single_data(
-                    dataset_share_memory, indexes, message_share_memory
-                )
-                while True:
-                    try:
-                        janus_queue.sync_q.put(data, timeout=1)
-                    except (
-                        TimeoutError,
-                        janus.SyncQueueFull,
-                    ):  # janus queue is full, wait for a while
-                        if stop_event.is_set():
-                            break
-                        continue
-                    break
-                if data is None:
-                    self.logger.debug(f"Producer thread get sentinel, inference data producer exit")
-                    break
-        except Exception:
-            # If producer errors, try to put sentinel so consumers can exit
-            try:
-                janus_queue.sync_q.put(None)
-            except Exception as e:
-                self.logger.error(f"Failed to put sentinel to janus queue: {str(e)}, task can't exit")
-                pass
+        # Continuous fill until stop_event or sentinel
+        while not stop_event.is_set():
+            data = self._get_single_data(
+                dataset_share_memory, indexes, message_share_memory
+            )
+            while True:
+                try:
+                    janus_queue.sync_q.put(data, timeout=1)
+                except (
+                    TimeoutError,
+                    janus.SyncQueueFull,
+                ):  # janus queue is full, wait for a while
+                    if stop_event.is_set():
+                        break
+                    continue
+                break
+            if data is None:
+                self.logger.debug(f"Producer thread get sentinel, inference data producer exit")
+                break
 
     def _sync_main_process_with_message(
         self, message_share_memory: shared_memory.SharedMemory, info: int
@@ -301,7 +293,7 @@ class BaseApiInferencer(BaseInferencer):
                 if self.pressure_mode:
                     raise ParameterValueError(
                         ICLI_CODES.CONCURRENCY_NOT_SET_IN_PRESSEURE_MODE, 
-                        f"Concurrency not set in pressure mode, please set concurrency in model config",
+                        f"Concurrency not set in pressure mode, please set `batch_size` in model config",
                     )
             async with semaphore:
                 await self.do_request(data, token_bucket, session)

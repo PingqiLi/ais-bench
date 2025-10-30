@@ -11,7 +11,7 @@ from scipy.stats import hypergeom
 from ais_bench.benchmark.registry import TEXT_POSTPROCESSORS
 from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.logging.error_codes import ICLE_CODES
-from ais_bench.benchmark.utils.logging.exceptions import PredictionInvalidException, AisBenchImplementationError
+from ais_bench.benchmark.utils.logging.exceptions import PredictionInvalidException, AISBenchImplementationError
 
 
 def compute_pass_at_k(n: int, c: int, k: int) -> float:
@@ -372,7 +372,7 @@ class BaseEvaluator:
     
 
     def score(self):
-        raise AisBenchImplementationError(ICLE_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLE_CODES.IMPLEMENTATION_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     @staticmethod

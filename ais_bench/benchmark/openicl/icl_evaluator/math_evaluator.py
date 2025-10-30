@@ -1,6 +1,6 @@
 from ais_bench.benchmark.openicl.icl_evaluator import BaseEvaluator
 from ais_bench.benchmark.registry import ICL_EVALUATORS
-from ais_bench.benchmark.utils.logging.exceptions import AisBenchImportError
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImportError
 from ais_bench.benchmark.utils.logging.error_codes import UTILS_CODES
 
 
@@ -13,8 +13,8 @@ class MATHEvaluator(BaseEvaluator):
             from math_verify import (ExprExtractionConfig,
                                      LatexExtractionConfig, parse, verify)
         except ImportError:
-            raise AisBenchImportError(
-                UTILS_CODES.THIRD_PARTY_MODULE_IMPORT_ERROR, 
+            raise AISBenchImportError(
+                UTILS_CODES.DEPENDENCY_MODULE_IMPORT_ERROR, 
                 f"Failed to import required modules. Please install the necessary packages: pip install math_verify latex2sympy2_extended",
             )
 
@@ -85,8 +85,8 @@ if __name__ == '__main__':
     try:
         from math_verify import parse
     except ImportError:
-        raise AisBenchImportError(
-            UTILS_CODES.THIRD_PARTY_MODULE_IMPORT_ERROR, 
+        raise AISBenchImportError(
+            UTILS_CODES.DEPENDENCY_MODULE_IMPORT_ERROR, 
             f"Failed to import required modules. Please install the necessary packages: pip install math_verify",
         )
     test_cases = [

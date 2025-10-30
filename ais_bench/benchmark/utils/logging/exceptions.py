@@ -42,6 +42,10 @@ class AISBenchImplementationError(AISBenchBaseException):
     pass
 
 
+class AISRuntimeError(AISBenchBaseException):
+    pass
+
+
 class FileMatchError(AISBenchBaseException):
     pass
 

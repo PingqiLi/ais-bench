@@ -7,7 +7,7 @@ from tqdm import trange
 from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
 from ais_bench.benchmark.registry import ICL_RETRIEVERS
 from ais_bench.benchmark.utils.logging.error_codes import ICLR_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AisBenchValueError
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchValueError
 
 
 @ICL_RETRIEVERS.register_module()
@@ -58,7 +58,7 @@ class FixKRetriever(BaseRetriever):
         num_idx = len(self.index_ds)
         for idx in self.fix_id_list:
             if idx >= num_idx:
-                raise AisBenchValueError(
+                raise AISBenchValueError(
                     ICLR_CODES.FIX_K_RETRIEVER_INDEX_OUT_OF_RANGE,
                     f"Fix-K retriever index {idx} is out of range of {num_idx}",
                 )

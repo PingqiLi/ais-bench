@@ -16,7 +16,7 @@ from ais_bench.benchmark.utils.config import build_model_from_cfg
 from ais_bench.benchmark.utils.core.abbr import model_abbr_from_cfg
 from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AisBenchImplementationError, ParameterValueError
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError
 
 
 MAX_BATCH_SIZE = 100000
@@ -71,7 +71,7 @@ class BaseInferencer:
     ) -> List:
         """Get the data list for inference."""
 
-        raise AisBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def set_task_state_manager(self, task_state_manager):

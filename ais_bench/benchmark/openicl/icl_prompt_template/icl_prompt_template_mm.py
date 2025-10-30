@@ -8,7 +8,7 @@ from ais_bench.benchmark.openicl.icl_prompt_template.icl_prompt_template_base im
     PromptType,
 )
 from ais_bench.benchmark.utils.logging.error_codes import ICLR_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AisBenchValueError
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchValueError
 
 
 @ICL_PROMPT_TEMPLATES.register_module()
@@ -47,7 +47,7 @@ class MMPromptTemplate(BasePromptTemplate):
         res = []
         for key in item.keys():
             if key not in ["text", "image_url", "video_url", "audio_url"]:
-                raise AisBenchValueError(
+                raise AISBenchValueError(
                     ICLR_CODES.MULTIMODAL_TEMPLATE_TYPE_ERROR,
                     f"The keys in prompt_mm must be one of: text, image_url, video_url or audio_url, but got {key}"
                 )
@@ -80,7 +80,7 @@ class MMPromptTemplate(BasePromptTemplate):
             PromptType: The generated item.
         """
         if not self.check_mm_template():
-            self.logger.error(f'Expected to get template with round and prompt_mm, but got {self.template}')
+            self.logger.warning(f'Expected to get template with round and prompt_mm, but got {self.template}')
         template = self._encode_template(self.template, ice=False)
         template = template.format(**entry)
         for i, item in enumerate(template):
