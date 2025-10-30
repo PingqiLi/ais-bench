@@ -33,23 +33,6 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
         self.all_success = True
         self.perf_mode = perf_mode
 
-    def load_tmp_result(self, tmp_path: str, file_format: str = "jsonl") -> None:
-        """
-        Load temporary results from file.
-
-        This method is currently not implemented and raises AISBenchImplementationError.
-        Future implementation should handle loading of temporary result files.
-
-        Args:
-            tmp_path (str): Path to the temporary result file
-            file_format (str): Format of the file (default: "jsonl")
-
-        Raises:
-            AISBenchImplementationError: If not implemented by subclass
-        """
-        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
-                                           f"Method {self.__class__.__name__} hasn't been implemented yet")
-
     def get_result(
         self,
         conn: sqlite3.Connection,

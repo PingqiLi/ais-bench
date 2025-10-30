@@ -99,7 +99,7 @@ class BasePromptTemplate:
             PromptType: The generated in-context example.
         """
         raise AISBenchImplementationError(
-            ICLR_CODES.IMPLEMENTATION_ERROR,
+            ICLR_CODES.UNKNOWN_ERROR,
             f"{self.__class__.__name__} does not supported to be called in base classes",
         )
 
@@ -111,7 +111,7 @@ class BasePromptTemplate:
         remain_sep: Optional[bool] = False,
     ) -> str:
         raise AISBenchImplementationError(
-            ICLR_CODES.IMPLEMENTATION_ERROR,
+            ICLR_CODES.UNKNOWN_ERROR,
             f"{self.__class__.__name__} does not supported to be called in base classes",
         )
 
@@ -123,7 +123,7 @@ class BasePromptTemplate:
         ice_field_replace_token: Optional[str] = "",
     ) -> PromptType:
         raise AISBenchImplementationError(
-            ICLR_CODES.IMPLEMENTATION_ERROR,
+            ICLR_CODES.UNKNOWN_ERROR,
             f"{self.__class__.__name__} does not supported to be called in base classes",
         )
 

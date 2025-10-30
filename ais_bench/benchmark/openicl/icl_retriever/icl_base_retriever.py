@@ -71,7 +71,7 @@ class BaseRetriever:
     def retrieve(self) -> List[List[int]]:
         """Retrieve the in-context example index for each test example."""
         raise AISBenchImplementationError(
-            ICLR_CODES.IMPLEMENTATION_ERROR,
+            ICLR_CODES.UNKNOWN_ERROR,
             f"{self.__class__.__name__} hasn't been implemented yet",
         )
 

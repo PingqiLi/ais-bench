@@ -30,7 +30,7 @@ class BaseLocalInferencer(BaseInferencer):
     """
 
     def batch_inference(self, datum) -> List:
-        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR_BATCH_INFERENCE_METHOD_NOT_IMPLEMENTED, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def inference(

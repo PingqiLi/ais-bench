@@ -71,7 +71,7 @@ class BaseInferencer:
     ) -> List:
         """Get the data list for inference."""
 
-        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLI_CODES.UNKNOWN_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def set_task_state_manager(self, task_state_manager):

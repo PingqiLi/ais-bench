@@ -112,7 +112,7 @@ class BaseApiInferencer(BaseInferencer):
         Raises:
             NotImplementedError: If not implemented in subclass
         """
-        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR_DO_REQUEST_METHOD_NOT_IMPLEMENTED, 
                                    f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     async def warmup(self, data_list: list, warmup_times: int = 1):

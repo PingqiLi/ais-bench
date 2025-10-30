@@ -133,8 +133,11 @@ class ICLI_CODES:
     MULTITRUN_MODE_OUT_OF_RANGE = BaseErrorCode("ICLI-PARAM-002", ErrorModule.ICL_INFERENCER, ErrorType.PARAM, 2, "multiturn mode out of range")
     CONCURRENCY_NOT_SET_IN_PRESSEURE_MODE = BaseErrorCode("ICLI-PARAM-003", ErrorModule.ICL_INFERENCER, ErrorType.PARAM, 3, "concurrency not set in pressure mode")
     BATCH_SIZE_OUT_OF_RANGE = BaseErrorCode("ICLI-PARAM-004", ErrorModule.ICL_INFERENCER, ErrorType.PARAM, 4, "batch size out of range")
+    INVALID_OUTPUT_FILEPATH = BaseErrorCode("ICLI-PARAM-005", ErrorModule.ICL_INFERENCER, ErrorType.PARAM, 5, "invalid output jsonl filepath")
     
     IMPLEMENTATION_ERROR = BaseErrorCode("ICLI-IMPL-001", ErrorModule.ICL_INFERENCER, ErrorType.IMPLEMENTATION, 1, "not implemented error")
+    IMPLEMENTATION_ERROR_DO_REQUEST_METHOD_NOT_IMPLEMENTED = BaseErrorCode("ICLI-IMPL-002", ErrorModule.ICL_INFERENCER, ErrorType.IMPLEMENTATION, 2, "do request method for api inferencer not implemented")
+    IMPLEMENTATION_ERROR_BATCH_INFERENCE_METHOD_NOT_IMPLEMENTED = BaseErrorCode("ICLI-IMPL-003", ErrorModule.ICL_INFERENCER, ErrorType.IMPLEMENTATION, 3, "batch inference method for local inferencer not implemented")
     
     INFER_RESULT_WRITE_ERROR = BaseErrorCode("ICLI-FILE-001", ErrorModule.ICL_INFERENCER, ErrorType.FILE, 1, "failed to write results files")
     SQLITE_WRITE_ERROR = BaseErrorCode("ICLI-FILE-002", ErrorModule.ICL_INFERENCER, ErrorType.FILE, 2, "failed to write results to sqlite database")

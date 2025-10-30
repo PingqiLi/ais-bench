@@ -72,7 +72,7 @@ class BaseInferencerOutputHandler:
             AISBenchImplementationError: If not implemented by subclass
         """
 
-        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLI_CODES.UNKNOWN_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def write_to_json(self, save_dir: str, perf_mode: bool) -> None:
@@ -92,8 +92,8 @@ class BaseInferencerOutputHandler:
             ValueError: If save_dir is invalid
         """
         if not isinstance(save_dir, str) or not save_dir.strip():
-            raise ParameterValueError(ICLI_CODES.INVALID_PARAM_VALUE, 
-                                      f"'save_dir' must be a non-empty string representing a directory path")
+            raise ParameterValueError(ICLI_CODES.INVALID_OUTPUT_FILEPATH, 
+                                      f"'save_dir' must be a non-empty string representing a directory path, but got {save_dir}")
 
         file_path = Path(save_dir)
         try:

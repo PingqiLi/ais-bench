@@ -372,7 +372,7 @@ class BaseEvaluator:
     
 
     def score(self):
-        raise AISBenchImplementationError(ICLE_CODES.IMPLEMENTATION_ERROR, 
+        raise AISBenchImplementationError(ICLE_CODES.UNKNOWN_ERROR, 
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     @staticmethod
