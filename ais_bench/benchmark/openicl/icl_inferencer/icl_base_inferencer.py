@@ -92,39 +92,44 @@ class BaseInferencer:
             self.logger.debug(f"Output directory {output_dir} does not exist, return empty finish data dict")
             return {}
         tmp_dir = os.path.join(output_dir, "tmp")
+        abbr_finish_data_cache = defaultdict(dict) #
+        tmp_finish_data_cache = defaultdict(dict) #
         finish_data_cache = defaultdict(dict)
 
         for finish_data in os.listdir(output_dir):
-            if not  finish_data.endswith(".jsonl"):
+            if not finish_data.endswith(".jsonl"):
                 continue
             data_abbr = finish_data.split(".")[0]
+            
             with open(os.path.join(output_dir, finish_data), "r") as f:
                 for line in f:
                     data = json.loads(line)
                     if not data.get("success"):
                         continue
-                    finish_data_cache[data_abbr][data.get("id")] = data
-        load_data_abbrs = set(finish_data_cache.keys())
+                    abbr_finish_data_cache[data.get("uuid")] = data 
 
-        if os.path.exists(tmp_dir):
-            for file in os.listdir(tmp_dir):
-                if file.endswith(".jsonl"):
-                    with open(os.path.join(tmp_dir, file), "r") as f:
-                        for line in f:
-                            data = json.loads(line)
-                            if not data.get("success"):
-                                continue
-                            data_abbr = data.get("data_abbr")
-                            if data_abbr in load_data_abbrs: # only load data not save in data_abbr.jsonl
-                                continue
-                            finish_data_cache[data_abbr][data.get("id")] = data
-        for data_abbr, data_dict in finish_data_cache.items():
-            if data_abbr in load_data_abbrs:
+        if not os.path.exists(tmp_dir):
+            return finish_data_cache
+        for file in os.listdir(tmp_dir):
+            if not file.endswith(".jsonl"):
                 continue
-            self.logger.info(f"Find finsh data in tmp cache, create result file {data_abbr}.jsonl")
-            with open(os.path.join(output_dir, f"{data_abbr}.jsonl"), "w") as f:
-                for data in data_dict.values():
-                    f.write(json.dumps(data) + "\n")
+            with open(os.path.join(tmp_dir, file), "r") as f:
+                for line in f:
+                    data = json.loads(line)
+                    if not data.get("success"):
+                        continue
+                    tmp_finish_data_cache[data.get("uuid")] = data
+        to_write = defaultdict(dict)
+        for key, value in tmp_finish_data_cache.items():
+            data_abbr = value.get("data_abbr")
+            finish_data_cache.setdefault(data_abbr, []).append(value)
+            #abbr.json to write
+            if key not in abbr_finish_data_cache.keys():
+                to_write.setdefault(data_abbr, []).append(json.dumps(value) + "\n")
+        for data_abbr, lines in to_write.items():
+            with open(os.path.join(output_dir, f"{data_abbr}.jsonl"), "a") as f:
+                f.writelines(lines)
+
         return finish_data_cache
 
     def _is_main_process(self):

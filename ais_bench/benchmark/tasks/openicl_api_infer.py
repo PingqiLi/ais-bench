@@ -91,6 +91,7 @@ class OpenICLApiInferTask(BaseTask):
         # Control switch for async tasks within process
         self.stop_evt = Event()
         self.stop_evt.set()
+        self.repeat = self.model_cfg["generation_kwargs"].get("num_return_sequences", 1)
 
     def get_command(self, cfg_path, template):
         """Build the CLI command to execute this task.
@@ -126,7 +127,7 @@ class OpenICLApiInferTask(BaseTask):
         Returns:
             List: List of pickled dataset items
         """
-        data_list = []
+        data_list, global_indexes = [], []
         if not hasattr(self.inferencer, "get_data_list"):
             raise ValueError("Inferencer must implement get_data_list method")
         finish_cache_data = {}
@@ -135,7 +136,7 @@ class OpenICLApiInferTask(BaseTask):
         except Exception as e:
             self.logger.warning(f"Failed to get finish data list: {e}, infer cache data will be ignored")
             finish_cache_data = {}
-        finish_data_list = []
+        finish_index_nums, total_data_nums = 0, 0
         for dataset_cfg in self.dataset_cfgs:
             data_abbr = dataset_cfg["abbr"]
             cur_data_cache = finish_cache_data.get(data_abbr, {})
@@ -147,19 +148,33 @@ class OpenICLApiInferTask(BaseTask):
             retriever_cfg["ice_template"] = infer_cfg.get("ice_template", None)
             retriever = ICL_RETRIEVERS.build(retriever_cfg)
             infer_data_list = self.inferencer.get_data_list(retriever)
-            for data in infer_data_list:
-                data_id = data.get("index") 
-                if data_id in cur_data_cache:
-                    finish_data_list.append(cur_data_cache[data_id])
-                    continue
-                data_list.append(data)
-        if len(finish_data_list) > 0:
-            self.logger.info(f"Found {len(finish_data_list)} completed data in cache, "
+            # get all data_list and data_indexes to infer
+            cur_data_indexes = [x for x in range(len(infer_data_list)) for _ in range(self.repeat)]  # [0,0,0,1,1,1,2,2,2]
+            cur_finish_indexes = [x["id"] for x in cur_data_cache]  # [0,0,0,1]
+            for i in cur_finish_indexes:
+                cur_data_indexes.remove(i)
+            finish_index_nums += len(cur_finish_indexes)
+            data_list += infer_data_list
+            global_indexes += [x + total_data_nums for x in cur_data_indexes] # [1,1,2,2,2]
+            total_data_nums += len(infer_data_list)
+
+        if finish_index_nums > 0:
+            self.logger.info(f"Found {finish_index_nums} completed data in cache, "
                              "run infer task from the last interrupted position")
+
         if isinstance(self.num_prompts, int) and len(data_list) > self.num_prompts:
             self.logger.info(f"Keep {self.num_prompts} prompts from {len(data_list)} data")
             data_list = data_list[:self.num_prompts]
-        return data_list, finish_data_list
+            global_indexes = [x for x in global_indexes if x < len(data_list)]
+        
+        # remove finished data in data_list and change indexes accordingly  
+        # data_list: [a b c d e] global_indexes: [1 1 3] ---> [b d] [0 0 1]
+        picked_data_list = [data_list[i] for i in global_indexes]  # [b b d]
+        data_list = [data_list[i] for i in set(global_indexes)]  # [b d]
+        pos_map = {v['data_abbr'] + '-' + str(v['index']): k for k, v in enumerate(data_list)}      # {b:0, d:1}
+        global_indexes = [pos_map[v['data_abbr'] + '-' + str(v['index'])] for v in picked_data_list] # [0 0 1]
+
+        return data_list, finish_index_nums, global_indexes
 
     def _dump_dataset_to_share_memory(self, data_list: List):
         """Dump the serialized dataset into a shared memory block.
@@ -316,8 +331,7 @@ class OpenICLApiInferTask(BaseTask):
         debug = self.cli_args.get("debug", False)
         self.inferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
 
-        data_list, finish_data_list = self._get_data_list()
-        finish_data_count = len(finish_data_list)
+        data_list, finish_data_count, global_indexes = self._get_data_list()
         if len(data_list) == 0:
             self.logger.info(f"No data to infer, task finished")
             return
@@ -348,7 +362,7 @@ class OpenICLApiInferTask(BaseTask):
         )
         # Message queue collecting per-process request state; polled periodically
         message_shms = {}
-
+        
         try:
             processes = []
             if debug:
@@ -358,7 +372,7 @@ class OpenICLApiInferTask(BaseTask):
                 pb = ProgressBar(
                     message_shms,
                     self.stop_evt,
-                    dataset_size,
+                    len(global_indexes),
                     finish_data_count,
                     debug,
                     self.pressure,
@@ -377,6 +391,7 @@ class OpenICLApiInferTask(BaseTask):
                     args=(
                         list(shm.name for shm in message_shms.values()),
                         len(indexes),
+                        global_indexes,
                         self.pressure,
                     ),
                     daemon=True,
@@ -405,6 +420,7 @@ class OpenICLApiInferTask(BaseTask):
                     args=(
                         list(shm.name for shm in message_shms.values()),
                         len(indexes),
+                        global_indexes,
                         self.pressure,
                     ),
                     daemon=True,
@@ -416,7 +432,7 @@ class OpenICLApiInferTask(BaseTask):
                 pb = ProgressBar(
                     message_shms,
                     self.stop_evt,
-                    request_num,
+                    len(global_indexes),
                     finish_data_count,
                     debug,
                     self.pressure,

@@ -57,23 +57,18 @@ for name, fmt in FIELDS.items():
 
 
 def update_global_data_index(
-    shm_names: List[str], data_num: int, pressure: bool = False
+    shm_names: List[str], data_num: int, global_data_indexes: list, pressure: bool = False
 ):
     """Update data index for shared memory."""
     shms = [shared_memory.SharedMemory(name=shm_name) for shm_name in shm_names]
-    global_data_index = 0
-    
+    cur_pos = 0
     def set_data_index(shm: shared_memory.SharedMemory, data_index: int):
         shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 0)  # set status to 0 before update data_index
         shm.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]] = struct.pack("i", data_index)
         shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 1)  # set status to 1 after update data_index, ensure data consist
-        new_data_index = (data_index + 1) % data_num
-        if not pressure and new_data_index == 0:
-            new_data_index = data_num - 1
-        return new_data_index
+    
     try:
         while True:
-
             for shm in shms:
                 status, _, _, _, _, _, data_index = struct.unpack(FMT, shm.buf)
                 while data_index != INDEX_READ_FLAG:
@@ -85,7 +80,14 @@ def update_global_data_index(
                     for shm in shms:
                         shm.close()
                     return
-                global_data_index = set_data_index(shm, global_data_index)
+                if cur_pos >= len(global_data_indexes) and not pressure:
+                    global_data_index = data_num - 1  # get None
+                elif cur_pos >= len(global_data_indexes):
+                    cur_pos = 0
+                else:
+                    global_data_index = global_data_indexes[cur_pos]
+                cur_pos += 1
+                set_data_index(shm, global_data_index)
     except KeyboardInterrupt:
         pass
     finally:

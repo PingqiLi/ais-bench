@@ -66,6 +66,7 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
                 "success": (
                     output.success if isinstance(output, Output) else True
                 ),
+                "uuid": output.uuid,
                 "origin_prompt": input,
                 "prediction": (
                     output.get_prediction()
