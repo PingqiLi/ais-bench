@@ -10,18 +10,16 @@ import json
 from mmengine.dist import is_main_process
 
 
-from ais_bench.benchmark.openicl.icl_inferencer.output_handler.base_handler import (
-    BaseInferencerOutputHandler,
-)
-from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
+from ais_bench.benchmark.openicl.icl_inferencer.output_handler.base_handler import BaseInferencerOutputHandler
 from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
-from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.config import build_model_from_cfg
 from ais_bench.benchmark.utils.core.abbr import model_abbr_from_cfg
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError
 
 
 MAX_BATCH_SIZE = 100000
-logger = get_logger(__name__)
 
 
 class BaseInferencer:
@@ -43,17 +41,19 @@ class BaseInferencer:
         output_json_filepath: Optional[str] = "./icl_inference_output",
     ) -> None:
         # basic parameters normalization
+        self.logger = AISLogger()
         self.model_cfg = model_cfg
         self.batch_size = int(batch_size) if batch_size else 1
 
         if self.batch_size < 1 or self.batch_size > MAX_BATCH_SIZE:
-            raise ValueError(
+            raise ParameterValueError(ICLI_CODES.BATCH_SIZE_OUT_OF_RANGE, 
                 f"The range of batch_size is [1, {MAX_BATCH_SIZE}], but got {self.batch_size}. "
                 "Please set it in datasets config"
             )
 
         # save output path (subclass does not need to repeat assignment)
         self.output_json_filepath = output_json_filepath
+        self.logger.debug(f"Output JSON file path: {self.output_json_filepath}")
 
         # construct model and output handler (if needed, can be changed to lazy build)
         self.model = build_model_from_cfg(model_cfg)
@@ -71,9 +71,11 @@ class BaseInferencer:
     ) -> List:
         """Get the data list for inference."""
 
-        raise NotImplementedError(f"{self.__class__.__name__} should be implemented")
+        raise AISBenchImplementationError(ICLI_CODES.UNKNOWN_ERROR, 
+                                           f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def set_task_state_manager(self, task_state_manager):
+        self.logger.debug(f"Set task state manager: {task_state_manager}")
         self.task_state_manager = task_state_manager
 
     def get_finish_data_list(self) -> Dict[str, Dict[str, Dict]]:
@@ -83,9 +85,11 @@ class BaseInferencer:
             Dict[str, Dict[str, Dict]]: The finish data list, which is a dictionary of data_abbr and data_id to data_dict.
         """
         if self.perf_mode:
+            self.logger.debug(f"Performance mode, return empty finish data dict")
             return {}
         output_dir = self.get_output_dir()
         if not os.path.exists(output_dir):
+            self.logger.debug(f"Output directory {output_dir} does not exist, return empty finish data dict")
             return {}
         tmp_dir = os.path.join(output_dir, "tmp")
         finish_data_cache = defaultdict(dict)
@@ -117,7 +121,7 @@ class BaseInferencer:
         for data_abbr, data_dict in finish_data_cache.items():
             if data_abbr in load_data_abbrs:
                 continue
-            logger.info(f"Find finsh data in tmp cache, create result file {data_abbr}.jsonl")
+            self.logger.info(f"Find finsh data in tmp cache, create result file {data_abbr}.jsonl")
             with open(os.path.join(output_dir, f"{data_abbr}.jsonl"), "w") as f:
                 for data in data_dict.values():
                     f.write(json.dumps(data) + "\n")
@@ -136,4 +140,5 @@ class BaseInferencer:
             "performances" if self.perf_mode else "predictions",
             model_abbr_from_cfg(self.model_cfg),
         )
+        self.logger.debug(f"Output directory: {output_json_filepath}")
         return output_json_filepath

@@ -2,6 +2,9 @@ import sqlite3
 import io
 import numpy as np
 
+from ais_bench.benchmark.utils.logging.exceptions import FileOperationError
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+
 CONNECTION_TIMEOUT = 30
 
 def init_db(db_path: str) -> sqlite3.Connection:
@@ -43,8 +46,10 @@ def save_numpy_to_db(conn: sqlite3.Connection, arr: np.ndarray, batch_size: int 
             conn.commit()
         return cur_id
     except sqlite3.Error as e:
-        raise e
-
+        raise FileOperationError(ICLI_CODES.SQLITE_WRITE_ERROR, 
+                                 f"Failed to save numpy array to database: {str(e)}",
+            )
+        
 def load_all_numpy_from_db(conn: sqlite3.Connection) -> dict[int, np.ndarray]:
     """
     Load all numpy arrays from the database into a dict {id: np.ndarray}.

@@ -5,16 +5,15 @@ import time
 import uuid
 from typing import List, Optional
 
-import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
-from ais_bench.benchmark.openicl.utils import get_logger
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import BaseInferencer
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError
+from ais_bench.benchmark.utils.logging.logger import AISLogger
 
-
-logger = get_logger(__name__)
 
 
 class BaseLocalInferencer(BaseInferencer):
@@ -31,7 +30,8 @@ class BaseLocalInferencer(BaseInferencer):
     """
 
     def batch_inference(self, datum) -> List:
-        raise NotImplementedError("Method hasn't been implemented yet")
+        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR_BATCH_INFERENCE_METHOD_NOT_IMPLEMENTED, 
+                                           f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def inference(
         self,
@@ -73,20 +73,21 @@ class BaseLocalInferencer(BaseInferencer):
         if isinstance(retriever, List) and all(
             isinstance(r, BaseRetriever) for r in retriever
         ):
+            self.logger.debug(f"Infer with multiple retrievers, get data list from each retriever")
             data_list = []
             for r in retriever:
                 data_list.extend(self.get_data_list(r))
         elif isinstance(retriever, BaseRetriever):
+            self.logger.debug(f"Infer with single retriever, get data list from retriever")
             data_list = self.get_data_list(retriever)
         else:
-            raise ValueError(
-                "retriever must be a BaseRetriever or a List of BaseRetriever"
-            )
-        logger.info("Starting to build dataloader")
+            raise ParameterValueError(ICLI_CODES.INVALID_PARAM_VALUE, 
+                                      f"retriever must be a BaseRetriever or a List of BaseRetriever, but got {type(retriever)}")
+            
         dataloader = self.get_dataloader(data_list, self.batch_size)
         try:
             # Execute inference tasks according to batch size
-            logger.info("Starting inference process...")
+            self.logger.info("Starting inference process...")
             if self.task_state_manager is not None and self.is_main_process:
                 self.task_state_manager.update_task_state(
                     {
@@ -110,7 +111,7 @@ class BaseLocalInferencer(BaseInferencer):
             self.output_handler.stop_cache_consumer()
             cache_consumer_thread.join()
 
-        logger.info("Inference process finished")
+        self.logger.info("Inference process finished")
         # Handle cache data
         if self.is_main_process:
             os.makedirs(out_path, exist_ok=True)
@@ -119,7 +120,8 @@ class BaseLocalInferencer(BaseInferencer):
     @staticmethod
     def get_dataloader(datalist: List[List], batch_size: int) -> DataLoader:
         """Return a dataloader of the input data list."""
-
+        logger = AISLogger()
+        logger.info(f"Get dataloader with data list length: {len(datalist)}, batch size: {batch_size}")
         def custom_collate_fn(batch):
             return {key: [d[key] for d in batch] for key in batch[0]}
 

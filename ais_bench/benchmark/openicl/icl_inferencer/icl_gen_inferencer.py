@@ -1,24 +1,19 @@
 """Direct Generation Inferencer."""
 
-import asyncio
 import copy
 import uuid
 from multiprocessing import BoundedSemaphore
 from typing import List, Optional
 
 import aiohttp
-import torch
+from tqdm import tqdm
 
 from ais_bench.benchmark.models.output import RequestOutput
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
-from ais_bench.benchmark.openicl.utils.logging import get_logger
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_api_inferencer import BaseApiInferencer
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_local_inferencer import BaseLocalInferencer
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.gen_inferencer_output_handler import GenInferencerOutputHandler
-
-logger = get_logger(__name__)
-
 
 
 @ICL_INFERENCERS.register_module()
@@ -137,7 +132,7 @@ class GenInferencer(BaseApiInferencer, BaseLocalInferencer):
         data_abbr = retriever.dataset.abbr
         ice_idx_list = retriever.retrieve()
         prompt_list = []
-        for idx, ice_idx in enumerate(ice_idx_list):
+        for idx, ice_idx in tqdm(enumerate(ice_idx_list), disable=not self.is_main_process, desc="Applying Ice Template"):
             ice = retriever.generate_ice(ice_idx)
             prompt = retriever.generate_prompt_for_generate_task(
                 idx,
@@ -165,9 +160,8 @@ class GenInferencer(BaseApiInferencer, BaseLocalInferencer):
         # Dataset-specified max_out_len has highest priority
         max_out_lens = retriever.dataset_reader.get_max_out_len()
         if max_out_lens is not None:
+            self.logger.warning(f"Dataset-specified max_out_len has highest priority, use dataset-specified max_out_len")
             for index, max_out_len in enumerate(max_out_lens):
-                data_list[index]["max_out_len"] = (
-                    max_out_len if max_out_len else self.model.max_out_len
-                )
+                data_list[index]["max_out_len"] = max_out_len if max_out_len else self.model.max_out_len
 
         return data_list

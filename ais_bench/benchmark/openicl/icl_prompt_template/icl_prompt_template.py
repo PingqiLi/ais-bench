@@ -1,4 +1,5 @@
 """Prompt Template."""
+
 import copy
 from typing import Dict, Hashable, List, Optional, Union
 
@@ -49,7 +50,7 @@ class PromptTemplate(BasePromptTemplate):
             PromptType: The generated in-context example.
         """
         # Select the corresponding template
-        if isinstance(self.template, str) or self.prompt_type == 'meta':
+        if isinstance(self.template, str) or self.prompt_type == "meta":
             tp = self.template
         else:
             # prompt type == origin
@@ -58,10 +59,10 @@ class PromptTemplate(BasePromptTemplate):
         tp = self._encode_template(tp, ice=True)
         # Remove sep token
         if self.sep_token is not None:
-            tp.replace(self.sep_token, '')
+            tp.replace(self.sep_token, "")
         # Remove ice_token
         if self.ice_token is not None:
-            tp = tp.replace(self.ice_token, '')
+            tp = tp.replace(self.ice_token, "")
         # Replace context token
         if isinstance(tp, str):
             # We want to use safe_substitute instead of str.format to avoid
@@ -71,11 +72,13 @@ class PromptTemplate(BasePromptTemplate):
             tp = tp.format(**entry)
         return tp
 
-    def generate_label_prompt_item(self,
-                                   entry: Dict,
-                                   ice: PromptType,
-                                   label: Hashable,
-                                   remain_sep: Optional[bool] = False) -> str:
+    def generate_label_prompt_item(
+        self,
+        entry: Dict,
+        ice: PromptType,
+        label: Hashable,
+        remain_sep: Optional[bool] = False,
+    ) -> str:
         """Generate prompt based on :obj:`entry` data, :obj:`ice` in-context
         example, and the corresponding :obj:`label`.
 
@@ -91,7 +94,7 @@ class PromptTemplate(BasePromptTemplate):
             :obj:`str`: The generated prompt.
         """
         # Select the corresponding template
-        if isinstance(self.template, str) or self.prompt_type == 'meta':
+        if isinstance(self.template, str) or self.prompt_type == "meta":
             template = self.template
         else:
             # template is a dict with a label -> prompt mapping
@@ -99,7 +102,7 @@ class PromptTemplate(BasePromptTemplate):
         template = self._encode_template(template, ice=False)
         # Remove sep token
         if not remain_sep and self.sep_token is not None:
-            template = template.replace(self.sep_token, '')
+            template = template.replace(self.sep_token, "")
         # Insert in-context examples
         if self.ice_token is not None:
             template = template.replace(self.ice_token, ice)
@@ -113,11 +116,12 @@ class PromptTemplate(BasePromptTemplate):
         return template
 
     def generate_item(
-            self,
-            entry: Dict,
-            output_field: Optional[Hashable] = None,
-            output_field_replace_token: Optional[str] = '',
-            ice_field_replace_token: Optional[str] = '') -> PromptType:
+        self,
+        entry: Dict,
+        output_field: Optional[Hashable] = None,
+        output_field_replace_token: Optional[str] = "",
+        ice_field_replace_token: Optional[str] = "",
+    ) -> PromptType:
         """Generate an item based on the provided :obj:`entry` data, as well as
         optional output field and ice field tokens.
 
@@ -139,13 +143,8 @@ class PromptTemplate(BasePromptTemplate):
         template = None
         if isinstance(self.template, str):
             template = self.template
-            
-        # #multi-turn conversations
-        elif isinstance(self.template, dict) and 'type' in self.template.keys() and self.template['type']=='conversations':
-            template = entry['human']
-            return template
 
-        elif self.prompt_type == 'origin':
+        elif self.prompt_type == "origin":
             # This if is only effective when you are using GenInferecner
             # with multi-label prompts.
             # Such a combination doesn't make sense at all :)
@@ -155,11 +154,10 @@ class PromptTemplate(BasePromptTemplate):
         else:
             template = self._encode_template(self.template, ice=False)
         if self.ice_token is not None:
-            template = template.replace(self.ice_token,
-                                        ice_field_replace_token)
+            template = template.replace(self.ice_token, ice_field_replace_token)
         # Remove sep token
         if self.sep_token is not None:
-            template = template.replace(self.sep_token, '')
+            template = template.replace(self.sep_token, "")
         if output_field is not None:
             entry = copy.deepcopy(entry)
             entry[output_field] = output_field_replace_token
@@ -171,12 +169,8 @@ class PromptTemplate(BasePromptTemplate):
             template = template.format(**entry)
         return template
 
-    def _check_prompt_template(obj) -> 'PromptTemplate':
-        if isinstance(obj, PromptTemplate):
-            return obj
-        else:
-            raise TypeError(f'Expect a PromptTemplate object, but got {obj}')
-
     def __repr__(self):
-        return (f'PromptTemplate({{\n\ttemplate: {self.template},\n\t'
-                f'ice_token: {self.ice_token}\n}})')
+        return (
+            f"PromptTemplate({{\n\ttemplate: {self.template},\n\t"
+            f"ice_token: {self.ice_token}\n}})"
+        )

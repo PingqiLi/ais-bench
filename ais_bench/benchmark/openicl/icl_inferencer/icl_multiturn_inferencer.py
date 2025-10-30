@@ -1,27 +1,22 @@
 """Multiturn Direct Generation Inferencer."""
 
-import asyncio
 from multiprocessing import BoundedSemaphore
 from typing import List, Optional
 import uuid
 import copy
 
 import aiohttp
-import torch
-from tqdm import tqdm
 
 from ais_bench.benchmark.models.output import RequestOutput
 from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.openicl.icl_retriever import BaseRetriever
-from ais_bench.benchmark.openicl.utils.logging import get_logger
+from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_api_inferencer import BaseApiInferencer
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_local_inferencer import BaseLocalInferencer
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.gen_inferencer_output_handler import GenInferencerOutputHandler
 from ais_bench.benchmark.utils.prompt import PromptList
-from ais_bench.benchmark.utils.logging import get_logger
-
-
-logger = get_logger(__name__)
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ParameterValueError
 
 
 @ICL_INFERENCERS.register_module()
@@ -60,14 +55,12 @@ class MultiTurnGenInferencer(BaseApiInferencer, BaseLocalInferencer):
             save_every=save_every,
             **kwargs,
         )
-
         self.stopping_criteria = list(stopping_criteria) if stopping_criteria else []
         self.gen_field_replace_token = gen_field_replace_token or ""
 
         self.output_handler = GenInferencerOutputHandler(perf_mode=self.perf_mode, save_every=self.save_every)
         self.infer_mode = infer_mode
-        self.logger = get_logger()
-        
+        self.logger.info(f"Multiturn Inferencer infer with mode: {self.infer_mode}")
 
     async def do_request(
         self, data: dict, token_bucket: BoundedSemaphore, session: aiohttp.ClientSession
@@ -86,37 +79,8 @@ class MultiTurnGenInferencer(BaseApiInferencer, BaseLocalInferencer):
         elif self.infer_mode == "every_with_gt":
             await self.infer_every_with_gt(data, session)
         else:
-            raise ValueError("Multiturn dialogue infer model only supports every、last or every_with_gt!")
-
-
-    def batch_inference(
-        self,
-        dataloader: torch.utils.data.DataLoader,
-    ) -> List:
-        """Perform batch inference on the given dataloader.
-        
-        Args:
-            dataloader: DataLoader containing the inference data
-            
-        Returns:
-            List of inference results
-        """
-        logger.info("Starting inference process...")
-        for datum in tqdm(dataloader, disable=not self.is_main_process):
-            indexs = datum.pop("index")
-            inputs = datum.pop("prompt")
-            data_abbrs = datum.pop("data_abbr")
-            max_out_lens = datum.pop("max_out_len")
-            golds = datum.pop("gold", [None] * len(inputs))
-            outputs = self.model.generate(inputs, max_out_lens, **datum)
-            # TODO: save output to json
-            for index, input, output, data_abbr, gold in zip(
-                indexs, inputs, outputs, data_abbrs, golds
-            ):
-                self.output_handler.report_cache_info(
-                    index, input, output, data_abbr, gold
-                )
-
+            raise ParameterValueError(ICLI_CODES.MULTITRUN_MODE_OUT_OF_RANGE, 
+                                      f"Multiturn dialogue infer model only supports every、last or every_with_gt, but got {self.infer_mode}")
 
     async def infer_last(self, data: dict, session: aiohttp.ClientSession):
         """Conducts a single inference on the entire multi-turn dialogue at once.
@@ -271,6 +235,7 @@ class MultiTurnGenInferencer(BaseApiInferencer, BaseLocalInferencer):
         # Dataset-specified max_out_len has highest priority
         max_out_lens = retriever.dataset_reader.get_max_out_len()
         if max_out_lens is not None:
+            self.logger.warning(f"Dataset-specified max_out_len has highest priority, use dataset-specified max_out_len")
             for index, max_out_len in enumerate(max_out_lens):
                 data_list[index]["max_out_len"] = (
                     max_out_len if max_out_len else self.model.max_out_len

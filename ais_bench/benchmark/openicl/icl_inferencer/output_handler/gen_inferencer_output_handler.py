@@ -1,12 +1,11 @@
 from typing import List, Optional, Union
 
 import sqlite3
-from .base_handler import BaseInferencerOutputHandler
+
+from ais_bench.benchmark.openicl.icl_inferencer.output_handler.base_handler import BaseInferencerOutputHandler
 from ais_bench.benchmark.models.output import Output
-from ais_bench.benchmark.utils.logging import get_logger
-
-logger = get_logger(__name__)
-
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError
 
 class GenInferencerOutputHandler(BaseInferencerOutputHandler):
     """
@@ -34,22 +33,6 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
         self.all_success = True
         self.perf_mode = perf_mode
 
-    def load_tmp_result(self, tmp_path: str, file_format: str = "jsonl") -> None:
-        """
-        Load temporary results from file.
-
-        This method is currently not implemented and raises NotImplementedError.
-        Future implementation should handle loading of temporary result files.
-
-        Args:
-            tmp_path (str): Path to the temporary result file
-            file_format (str): Format of the file (default: "jsonl")
-
-        Raises:
-            NotImplementedError: This method is not yet implemented
-        """
-        raise NotImplementedError("load_tmp_result is not implemented")
-
     def get_result(
         self,
         conn: sqlite3.Connection,
@@ -69,10 +52,6 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
             input (Union[str, List[str]]): Input data for the inference
             output (Union[str, Output]): Output result from inference
             gold (Optional[str]): Ground truth data for comparison
-
-        Raises:
-            KeyError: If output object is invalid
-            ValueError: If input parameters are invalid
         """
         # Performance mode: only store metrics
         if self.perf_mode and isinstance(output, Output):
@@ -103,8 +82,9 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
             self.all_success = False
             if isinstance(output, Output) and hasattr(output, "error_info"):
                 result_data["error_info"] = output.error_info
+                self.logger.debug(f"Failed operation at data id {output.uuid}, error info: {result_data['error_info']}")
             else:
-                logger.warning(
-                    f"No error info available for failed operation at data id {id}"
+                self.logger.warning(
+                    f"No error info available for failed operation at data id {output.uuid}"
                 )
         return result_data

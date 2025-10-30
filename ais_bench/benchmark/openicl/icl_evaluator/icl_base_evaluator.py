@@ -9,22 +9,50 @@ from datasets import Dataset
 from scipy.stats import hypergeom
 
 from ais_bench.benchmark.registry import TEXT_POSTPROCESSORS
-from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import ICLE_CODES
+from ais_bench.benchmark.utils.logging.exceptions import PredictionInvalidException, AISBenchImplementationError
 
 
-def compute_pass_at_k(n, c, k):
+def compute_pass_at_k(n: int, c: int, k: int) -> float:
+    """Compute pass@k.
+    
+    Args:
+        n (int): Total number of samples.
+        c (int): Number of correct samples.
+        k (int): Top k samples.
+
+    Returns:
+        float: pass@k.
+    """
     if n - c < k:
         return 1.0
     return 1.0 - np.prod(1.0 - k / np.arange(n - c + 1, n + 1))
 
 
-def _compute_g_pass_at_k(n, c, k, m):
+def _compute_g_pass_at_k(n: int, c: int, k: int, m: int) -> float:
+    """Compute g pass@k.
+    
+    Args:
+        n (int): Total number of samples.
+        c (int): Number of correct samples.
+        k (int): Top k samples.
+        m (int): Top m samples.
+    """
     if m > min(c, k) or k > n or c < 0 or n <= 0 or m < 0:
         return 0.0
     return hypergeom.sf(m - 1, n, c, k)
 
 
-def compute_g_pass_at_k(n, c, k, t):
+def compute_g_pass_at_k(n: int, c: int, k: int, t: float) -> float:
+    """Compute g pass@k.
+    
+    Args:
+        n (int): Total number of samples.
+        c (int): Number of correct samples.
+        k (int): Top k samples.
+        t (float): Top t samples.
+    """
     m = max(int(np.ceil(k * t)), 1)
     return _compute_g_pass_at_k(n, c, k, m)
 
@@ -32,7 +60,7 @@ class BaseEvaluator:
 
     def __init__(self) -> None:
         self._dataset_replica_idx = 0  # Default value for dataset_replica_idx
-        self.logger = get_logger()
+        self.logger = AISLogger()
 
 
     @property
@@ -42,6 +70,16 @@ class BaseEvaluator:
 
     def group(self, n: int, details: List[Dict[str, Any]],
               test_set: Dataset) -> Dict[str, Any]:
+        """Group the details by the example abbreviation.
+        
+        Args:
+            n (int): Number of replicas.
+            details (List[Dict[str, Any]]): Details of the evaluation.
+            test_set (Dataset): Test dataset.
+
+        Returns:
+            Dict[str, Any]: Dictionary of example abbreviations and their replications.
+        """
         example2replications = {}
         for detail, example in zip(details, test_set):
             example_abbr = f"{example['subdivision']}_{example['idx']}"
@@ -50,13 +88,25 @@ class BaseEvaluator:
             example.update({'detail': detail})
             example2replications[example_abbr].append(example)
         for _, replications in example2replications.items():
-            assert len(replications) == n, print(len(replications), n)
+                if len(replications) != n:
+                    raise PredictionInvalidException(
+                        ICLE_CODES.REPLICATION_LENGTH_MISMATCH,
+                        message=f"Replication length mismatch: {len(replications)} != {n}",
+                    )
 
         return example2replications
 
     def reduce(self, details: List[Dict[str, Any]], k_list: List[int], n_val: int) -> Dict[str, Any]:
+        """Aggregate results.
+        
+        Args:
+            details (List[Dict[str, Any]]): Details of the evaluation.
+            k_list (List[int]): List of top k samples.
+            n_val (int): Number of replicas.
 
-        """Aggregate results"""
+        Returns:
+            dict: Aggregated results.
+        """
         eval_results = OrderedDict()
 
         # Step 1: Global Sample Accuracy
@@ -152,8 +202,7 @@ class BaseEvaluator:
         return eval_results
 
     def pred_postprocess(self, predictions: List) -> Dict:
-        if not hasattr(
-                self, 'pred_postprocessor') or self.pred_postprocessor is None:
+        if not hasattr(self, 'pred_postprocessor') or self.pred_postprocessor is None:
             return predictions
         else:
             kwargs = deepcopy(self.pred_postprocessor)
@@ -168,22 +217,45 @@ class BaseEvaluator:
         original_dataset: Dataset,
         **score_kwargs,
     ):
+        """Evaluate the predictions and references.
+        
+        Args:
+            k (Union[int, List[int]]): Top k samples.
+            n (int): Number of replicas.
+            original_dataset (Dataset): Original dataset.
+            **score_kwargs: Score kwargs.
+
+        Returns:
+            dict: Evaluation results.
+        """
         # Check if predictions and references have the
         # same length if both are provided
         if ('predictions' in score_kwargs and 'references' in score_kwargs
                 and score_kwargs['references'] is not None):
             len_predictions, len_references = len(score_kwargs['predictions']), len(score_kwargs['references'])
             if len_predictions != len_references:
-                raise ValueError(f'Predictions and references must have the same length, '
-                                 f'but got prediction({len_predictions}) and references({len_references})')
+                raise PredictionInvalidException(
+                        ICLE_CODES.PREDICTION_LENGTH_MISMATCH,
+                        message=f'Predictions and references must have the same length, '
+                        f'but got prediction({len_predictions}) and references({len_references})',
+                    )
 
         real_size = len(original_dataset) // n  # dataset size of each replica
         all_details = []
         all_results = []
         k_list = [k] if isinstance(k, int) else k
 
-        def select_fn(i, real_size, n, x):
-            """Select the element from the i-th duplication within each group (choose one per group)"""
+        def select_fn(i: int, real_size: int, n: int, x: Any) -> Any:
+            """Select the element from the i-th duplication within each group (choose one per group).
+            
+            Args:
+                i (int): Index of the element.
+                real_size (int): Number of elements in each group.
+                n (int): Number of replicas.
+                x (Any): Element to select.
+            Returns:
+                Any: Selected element.
+            """
             if isinstance(x, Dataset):
                 # Computing non-consecutive indices: select the i-th element in each group
                 indices = [j * n + i for j in range(real_size)]
@@ -300,7 +372,8 @@ class BaseEvaluator:
     
 
     def score(self):
-        raise NotImplementedError("Method hasn't been implemented yet")
+        raise AISBenchImplementationError(ICLE_CODES.UNKNOWN_ERROR, 
+                                           f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     @staticmethod
     def is_num_equal(predictions, references):

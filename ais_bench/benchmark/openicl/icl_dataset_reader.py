@@ -1,13 +1,18 @@
 """Simple Dataset Reader."""
 
 import random
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.registry import ICL_DATASET_READERS
 from ais_bench.benchmark.utils.core.types import (check_dataset, check_str, check_type_list)
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+
+
+logger = AISLogger()
+
 
 @ICL_DATASET_READERS.register_module()
 class DatasetReader:
@@ -74,13 +79,6 @@ class DatasetReader:
         train_range = check_type_list(train_range, [None, int, float, str])
         test_range = check_type_list(test_range, [None, int, float, str])
 
-        if input_template is not None:
-            self.input_template = PromptTemplate._check_prompt_template(
-                input_template)
-        if output_template is not None:
-            self.output_template = PromptTemplate._check_prompt_template(
-                output_template)
-
         self.dataset = check_dataset(dataset)
         if isinstance(self.dataset, Dataset):
             self.dataset = DatasetDict({
@@ -92,6 +90,7 @@ class DatasetReader:
         for origin_split, mapped_split, split_range in [[
                 train_split, 'train', train_range
         ], [test_split, 'test', test_range]]:
+            logger.debug(f"Loading {mapped_split} split with range {split_range}")
             self.dataset[mapped_split] = load_partial_dataset(
                 self.dataset[origin_split], size=split_range)
 
@@ -131,12 +130,20 @@ def load_partial_dataset(
     index_list = list(range(total_size))
     if isinstance(size, (int, float)):
         if size >= total_size or size <= 0:
+            logger.debug(f"Size is out of range, loaded entire dataset")
             return dataset
         if size > 0 and size < 1:
             size = int(size * total_size)
         rand = random.Random(x=size)
         rand.shuffle(index_list)
         dataset = dataset.select(index_list[:size])
+        logger.debug(f"Loaded {size} random examples from dataset")
     elif isinstance(size, str):
-        dataset = dataset.select(eval(f'index_list{size}'))
+        try:
+            dataset = dataset.select(eval(f'index_list{size}'))
+        except Exception as e:
+            logger.warning(f"Cannot parse size string: {size}, use entire dataset instead")
+    else:
+        if size is not None:
+            logger.warning(f"Invalid size type: {type(size)}, use entire dataset instead")
     return dataset

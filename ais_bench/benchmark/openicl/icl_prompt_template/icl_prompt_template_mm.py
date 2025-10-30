@@ -1,9 +1,14 @@
 """Multimodal Prompt Template."""
+
 from typing import Dict, Hashable, Optional, Union
 
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
-from ais_bench.benchmark.openicl.icl_prompt_template.icl_prompt_template_base import BasePromptTemplate, PromptType
-
+from ais_bench.benchmark.openicl.icl_prompt_template.icl_prompt_template_base import (
+    BasePromptTemplate,
+    PromptType,
+)
+from ais_bench.benchmark.utils.logging.error_codes import ICLR_CODES
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchValueError
 
 
 @ICL_PROMPT_TEMPLATES.register_module()
@@ -25,34 +30,37 @@ class MMPromptTemplate(BasePromptTemplate):
             The ice_token will be invisible when generating in-context
             examples.
     """
+
     def check_mm_template(self):
-        if not isinstance(self.template, dict) or 'round' not in self.template.keys():
+        if not isinstance(self.template, dict) or "round" not in self.template.keys():
             return False
-        for data in self.template['round']:
-            if 'prompt_mm' not in data.keys():
+        for data in self.template["round"]:
+            if "prompt_mm" not in data.keys():
                 return False
         return True
-    
+
     def get_mm_template(self, item):
         """
         change format
         """
-        item = item['prompt_mm']
+        item = item["prompt_mm"]
         res = []
         for key in item.keys():
-            if key not in ['text', 'image_url', 'video_url', 'audio_url']:
-                raise ValueError("The keys in prompt_mm must be one of: text, image_url, video_url or audio_url")
-            res.append({'type': key, 
-                         key: item[key]})
+            if key not in ["text", "image_url", "video_url", "audio_url"]:
+                raise AISBenchValueError(
+                    ICLR_CODES.MULTIMODAL_TEMPLATE_TYPE_ERROR,
+                    f"The keys in prompt_mm must be one of: text, image_url, video_url or audio_url, but got {key}"
+                )
+            res.append({"type": key, key: item[key]})
         return res
 
-
     def generate_item(
-            self,
-            entry: Dict,
-            output_field: Optional[Hashable] = None,
-            output_field_replace_token: Optional[str] = '',
-            ice_field_replace_token: Optional[str] = '') -> PromptType:
+        self,
+        entry: Dict,
+        output_field: Optional[Hashable] = None,
+        output_field_replace_token: Optional[str] = "",
+        ice_field_replace_token: Optional[str] = "",
+    ) -> PromptType:
         """Generate an item based on the provided :obj:`entry` data, as well as
         optional output field and ice field tokens.
 
@@ -72,20 +80,16 @@ class MMPromptTemplate(BasePromptTemplate):
             PromptType: The generated item.
         """
         if not self.check_mm_template():
-            self.logger.error(f'want get template with round and prompt_mm, but get {str(self.template)}')
+            self.logger.warning(f'Expected to get template with round and prompt_mm, but got {self.template}')
         template = self._encode_template(self.template, ice=False)
         template = template.format(**entry)
         for i, item in enumerate(template):
-            if 'prompt_mm' in item:
-                template[i]['prompt_mm'] = self.get_mm_template(item)
+            if "prompt_mm" in item:
+                template[i]["prompt_mm"] = self.get_mm_template(item)
         return template
-    
-    def _check_prompt_template(obj) -> 'MMPromptTemplate':
-        if isinstance(obj, MMPromptTemplate):
-            return obj
-        else:   
-            raise TypeError(f'Expect a MMPromptTemplate object, but got {obj}')
 
     def __repr__(self):
-        return (f'MMPromptTemplate({{\n\ttemplate: {self.template},\n\t'
-                f'ice_token: {self.ice_token}\n}})')
+        return (
+            f"MMPromptTemplate({{\n\ttemplate: {self.template},\n\t"
+            f"ice_token: {self.ice_token}\n}})"
+        )

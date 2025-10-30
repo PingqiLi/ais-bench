@@ -16,16 +16,15 @@ import aiohttp
 import janus
 from tqdm import tqdm
 from ais_bench.benchmark.utils.core.valid_global_consts import get_request_time_out, get_max_chunk_size
-from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.tasks.utils import STATUS_REPORT_INTERVAL, MESSAGE_INFO
-from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import (
-    BaseInferencer,
-)
+from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import BaseInferencer
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError
+from ais_bench.benchmark.utils.logging.logger import AISLogger
 
 MESSAGE_TYPE_NUM = 4  # post_req, get_req, failed_req, finish_req
 BLOCK_INTERVAL = 0.005  # Avoid request burst accumulation when RR is not configured
 DEFAULT_SAVE_EVERY_FACTOR = 0.1 # default save every factor is 0.1 of batch size
-logger = get_logger(__name__)
 
 
 class BaseApiInferencer(BaseInferencer):
@@ -92,7 +91,8 @@ class BaseApiInferencer(BaseInferencer):
             finish_req = self.status_counter.finish_req
             packed = struct.pack("<4I", post_req, get_req, failed_req, finish_req)
             message_buf[4 : 4 + len(packed)] = packed
-        except Exception:
+        except Exception as e:
+            self.logger.debug(f"Failed to update status counter: {str(e)}")
             pass
 
     @abstractmethod
@@ -112,7 +112,8 @@ class BaseApiInferencer(BaseInferencer):
         Raises:
             NotImplementedError: If not implemented in subclass
         """
-        raise NotImplementedError
+        raise AISBenchImplementationError(ICLI_CODES.IMPLEMENTATION_ERROR_DO_REQUEST_METHOD_NOT_IMPLEMENTED, 
+                                   f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     async def warmup(self, data_list: list, warmup_times: int = 1):
         """Warmup the inferencer.
@@ -202,6 +203,7 @@ class BaseApiInferencer(BaseInferencer):
             janus_queue.sync_q.put(data)
             if data is None:
                 break
+        self.logger.debug(f"Fill first batch of data to janus queue")
 
     def _producer_thread_target(
         self,
@@ -220,32 +222,25 @@ class BaseApiInferencer(BaseInferencer):
             janus_queue: Janus queue for thread-async communication
             stop_event: Event to signal termination
         """
-        try:
-            # Continuous fill until stop_event or sentinel
-            while not stop_event.is_set():
-                data = self._get_single_data(
-                    dataset_share_memory, indexes, message_share_memory
-                )
-                while True:
-                    try:
-                        janus_queue.sync_q.put(data, timeout=1)
-                    except (
-                        TimeoutError,
-                        janus.SyncQueueFull,
-                    ):  # janus queue is full, wait for a while
-                        if stop_event.is_set():
-                            break
-                        continue
-                    break
-                if data is None:
-                    break
-        except Exception:
-            # If producer errors, try to put sentinel so consumers can exit
-            try:
-                janus_queue.sync_q.put(None)
-            except Exception:
-                pass
-            raise
+        # Continuous fill until stop_event or sentinel
+        while not stop_event.is_set():
+            data = self._get_single_data(
+                dataset_share_memory, indexes, message_share_memory
+            )
+            while True:
+                try:
+                    janus_queue.sync_q.put(data, timeout=1)
+                except (
+                    TimeoutError,
+                    janus.SyncQueueFull,
+                ):  # janus queue is full, wait for a while
+                    if stop_event.is_set():
+                        break
+                    continue
+                break
+            if data is None:
+                self.logger.debug(f"Producer thread get sentinel, inference data producer exit")
+                break
 
     def _sync_main_process_with_message(
         self, message_share_memory: shared_memory.SharedMemory, info: int
@@ -258,6 +253,7 @@ class BaseApiInferencer(BaseInferencer):
         """
         message_buf = message_share_memory.buf
         struct.pack_into("I", message_buf, 0, info)
+        self.logger.debug(f"Sync main process with message: {info}")
 
     async def _worker_loop(
         self,
@@ -282,6 +278,11 @@ class BaseApiInferencer(BaseInferencer):
         session = aiohttp.ClientSession(
             connector=connector, timeout=timeout, max_line_size=get_max_chunk_size()
         )
+        self.logger.debug(f"Create aiohttp session with "
+                     f"connector: {connector}, "
+                     f"timeout: {timeout}, "
+                     f"max_line_size: {get_max_chunk_size()}, "
+                     f"max_concurrency: {num_workers}")
         start_time = time.perf_counter()
         
         stop_event = asyncio.Event()
@@ -290,7 +291,10 @@ class BaseApiInferencer(BaseInferencer):
             if semaphore is None:
                 await self.do_request(data, token_bucket, session)
                 if self.pressure_mode:
-                    raise RuntimeError("Concurrency not set in pressure mode!!!")
+                    raise ParameterValueError(
+                        ICLI_CODES.CONCURRENCY_NOT_SET_IN_PRESSEURE_MODE, 
+                        f"Concurrency not set in pressure mode, please set `batch_size` in model config",
+                    )
             async with semaphore:
                 await self.do_request(data, token_bucket, session)
                 # Pressure mode: continuously send requests until pressure_time
@@ -305,7 +309,6 @@ class BaseApiInferencer(BaseInferencer):
                             await async_queue.put(None)
                             break
                         await self.do_request(data, token_bucket, session)
-
         tasks = []
         try:
             while not stop_event.is_set():
@@ -331,9 +334,11 @@ class BaseApiInferencer(BaseInferencer):
                 tasks.append(asyncio.create_task(limited_request_func(data)))
                 # Pressure mode: exit when stable state is reached
                 if self.pressure_mode and len(tasks) >= num_workers:
+                    self.logger.debug(f"Pressure mode, exit when stable state is reached")
                     break
             await asyncio.gather(*tasks)
         except asyncio.exceptions.CancelledError:
+            self.logger.debug(f"Keyboard interrupt, set stop event")
             stop_event.set()
             # keyboard interrupt wait for all tasks to finish
             for t in tasks:
@@ -341,6 +346,7 @@ class BaseApiInferencer(BaseInferencer):
                     t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
         finally:
+            self.logger.debug(f"Close aiohttp session")
             await session.close()
 
     def inference_with_shm(
@@ -437,7 +443,7 @@ class BaseApiInferencer(BaseInferencer):
         try:
             loop.run_until_complete(worker_task)
         except KeyboardInterrupt:
-            logger.warning(
+            self.logger.warning(
                 "Keyboard interrupt. Please wait for tasks exit gracefully..."
             )
             stop_event.set()
@@ -446,7 +452,7 @@ class BaseApiInferencer(BaseInferencer):
         finally:
             # Orderly shutdown
             stop_event.set()
-           
+            self.logger.debug(f"Stop event set")
              # Join threads
             producer_thread.join()
             report_thread.join()
@@ -458,9 +464,11 @@ class BaseApiInferencer(BaseInferencer):
 
             # Close janus queue properly
             janus_queue.close()
+            
             loop.run_until_complete(janus_queue.wait_closed())
 
             loop.close()
+            self.logger.debug(f"Asyncio event loop closed")
 
             # Write data with same abbr to same jsonl file
             self.output_handler.write_to_json(out_path, self.perf_mode)
@@ -481,6 +489,7 @@ class StatusCounter(threading.Thread):
             batch_size: Size of batch for queue capacity calculation
         """
         super().__init__(daemon=True)
+        self.logger = AISLogger()
         self.post_req = 0
         self.get_req = 0
         self.failed_req = 0
@@ -559,3 +568,10 @@ class StatusCounter(threading.Thread):
                 self.failed_req += 1
             elif status == "finish_req":
                 self.finish_req += 1
+        
+        self.logger.debug("Status counter stopped. "
+                          f"Process {os.getpid()} finished with status: "
+                          f"{self.post_req} post requests "
+                          f"{self.get_req} get requests "
+                          f"{self.failed_req} failed requests "
+                          f"{self.finish_req} finish requests")
