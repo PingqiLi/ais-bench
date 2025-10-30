@@ -11,9 +11,8 @@ import mmengine
 import tabulate
 from mmengine import ConfigDict
 
-from ais_bench.benchmark.utils.logging.logger import AISLogger
-from ais_bench.benchmark.utils.logging.exceptions import ConfigError
-from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, get_infer_output_path, model_abbr_from_cfg
+from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, get_infer_output_path, model_abbr_from_cfg, merged_dataset_abbr_from_class
 from ais_bench.benchmark.utils.prompt import get_prompt_hash
 
 METRIC_WHITELIST = ['score', 'auc_score', 'accuracy', 'humaneval_pass@1', 'rouge1', 'avg_toxicity_score', 'bleurt_diff', 'matthews_correlation', 'truth', 'f1', 'exact_match', 'extract_rate']
@@ -41,7 +40,7 @@ class DefaultSummarizer:
     def __init__(self, config: ConfigDict, dataset_abbrs: Optional[List[str]] = None, summary_groups: List = [], prompt_db = None) -> None:
         self.tasks = []
         self.cfg = config
-        self.logger = AISLogger()
+        self.logger = get_logger()
         self.summary_groups = summary_groups
         self.dataset_abbrs = dataset_abbrs
         if prompt_db:
@@ -65,7 +64,10 @@ class DefaultSummarizer:
         for dataset in self.dataset_cfgs:
             inferencer = dataset.get('infer_cfg', {}).get('inferencer', {}).get('type', '')
             inferencer = inferencer if isinstance(inferencer, str) else inferencer.__name__
-            dataset_abbr = dataset_abbr_from_cfg(dataset)
+            if 'GenMergedInferencer' in inferencer:
+                dataset_abbr = merged_dataset_abbr_from_class(dataset)
+            else:
+                dataset_abbr = dataset_abbr_from_cfg(dataset)
             if dataset_abbr in self.dataset_abbrs:
                 continue
             self.dataset_abbrs.append(dataset_abbr)
@@ -135,6 +137,8 @@ class DefaultSummarizer:
             dataset_abbr = dataset_abbr_from_cfg(dataset)
             if 'GenInferencer' in inferencer:
                 dataset_eval_mode[dataset_abbr] = 'gen'
+            elif 'GenMergedInferencer' in inferencer:
+                dataset_eval_mode[merged_dataset_abbr_from_class(dataset)] = 'gen'
             elif 'PPLInferencer' in inferencer:
                 dataset_eval_mode[dataset_abbr] = 'ppl'
             elif 'LLInferencer' in inferencer:

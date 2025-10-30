@@ -12,9 +12,7 @@ import mmengine
 import tabulate
 from mmengine import ConfigDict
 
-from ais_bench.benchmark.utils.logging.logger import AISLogger
-from ais_bench.benchmark.utils.logging.exceptions import ConfigError
-from ais_bench.benchmark.utils.logging.error_codes import SUMM_CODES
+from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, get_infer_output_path, model_abbr_from_cfg
 from ais_bench.benchmark.utils.prompt import get_prompt_hash
 
@@ -48,7 +46,7 @@ class DefaultSubjectiveSummarizer:
             model_abbr_from_cfg(model) for model in self.eval_model_cfgs
         ]
         self.judge_models = self.cfg.get('judge_models', None)
-        self.logger = AISLogger()
+        self.logger = get_logger()
         self.summary_groups = summary_groups
         self.dataset_abbrs = dataset_abbrs
         if prompt_db:
@@ -211,10 +209,7 @@ class DefaultSubjectiveSummarizer:
                 scores, eval_modes, group_metrics = {}, [], None
                 if any(isinstance(dataset_abbr, (list, tuple)) for dataset_abbr in sg['subsets']) and \
                     any(isinstance(dataset_abbr, str) for dataset_abbr in sg['subsets']):
-                    raise ConfigError(
-                        SUMM_CODES.NOT_SUPPORTED_DATASET_TYPES,
-                        f"mixed dataset_abbr type is not supported, dataset_abbr type only support (list, tuple) or str."
-                    )
+                    raise NotImplementedError('mixed dataset_abbr type is not supported')
 
                 if all(isinstance(dataset_abbr, (list, tuple)) for dataset_abbr in sg['subsets']):
                     group_metrics = [default_metric]

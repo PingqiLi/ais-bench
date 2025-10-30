@@ -4,10 +4,7 @@ import math
 import numpy as np
 from abc import abstractmethod, ABC
 
-from ais_bench.benchmark.utils.logging.logger import AISLogger
-from ais_bench.benchmark.global_consts import LOG_LEVEL
-from ais_bench.benchmark.utils.logging.exceptions import AISBenchMetricError, AISBenchDumpError
-from ais_bench.benchmark.utils.logging.error_codes import CALC_CODES
+from ais_bench.benchmark.utils.logging import get_logger
 
 DEFAULT_STATS = [
     "Average", "Min", "Max", "Median", "P75", "P90", "P99",
@@ -15,6 +12,7 @@ DEFAULT_STATS = [
 MAX_STATS_LEN = 8
 PERCENTAGE_PATTERN = r"^P(0*[1-9]\d{0,1})$"  # P1 ~ P99
 SECOND_TO_MILLISECOND = 1000
+
 
 def is_legal_percentage_str(stat: str) -> bool:
     """
@@ -50,10 +48,8 @@ class BasePerfMetricCalculator(ABC):
             perf_details (dict, optional): Performance details dictionary
             stats_list (list, optional): List of statistics to calculate
         """
-        self.logger = AISLogger()
-        self.logger.debug(f"Initializing BasePerfMetricCalculator with stats_list: {stats_list}")
+        self.logger = get_logger()
         self.stats_list = self._validate_stats_list(stats_list or DEFAULT_STATS)
-        self.logger.debug(f"Validated stats list: {self.stats_list}")
         self.metrics = {}
         self.common_metrics = {}
 
@@ -81,8 +77,6 @@ class BasePerfMetricCalculator(ABC):
         Returns:
             list: Validated and filtered statistics list
         """
-        self.logger.debug(f"Validating stats list: {stats_list}")
-
         if len(stats_list) > MAX_STATS_LEN:
             self.logger.warning(
                 f"Statistics list length exceeds {MAX_STATS_LEN}! Only keeping the first {MAX_STATS_LEN} statistic!"
@@ -97,11 +91,9 @@ class BasePerfMetricCalculator(ABC):
                 "Max",
                 "Median",
             ] and not is_legal_percentage_str(stat):
-                self.logger.warning(f"Unknown statistic: {stat}, will be ignored! Legal statistics examples: {DEFAULT_STATS}")
+                self.logger.warning(f"Unknown statistic: {stat}, will be ignored!")
                 continue
             valid_stats.append(stat)
-
-        self.logger.debug(f"Validation completed, valid stats: {valid_stats}")
 
         if len(valid_stats) == 0:
             self.logger.warning(
@@ -123,20 +115,15 @@ class BasePerfMetricCalculator(ABC):
             dict: Dictionary containing calculated statistics
         """
         stats_list = stats_list or self.stats_list
-        self.logger.debug(f"Calculating statistics for {len(data) if data else 0} data points with stats: {stats_list}")
-
         stats = {k: 0 for k in stats_list}
 
         if not data:
-            self.logger.warning("Empty data list, returning empty stats")
             return stats
 
         # Handle numpy arrays
         if isinstance(data[0], np.ndarray):
-            self.logger.debug(f"Handling numpy arrays, concatenating {len(data)} arrays")
             arr = np.concatenate(data)
         else:
-            self.logger.debug(f"Converting data to numpy array with length {len(data)}")
             arr = np.array(data)
 
         for stat in stats_list:
@@ -151,8 +138,6 @@ class BasePerfMetricCalculator(ABC):
             elif is_legal_percentage_str(stat):
                 stats[stat] = round(float(np.percentile(arr, int(stat[1:]))), 4)
 
-        self.logger.debug(f"Statistics calculation completed: {stats}")
-
         return stats
 
     def _process_batch_sizes(self, batch_sizes: list) -> list:
@@ -166,7 +151,6 @@ class BasePerfMetricCalculator(ABC):
             list: Processed batch sizes with duplicates removed
         """
         if not batch_sizes:
-            self.logger.debug("Batch sizes list is empty, skip processing batch size compression.")
             return []
 
         statistics = []
@@ -278,22 +262,16 @@ class BasePerfMetricCalculator(ABC):
             output_path (str): Path to output CSV file
 
         Raises:
-            AISBenchMetricError: If metrics data is empty or invalid
-            AISBenchDumpError: If file writing fails
+            ValueError: If metrics data is empty or invalid
+            RuntimeError: If file writing fails
         """
         if not metrics:
-            raise AISBenchMetricError(
-                CALC_CODES.INVALID_METRIC_DATA,
-                "Request level performance metrics data is empty, cannot save to file."
-            )
+            raise ValueError("Metrics data is empty, cannot save to file.")
 
         try:
             first_entry = next(iter(metrics.values()), None)
             if first_entry is None:
-                raise AISBenchMetricError(
-                    CALC_CODES.INVALID_METRIC_DATA,
-                    "Structure of request level performance metrics data is invalid."
-                )
+                raise ValueError("Metrics data structure is invalid.")
 
             stage_names = list(first_entry.keys())
             headers = list(first_entry[stage_names[0]].keys())
@@ -312,10 +290,7 @@ class BasePerfMetricCalculator(ABC):
                         writer.writerow(row)
 
         except (OSError, IOError) as e:
-            raise AISBenchDumpError(
-                CALC_CODES.DUMPING_RESULT_FAILED,
-                f"Failed to write request level performance metrics to csv file '{output_path}': {e}"
-            )
+            raise RuntimeError(f"Failed to write to file '{output_path}': {e}")
 
     def convert_result(self, result: dict) -> dict:
         """
@@ -327,8 +302,6 @@ class BasePerfMetricCalculator(ABC):
         Returns:
             dict: Converted result in standardized format
         """
-        self.logger.debug(f"Converting result data with keys: {list(result.keys())}")
-
         remove_keys = [
             "id",
             "start_time",
@@ -351,11 +324,6 @@ class BasePerfMetricCalculator(ABC):
 
         # Use dictionary comprehension to populate the values
         for mapping_key, mapping_value in mapping.items():
-            if not mapping_key in result:
-                self.logger.warning(f"Mapping key {mapping_key} not found in result, skipping")
-                continue
-
-            self.logger.debug(f"Processing mapping key: {mapping_key} to {mapping_value}")
             for value in result[mapping_key]:
                 if isinstance(value, list):
                     ans[mapping_value].extend(value)
@@ -376,11 +344,8 @@ class BasePerfMetricCalculator(ABC):
         """
         Calculate various statistical metrics for all stages.
         """
-        self.logger.debug("Starting metrics calculation for all stages")
         for stage_name, _ in self.stage_dict.items():
-            self.logger.debug(f"Processing stage: {stage_name}")
             for metric, value in self.result[stage_name].items():
-                self.logger.debug(f"Calculating metric: {metric} with data length: {len(value) if value else 0}")
                 if value:
                     # Special handling for batch size metrics
                     if metric in {"PrefillBatchsize", "DecoderBatchsize"}:
@@ -396,29 +361,24 @@ class BasePerfMetricCalculator(ABC):
                     self.metrics[metric] = {stage_name: stats}
                 else:
                     self.metrics[metric][stage_name] = stats
-                    self.logger.debug(f"Stored metrics for {metric} in stage {stage_name}: {stats}")
 
             # Add count information to all metrics
             for key in self.metrics:
                 self.metrics[key][stage_name]["N"] = self.success_count[stage_name]
-                self.logger.debug(f"Added count information N={self.success_count[stage_name]} for {key} in stage {stage_name}")
                 # TPOT and ITL are average decode latency per request, count requests with decode latency
                 if key == "TPOT" or key == "ITL":
-                    decode_count = sum(
+                    self.metrics[key][stage_name]["N"] = sum(
                         [
                             1
                             for decode_list in self.decode_latencies[stage_name]
                             if np.array(decode_list).any()
                         ]
                     )
-                    self.metrics[key][stage_name]["N"] = decode_count
-                    self.logger.debug(f"Adjusted count for {key} in stage {stage_name} to {decode_count}")
 
     def _calc_common_metrics(self):
         """
         Calculate common performance metrics.
         """
-        self.logger.debug("Starting common metrics calculation")
         common_metric_names = [
             "Benchmark Duration",
             "Total Requests",
@@ -438,46 +398,39 @@ class BasePerfMetricCalculator(ABC):
             self.common_metrics.setdefault(name, {})
 
         for stage_name, _ in self.stage_dict.items():
-            self.logger.debug(f"Calculating common metrics for stage: {stage_name}")
             self.common_metrics["Benchmark Duration"][stage_name] = round(
                 self.infer_time[stage_name] * SECOND_TO_MILLISECOND, 4
             )
-            self.logger.debug(f"Stage {stage_name} - Benchmark Duration: {self.common_metrics['Benchmark Duration'][stage_name]} ms")
-
-            self.common_metrics["Total Requests"][stage_name] = self.data_count[stage_name]
+            self.common_metrics["Total Requests"][stage_name] = self.data_count[
+                stage_name
+            ]
             self.common_metrics["Failed Requests"][stage_name] = (
                 self.data_count[stage_name] - self.success_count[stage_name]
             )
-            self.common_metrics["Success Requests"][stage_name] = self.success_count[stage_name]
-            self.logger.debug(f"Stage {stage_name} - Request counts: Total={self.common_metrics['Total Requests'][stage_name]}, Success={self.common_metrics['Success Requests'][stage_name]}, Failed={self.common_metrics['Failed Requests'][stage_name]}")
-
             if self.common_metrics["Failed Requests"][stage_name] > 0:
                 self.logger.warning(
                     "Some requests failed, please check the error logs from responses!"
                 )
+            self.common_metrics["Success Requests"][stage_name] = self.success_count[
+                stage_name
+            ]
 
             # Concurrency calculation (can be overridden by subclasses)
             self.common_metrics["Concurrency"][stage_name] = (
                 self._calculate_concurrency(stage_name)
             )
-            self.logger.debug(f"Calculated concurrency for {stage_name}: {self.common_metrics['Concurrency'][stage_name]}")
             self.common_metrics["Max Concurrency"][stage_name] = self.max_concurrency
-            self.logger.debug(f"Set max concurrency for {stage_name}: {self.max_concurrency}")
 
             try:
                 self.common_metrics["Request Throughput"][stage_name] = round(
                     self.success_count[stage_name] / self.infer_time[stage_name], 4
                 )
-                self.logger.debug(f"Stage {stage_name} - Request Throughput: {self.common_metrics['Request Throughput'][stage_name]} req/s")
             except ZeroDivisionError:
                 self.common_metrics["Request Throughput"][stage_name] = 0
-                self.logger.debug(f"Stage {stage_name} - Request Throughput: 0 (infer_time is zero)")
 
             self.common_metrics["Total Input Tokens"][stage_name] = sum(
                 self.result[stage_name]["InputTokens"]
             )
-            self.logger.debug(f"Stage {stage_name} - Total Input Tokens: {self.common_metrics['Total Input Tokens'][stage_name]}")
-
             if (
                 self.common_metrics["Total Input Tokens"][stage_name] != 0
                 and self.result[stage_name].get("TTFT") is not None
@@ -487,31 +440,23 @@ class BasePerfMetricCalculator(ABC):
                     / sum(self.result[stage_name]["TTFT"]),
                     4,
                 )
-                self.logger.debug(f"Stage {stage_name} - Prefill Token Throughput: {self.common_metrics['Prefill Token Throughput'][stage_name]} token/s")
             else:
                 self.common_metrics.pop("Prefill Token Throughput", None)
-                self.logger.debug(f"Stage {stage_name} - Prefill Token Throughput: Not calculated (insufficient data)")
 
             self.common_metrics["Total Generated Tokens"][stage_name] = sum(
                 self.result[stage_name]["OutputTokens"]
             )
-            self.logger.debug(f"Stage {stage_name} - Total Generated Tokens: {self.common_metrics['Total Generated Tokens'][stage_name]}")
-
             if self.infer_time[stage_name] > 0:
                 self.common_metrics["Input Token Throughput"][stage_name] = round(
                     self.common_metrics["Total Input Tokens"][stage_name]
                     / self.infer_time[stage_name],
                     4,
                 )
-                self.logger.debug(f"Stage {stage_name} - Input Token Throughput: {self.common_metrics['Input Token Throughput'][stage_name]} token/s")
-
                 self.common_metrics["Output Token Throughput"][stage_name] = round(
                     sum(self.result[stage_name]["OutputTokens"])
                     / self.infer_time[stage_name],
                     4,
                 )
-                self.logger.debug(f"Stage {stage_name} - Output Token Throughput: {self.common_metrics['Output Token Throughput'][stage_name]} token/s")
-
                 self.common_metrics["Total Token Throughput"][stage_name] = round(
                     (
                         self.common_metrics["Total Input Tokens"][stage_name]
@@ -520,7 +465,6 @@ class BasePerfMetricCalculator(ABC):
                     / self.infer_time[stage_name],
                     4,
                 )
-                self.logger.debug(f"Stage {stage_name} - Total Token Throughput: {self.common_metrics['Total Token Throughput'][stage_name]} token/s")
 
     def _calculate_concurrency(self, stage_name: str) -> float:
         """
@@ -529,7 +473,6 @@ class BasePerfMetricCalculator(ABC):
         Note:
             This method can be overridden by subclasses for custom concurrency calculation
         """
-        self.logger.debug(f"Calculating concurrency for stage {stage_name}: sum(E2EL)={sum(self.result[stage_name]['E2EL'])}, infer_time={self.infer_time[stage_name]}")
         return round(
             sum(self.result[stage_name]["E2EL"]) / self.infer_time[stage_name], 4
         )
@@ -542,14 +485,11 @@ class BasePerfMetricCalculator(ABC):
         and unit conversion.
         """
         self.logger.info("Starting metrics calculation...")
-        self.logger.debug(f"Available stages: {list(self.stage_dict.keys())}")
         self._calc_metrics()
         self.logger.info("Starting common metrics calculation...")
         self._calc_common_metrics()
         self.logger.info("Adding units to metrics...")
         self.add_units()
-        self.logger.debug(f"Final metrics keys: {list(self.metrics.keys())}")
-        self.logger.debug(f"Final common metrics keys: {list(self.common_metrics.keys())}")
         self.logger.info("Performance data calculation completed!")
 
     def add_units(self):
@@ -575,6 +515,4 @@ class BasePerfMetricCalculator(ABC):
         Args:
             out_path (str): Output file path for the CSV file
         """
-        self.logger.debug(f"Saving performance data to CSV file: {out_path}")
         self._export_to_csv(self.metrics, out_path)
-        self.logger.debug(f"Performance data successfully saved to {out_path}")

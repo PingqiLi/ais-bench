@@ -7,8 +7,6 @@ from ais_bench.benchmark.registry import PERF_METRIC_CALCULATORS
 from ais_bench.benchmark.calculators.base_perf_metric_calculator import (
     DEFAULT_STATS,
 )
-from ais_bench.benchmark.utils.logging.error_codes import CALC_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AISBenchDataContentError
 
 WAVE_OFFSET = 0.02
 
@@ -17,12 +15,12 @@ WAVE_OFFSET = 0.02
 class StablePerfMetricCalculator(BasePerfMetricCalculator):
     """
     Performance metric calculator for stable stage analysis.
-
+    
     This calculator focuses on analyzing the stable phase of benchmark execution,
     where the system operates at maximum concurrency with minimal fluctuations.
     It identifies and analyzes the stable period to provide more accurate
     performance metrics.
-
+    
     Args:
         stats_list (list, optional): List of statistics to calculate
     """
@@ -30,21 +28,21 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
     def _init_datas(self, perf_details: dict, max_concurrency: int):
         """
         Initialize data structures for stable stage analysis.
-
+        
         Args:
             perf_details (dict): Performance details dictionary
             max_concurrency (int): Maximum concurrency value
-
+            
         Raises:
             ValueError: If all requests failed
         """
         self.max_concurrency = max_concurrency
         self.stage_section = [0, 0]
         if sum(perf_details["success"]) == 0:
-            raise AISBenchDataContentError(
-                CALC_CODES.ALL_REQUEST_DATAS_INVALID,
-                "All requests failed, cannot calculate performance results. Please check the error logs from responses!",
+            self.logger.error(
+                "All requests failed, cannot calculate performance results. Please check the error logs from responses!"
             )
+            raise ValueError("All requests failed!")
         self.stage_dict = {"stable": self._get_requests_id(perf_details)}
 
         self.result = {}
@@ -62,13 +60,13 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
     def _get_requests_id(self, perf_details: dict) -> list:
         """
         Identify requests that belong to the stable stage.
-
+        
         Args:
             perf_details (dict): Performance details dictionary
-
+            
         Returns:
             list: List of request IDs in the stable stage
-
+            
         Raises:
             RuntimeError: If no stable stage can be identified
         """
@@ -136,17 +134,14 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
         if len(id_lists) > 0:
             id_lists.pop(0)  # ignore first request that reached max concurrency
         if len(id_lists) == 0:
-            raise AISBenchDataContentError(
-                CALC_CODES.CAN_NOT_FIND_STABLE_STAGE,
-                "Can not find a stable stage from performance results! Please check the conccurency plot.",
-            )
+            raise RuntimeError("Cannot find a stable stage!")
         self.logger.info("Stable stage calculation completed.")
         return id_lists
 
     def _process_result(self, full_result: dict, stage_name: str):
         """
         Process performance results for a specific stage.
-
+        
         Args:
             full_result (dict): Complete performance results
             stage_name (str): Name of the stage to process
@@ -167,13 +162,13 @@ class StablePerfMetricCalculator(BasePerfMetricCalculator):
     def _calculate_concurrency(self, stage_name: str) -> float:
         """
         Calculate concurrency for stable stage with maximum concurrency limit.
-
+        
         Overrides the base class method to ensure concurrency does not exceed
         the maximum concurrency value for stable stage analysis.
-
+        
         Args:
             stage_name (str): Name of the stage
-
+            
         Returns:
             float: Calculated concurrency value, capped at max_concurrency
         """

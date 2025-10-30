@@ -34,17 +34,5 @@ class FileMatchError(AISBenchBaseException):
     pass
 
 
-class AISBenchMetricError(AISBenchBaseException):
-    pass
-
-
-class AISBenchDumpError(AISBenchBaseException):
-    pass
-
-
-class AISBenchDataContentError(AISBenchBaseException):
-    pass
-
-
 class PerfResultCalcException(AISBenchBaseException):
     pass
