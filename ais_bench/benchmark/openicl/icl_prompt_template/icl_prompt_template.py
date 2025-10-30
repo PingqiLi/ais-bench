@@ -139,11 +139,6 @@ class PromptTemplate(BasePromptTemplate):
         template = None
         if isinstance(self.template, str):
             template = self.template
-            
-        # #multi-turn conversations
-        elif isinstance(self.template, dict) and 'type' in self.template.keys() and self.template['type']=='conversations':
-            template = entry['human']
-            return template
 
         elif self.prompt_type == 'origin':
             # This if is only effective when you are using GenInferecner
@@ -170,12 +165,6 @@ class PromptTemplate(BasePromptTemplate):
         else:
             template = template.format(**entry)
         return template
-
-    def _check_prompt_template(obj) -> 'PromptTemplate':
-        if isinstance(obj, PromptTemplate):
-            return obj
-        else:
-            raise TypeError(f'Expect a PromptTemplate object, but got {obj}')
 
     def __repr__(self):
         return (f'PromptTemplate({{\n\ttemplate: {self.template},\n\t'

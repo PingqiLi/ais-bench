@@ -79,13 +79,6 @@ class DatasetReader:
         train_range = check_type_list(train_range, [None, int, float, str])
         test_range = check_type_list(test_range, [None, int, float, str])
 
-        if input_template is not None:
-            self.input_template = PromptTemplate._check_prompt_template(
-                input_template)
-        if output_template is not None:
-            self.output_template = PromptTemplate._check_prompt_template(
-                output_template)
-
         self.dataset = check_dataset(dataset)
         if isinstance(self.dataset, Dataset):
             self.dataset = DatasetDict({

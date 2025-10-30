@@ -34,6 +34,9 @@ class ImportError(AISBenchBaseException):
     pass
 
 
+class ValueTypeError(AISBenchBaseException):
+    pass
+
 class FileMatchError(AISBenchBaseException):
     pass
 

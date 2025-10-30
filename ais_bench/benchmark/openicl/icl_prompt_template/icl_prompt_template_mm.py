@@ -72,19 +72,13 @@ class MMPromptTemplate(BasePromptTemplate):
             PromptType: The generated item.
         """
         if not self.check_mm_template():
-            self.logger.error(f'want get template with round and prompt_mm, but get {str(self.template)}')
+            self.logger.error(f'Expected to get template with round and prompt_mm, but got {self.template}')
         template = self._encode_template(self.template, ice=False)
         template = template.format(**entry)
         for i, item in enumerate(template):
             if 'prompt_mm' in item:
                 template[i]['prompt_mm'] = self.get_mm_template(item)
         return template
-    
-    def _check_prompt_template(obj) -> 'MMPromptTemplate':
-        if isinstance(obj, MMPromptTemplate):
-            return obj
-        else:   
-            raise TypeError(f'Expect a MMPromptTemplate object, but got {obj}')
 
     def __repr__(self):
         return (f'MMPromptTemplate({{\n\ttemplate: {self.template},\n\t'

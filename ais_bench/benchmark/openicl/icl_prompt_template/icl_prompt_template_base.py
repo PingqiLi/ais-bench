@@ -4,6 +4,9 @@ from typing import Dict, Hashable, List, Optional, Union
 from ais_bench.benchmark.registry import ICL_PROMPT_TEMPLATES
 from ais_bench.benchmark.utils.prompt import PromptList
 from ais_bench.benchmark.utils.core.types import check_type_list
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ValueTypeError, ImplementationErrorException
 
 PromptType = Union[PromptList, str, dict]
 
@@ -34,8 +37,10 @@ class BasePromptTemplate:
         ice_token: Optional[str] = None,
         sep_token: Optional[str] = None,
     ) -> None:
+        self.logger = AISLogger()
         self.template = template
-        assert isinstance(self.template, (str, Dict))
+        if not isinstance(self.template, (str, Dict)):
+            raise ValueTypeError(ICLI_CODES.TEMPLATE_TYPE_ERROR, f"Prompt template must be a str or a dict, but got {type(self.template)}")
         self.ice_token = check_type_list(ice_token, [None, str])
         self.sep_token = check_type_list(sep_token, [None, str])
         # A sign used to distinguish the prompt type
@@ -49,23 +54,20 @@ class BasePromptTemplate:
                       for key in ('begin', 'round', 'end'))
             self.prompt_type = 'meta' if ctr == len(
                 self.template.keys()) else 'origin'
+            self.logger.debug(f"Prompt template type: {self.prompt_type} with keys: {self.template.keys()}")
 
             # Check if token exists in values of tp_dict
             for tp_dict_val in self.template.values():
                 if not isinstance(tp_dict_val, (str, list, dict)):
-                    raise TypeError(
-                        'dictionary of template expects a str, list or a '
-                        f"dict, but got '{tp_dict_val}'")
-                if isinstance(
-                        tp_dict_val, str
-                ) and self.ice_token and self.ice_token not in tp_dict_val:
-                    raise LookupError(
-                        f"'{self.ice_token}' not in '{tp_dict_val}'")
+                    raise ValueTypeError(ICLI_CODES.TEMPLATE_VALUE_TYPE_ERROR, f"dictionary of template expects a str, list or a dict, but got {type(tp_dict_val)}, value: {tp_dict_val}")
+                if isinstance(tp_dict_val, str) \
+                    and self.ice_token \
+                    and self.ice_token not in tp_dict_val:
+                    raise ValueTypeError(ICLI_CODES.TEMPLATE_ICE_TOKEN_NOT_IN_VALUE, f"'{self.ice_token}' not in '{tp_dict_val}'")
 
         if isinstance(self.template, str):
             if self.ice_token and self.ice_token not in self.template:
-                raise LookupError(
-                    f"'{self.ice_token}' not in '{self.template}'")
+                raise ValueTypeError(ICLI_CODES.TEMPLATE_ICE_TOKEN_NOT_IN_VALUE, f"'{self.ice_token}' not in '{self.template}'")
 
     def generate_ice_item(self, entry: Dict, label: Hashable) -> PromptType:
         """Generate in-context example based on the provided :obj:`entry` data.
@@ -78,20 +80,14 @@ class BasePromptTemplate:
         Returns:
             PromptType: The generated in-context example.
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not supported"
-            " to be called in base classes"
-        )
+        raise ImplementationErrorException(ICLI_CODES.IMPLEMENTATION_ERROR, f"{self.__class__.__name__} does not supported to be called in base classes")
 
     def generate_label_prompt_item(self,
                                    entry: Dict,
                                    ice: PromptType,
                                    label: Hashable,
                                    remain_sep: Optional[bool] = False) -> str:
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not supported"
-            " to be called in base classes"
-        )
+        raise ImplementationErrorException(ICLI_CODES.IMPLEMENTATION_ERROR, f"{self.__class__.__name__} does not supported to be called in base classes")
 
     def generate_item(
             self,
@@ -99,16 +95,13 @@ class BasePromptTemplate:
             output_field: Optional[Hashable] = None,
             output_field_replace_token: Optional[str] = '',
             ice_field_replace_token: Optional[str] = '') -> PromptType:
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not supported"
-            " to be called in base classes"
-        )
+        raise ImplementationErrorException(ICLI_CODES.IMPLEMENTATION_ERROR, f"{self.__class__.__name__} does not supported to be called in base classes")
 
     def _check_prompt_template(obj) -> 'BasePromptTemplate':
         if isinstance(obj, BasePromptTemplate):
             return obj
         else:
-            raise TypeError(f'Expect a BasePromptTemplate object, but got {obj}')
+            raise ValueTypeError(ICLI_CODES.TEMPLATE_TYPE_ERROR, f"Expect a BasePromptTemplate object, but got {type(obj)}")
 
     def __repr__(self):
         return (f'BasePromptTemplate({{\n\ttemplate: {self.template},\n\t'
