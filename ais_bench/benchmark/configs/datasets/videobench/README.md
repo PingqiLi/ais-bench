@@ -3,10 +3,14 @@
 ## 数据集简介
 VideoBench是一个视频相关大模型的评估基准，AISBench支持VideoBench作为文本视频多模态理解任务的测评，文本为关于视频内容的选择题。
 
-> 🔗 数据集主页[https://huggingface.co/datasets/maoxx241/videobench_subset](https://huggingface.co/datasets/maoxx241/videobench_subset)
+> 数据集包含两部分：
+> 
+> 🔗 数据集描述文件[https://huggingface.co/datasets/maoxx241/videobench_subset](https://huggingface.co/datasets/maoxx241/videobench_subset)
+> 
+> 🔗 数据集视频文件[https://huggingface.co/datasets/LanguageBind/Video-Bench](https://huggingface.co/datasets/LanguageBind/Video-Bench)
 
 ## 数据集部署
-- 可以从huggingface的数据集链接🔗 [https://huggingface.co/datasets/maoxx241/videobench_subset](https://huggingface.co/datasets/maoxx241/videobench_subset)中获取
+- 可以从huggingface的数据集链接🔗 [https://huggingface.co/datasets/maoxx241/videobench_subset](https://huggingface.co/datasets/maoxx241/videobench_subset)和[https://huggingface.co/datasets/LanguageBind/Video-Bench](https://huggingface.co/datasets/LanguageBind/Video-Bench)中获取
 - 建议部署在`{工具根路径}/ais_bench/datasets`目录下（数据集任务中设置的默认路径），以linux上部署为例，具体执行步骤如下：
 ```bash
 # linux服务器内，处于工具根路径下
@@ -14,6 +18,13 @@ cd ais_bench/datasets
 git lfs install
 git clone https://huggingface.co/datasets/maoxx241/videobench_subset
 mv videobench_subset/ videobench/
+git clone https://huggingface.co/datasets/LanguageBind/Video-Bench
+```
+- 注意将数据集描述文件中的各json文件里的vid_path改为相应视频的绝对路径，举例如下：
+```bash
+"v_C7yd6yEkxXE_4": {
+"vid_path": "/data_mm/Eval_video/ActivityNet/v_C7yd6yEkxXE.mp4",
+}
 ```
 - 在`{工具根路径}/ais_bench/datasets`目录下执行`tree videobench/`查看目录结构，若目录结构如下所示，则说明数据集部署成功。
     ```
