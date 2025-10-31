@@ -3,11 +3,15 @@
 ## Dataset Introduction
 VideoBench is an evaluation benchmark for video-related large models. AISBench supports VideoBench for evaluating text-video multimodal understanding tasks, where the text consists of multiple-choice questions about video content.
 
-> 🔗 Dataset Homepage: [https://huggingface.co/datasets/maoxx241/videobench_subset](https://huggingface.co/datasets/maoxx241/videobench_subset)
+> The dataset consists of two parts.
+> 
+> 🔗 Dataset description file Homepage: [https://huggingface.co/datasets/maoxx241/videobench_subset](https://huggingface.co/datasets/maoxx241/videobench_subset)
+>
+> 🔗 Dataset video file Homepage: [https://huggingface.co/datasets/LanguageBind/Video-Bench](https://huggingface.co/datasets/LanguageBind/Video-Bench)
 
 
 ## Dataset Deployment
-- The dataset can be obtained from the Hugging Face dataset link 🔗: [https://huggingface.co/datasets/maoxx241/videobench_subset](https://huggingface.co/datasets/maoxx241/videobench_subset)
+- The dataset can be obtained from the Hugging Face dataset link 🔗: [https://huggingface.co/datasets/maoxx241/videobench_subset](https://huggingface.co/datasets/maoxx241/videobench_subset) and [https://huggingface.co/datasets/LanguageBind/Video-Bench](https://huggingface.co/datasets/LanguageBind/Video-Bench)
 - It is recommended to deploy the dataset in the directory `{tool_root_path}/ais_bench/datasets` (the default path set for dataset tasks). Taking deployment on a Linux server as an example, the specific execution steps are as follows:
 ```bash
 # Within the Linux server, under the tool root path
@@ -15,6 +19,13 @@ cd ais_bench/datasets
 git lfs install
 git clone https://huggingface.co/datasets/maoxx241/videobench_subset
 mv videobench_subset/ videobench/
+git clone https://huggingface.co/datasets/LanguageBind/Video-Bench
+```
+- Note to change the "vid_path" in each JSON file of the dataset description file to the absolute path of the corresponding video. For example, as follows:
+```
+"v_C7yd6yEkxXE_4": {
+"vid_path": "/data_mm/Eval_video/ActivityNet/v_C7yd6yEkxXE.mp4",
+}
 ```
 - Execute `tree videobench/` in the directory `{tool_root_path}/ais_bench/datasets` to check the directory structure. The deployment is successful if the structure matches the following:
     ```
