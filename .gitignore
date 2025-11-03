@@ -3,3 +3,6 @@ __pycache__
 **/build
 **/dist
 test_reports
+.venv
+.eggs
+ais_bench_benchmark.egg-info

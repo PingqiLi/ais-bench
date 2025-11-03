@@ -7,12 +7,16 @@ from mmengine.config import ConfigDict
 from ais_bench.benchmark.registry import (
     LOAD_DATASET,
     MODELS,
-    CLIENTS,
     PERF_METRIC_CALCULATORS,
 )
 
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
+from ais_bench.benchmark.utils.logging.error_codes import UTILS_CODES
 
-def validate_model_cfg(model_cfg: ConfigDict) -> dict:
+logger = AISLogger()
+
+def _validate_model_cfg(model_cfg: ConfigDict) -> dict:
     errors = {}
 
     def check(condition, key, message):
@@ -105,11 +109,11 @@ def validate_model_cfg(model_cfg: ConfigDict) -> dict:
                 if field in traffic_cfg:
                     if not validator(traffic_cfg[field]):
                         errors[f"traffic_cfg.{field}"] = error_msg
-
     return errors
-
+    
 
 def build_dataset_from_cfg(dataset_cfg: ConfigDict):
+    logger.debug(f"Building dataset from config: type={dataset_cfg.get('type')} abbr={dataset_cfg.get('abbr')}")
     dataset_cfg = copy.deepcopy(dataset_cfg)
     dataset_cfg.pop("infer_cfg", None)
     dataset_cfg.pop("eval_cfg", None)
@@ -117,11 +121,14 @@ def build_dataset_from_cfg(dataset_cfg: ConfigDict):
 
 
 def build_model_from_cfg(model_cfg: ConfigDict):
+    logger.debug(f"Building model from config: type={model_cfg.get('type')} abbr={model_cfg.get('abbr')}")
     model_cfg = copy.deepcopy(model_cfg)
     model_name = model_cfg.get("type", "").split(".")[-1]
-    errors = validate_model_cfg(model_cfg)
+    errors = _validate_model_cfg(model_cfg)
     if errors:
-        raise ValueError(
+        logger.warning(f"Model config validation failed for {model_name}: {errors}")
+        raise ConfigError(
+            UTILS_CODES.MODEL_CONFIG_VALIDATE_FAILED,
             f"{model_name} build failed with the following errors: {errors}"
         )
     model_cfg.pop("run_cfg", None)
@@ -134,11 +141,7 @@ def build_model_from_cfg(model_cfg: ConfigDict):
     model_cfg.pop("min_out_len", None)
     return MODELS.build(model_cfg)
 
-
-def build_client_from_cfg(client_cfg: ConfigDict):
-    return CLIENTS.build(client_cfg)
-
-
 def build_perf_metric_calculator_from_cfg(metric_cfg: ConfigDict):
+    logger.debug(f"Building perf metric calculator config: type={metric_cfg.get('type')}")
     metric_cfg = copy.deepcopy(metric_cfg)
     return PERF_METRIC_CALCULATORS.build(metric_cfg)

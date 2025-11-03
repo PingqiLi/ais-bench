@@ -1,10 +1,15 @@
 import sys
 
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+
+logger = AISLogger()
+
 if sys.platform == 'win32':  # Always return win32 for Windows
     # curses is not supported on Windows
     # If you want to use this function in Windows platform
     # you can try `windows_curses` module by yourself
     curses = None
+    logger.warning("Curses is not supported on Windows platform. Menu functionality will be limited.")
 else:
     import curses
 
@@ -25,6 +30,7 @@ class Menu:
         self.prompts = prompts or ['Please make a selection:'] * len(lists)
         self.choices = []
         self.current_window = []
+        logger.debug(f"Menu initialized with {len(lists)} selection lists")
 
     def draw_menu(self, stdscr, selected_row_idx, offset, max_rows):
         stdscr.clear()
@@ -43,16 +49,19 @@ class Menu:
         stdscr.refresh()
 
     def run(self):
+        logger.debug("Starting menu interactive selection")
         curses.wrapper(self.main_loop)
+        logger.debug(f"Menu selection completed with {len(self.choices)} choices: {self.choices}")
         return self.choices
 
     def main_loop(self, stdscr):
         curses.curs_set(0)
         curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
-        h, w = stdscr.getmaxyx()
+        h, _ = stdscr.getmaxyx()
         max_rows = h - 2
 
-        for choices, prompt in zip(self.choices_lists, self.prompts):
+        for list_idx, (choices, prompt) in enumerate(zip(self.choices_lists, self.prompts)):
+            logger.debug(f"Displaying selection list {list_idx + 1}/{len(self.choices_lists)}: {len(choices)} options")
             self.current_window = [prompt] + choices
             current_row_idx = 1
             offset = 0
@@ -72,5 +81,7 @@ class Menu:
                         offset += 1
 
                 elif key == curses.KEY_ENTER or key in [10, 13]:
-                    self.choices.append(choices[current_row_idx - 1])
+                    selected_choice = choices[current_row_idx - 1]
+                    self.choices.append(selected_choice)
+                    logger.debug(f"User selected: {selected_choice}")
                     break
