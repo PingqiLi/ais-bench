@@ -8,7 +8,7 @@ from tabulate import tabulate
 
 from ais_bench.benchmark.utils.logging.logging import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger()
 
 _NORMAL_INDICES_MASK: np.ndarray = np.array([], dtype=int)
 _ADAPTIVE_WINDOW_SIZE: int = 0
@@ -29,7 +29,7 @@ def plot_rps_distribution(
     """
     Main function: RPS distribution analysis with three charts
     """
-    # 1. Prepare time-RPS data 
+    # 1. Prepare time-RPS data
     time_points, rps_values = _prepare_time_rps_data(cumulative_delays)
 
     # 2. Separate points into three categories
@@ -59,18 +59,18 @@ def plot_rps_distribution(
     burstiness_anomaly_time_points = time_points[burstiness_anomaly_mask]
     burstiness_anomaly_rps_values = rps_values[burstiness_anomaly_mask]
 
-    # 3. Calculate bins for classic RPS distribution 
+    # 3. Calculate bins for classic RPS distribution
     # For classic RPS distribution, burstiness anomalies are treated as normal
     combined_normal_rps = np.concatenate([normal_rps_values, burstiness_anomaly_rps_values])
     display_min, display_max, num_bins = _calculate_rps_bins(
         combined_normal_rps, ramp_up_start_rps, ramp_up_end_rps, request_rate
     )
 
-    # 4. Calculate max y-value for normal values 
+    # 4. Calculate max y-value for normal values
     max_normal_y = _calculate_max_normal_y(combined_normal_rps, display_min, display_max, num_bins)
     anomaly_y = max_normal_y * 10 if max_normal_y > 0 else 1
 
-    # 5. Prepare request interval data 
+    # 5. Prepare request interval data
     intervals = _prepare_interval_data(cumulative_delays)
     if timing_anomaly_indices.size > 0:
         normal_intervals, timing_anomaly_intervals = _separate_normal_anomaly_intervals(
@@ -81,11 +81,11 @@ def plot_rps_distribution(
         normal_intervals = intervals
         timing_anomaly_intervals = np.array([])
 
-    # 6. Calculate bins for interval distribution 
+    # 6. Calculate bins for interval distribution
     display_min_interval, display_max_interval, num_bins_interval = _calculate_interval_bins(
         normal_intervals
     )
-    # 7. Calculate max y-value for normal intervals 
+    # 7. Calculate max y-value for normal intervals
     max_normal_y_interval = _calculate_max_normal_y_interval(
         normal_intervals, display_min_interval, display_max_interval, num_bins_interval
     )
@@ -96,7 +96,7 @@ def plot_rps_distribution(
         ) else request_rate
     combined_title = _create_combined_title(target_rate, ramp_up_strategy, ramp_up_start_rps, ramp_up_end_rps)
 
-    # 9. Create chart and add traces 
+    # 9. Create chart and add traces
     fig = _create_chart_figure(
         normal_time_points, normal_rps_values,
         timing_anomaly_time_points, timing_anomaly_rps_values,
@@ -114,7 +114,7 @@ def plot_rps_distribution(
         time_points,
         combined_title
     )
-    # 10. Save chart 
+    # 10. Save chart
     _export_to_html(fig, output_path)
 
     # 11. Log statistics
@@ -135,7 +135,7 @@ def plot_rps_distribution(
 
 def _prepare_time_rps_data(cumulative_delays: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Prepare time-RPS distribution data 
+    Prepare time-RPS distribution data
     Uses vectorized operations for better performance
     """
     intervals = np.diff(cumulative_delays, prepend=0.0)
@@ -152,7 +152,7 @@ def _calculate_rps_bins(
     request_rate: float
 ) -> Tuple[float, float, int]:
     """
-    Calculate bins for classic RPS distribution 
+    Calculate bins for classic RPS distribution
     Uses efficient numpy operations for min/max calculations
     """
     EMPTY_ARRAY_RETURN = (0.0, 1.0, 1)
@@ -209,7 +209,7 @@ def _calculate_rps_bins(
 
     num_bins = int((display_max - display_min) / bin_width)
     num_bins = max(MIN_BINS, min(MAX_BINS, num_bins))
-    
+
     return float(display_min), float(display_max), num_bins
 
 
@@ -220,7 +220,7 @@ def _calculate_max_normal_y(
     num_bins: int
 ) -> float:
     """
-    Calculate max y-value for normal values 
+    Calculate max y-value for normal values
     Uses numpy histogram for efficient bin calculation
     """
     if finite_normal_rps.size == 0:
@@ -238,7 +238,7 @@ def _calculate_interval_bins(
     normal_intervals: np.ndarray
 ) -> Tuple[float, float, int]:
     """
-    Calculate bins for interval distribution 
+    Calculate bins for interval distribution
     Efficiently calculates bin parameters using numpy
     """
     EMPTY_ARRAY_RETURN = (0.0, 1.0, 1)
@@ -276,7 +276,7 @@ def _calculate_interval_bins(
     bin_width = max(MIN_BIN_WIDTH, h)
     num_bins_interval = int((display_max_interval - display_min_interval) / bin_width)
     num_bins_interval = max(MIN_BINS, min(MAX_BINS, num_bins_interval))
-    
+
     return float(display_min_interval), float(display_max_interval), num_bins_interval
 
 
@@ -287,7 +287,7 @@ def _calculate_max_normal_y_interval(
     num_bins_interval: int
 ) -> float:
     """
-    Calculate max y-value for normal intervals 
+    Calculate max y-value for normal intervals
     Efficiently calculates max bin height using numpy histogram
     """
     if normal_intervals.size == 0:
@@ -366,39 +366,39 @@ def _separate_normal_anomaly_intervals(
 
 
 def _density_based_sampling(
-    time_points: np.ndarray, 
-    values: np.ndarray, 
-    max_samples: int = 1000, 
+    time_points: np.ndarray,
+    values: np.ndarray,
+    max_samples: int = 1000,
     num_strata: int = 100
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Stratified Sampling Method Based on Cumulative Distribution Function (CDF)
     Improving Efficiency While Preserving Temporal Density Distribution
-    
+
     Parameters:
         time_points: Array of time points
         values: Corresponding values array
         max_samples: Maximum number of sampling points
         num_strata: Number of strata
-    
+
     Returns:
         Sampled time points and values
     """
     n = len(time_points)
     if n <= max_samples:
         return time_points, values
-    
+
     time_indices = np.argsort(time_points)
     sorted_times = time_points[time_indices]
-    
+
     strata_bounds = np.quantile(sorted_times, np.linspace(0, 1, num_strata + 1))
-    
+
     strata_idx = np.digitize(sorted_times, strata_bounds) - 1
     strata_idx = np.clip(strata_idx, 0, num_strata - 1)
-    
+
     strata_counts = np.bincount(strata_idx, minlength=num_strata)
     sample_counts = (strata_counts * max_samples / n).astype(int)
-    
+
     total_samples = sample_counts.sum()
     if total_samples < max_samples:
         extra = max_samples - total_samples
@@ -415,28 +415,28 @@ def _density_based_sampling(
         if remainder > 0:
             largest_strata = np.argsort(strata_counts)[-remainder:]
             sample_counts[largest_strata] += 1
-    
+
     sampled_indices = []
     for i in range(num_strata):
         if sample_counts[i] == 0:
             continue
-            
+
         stratum_mask = (strata_idx == i)
         stratum_global_indices = time_indices[stratum_mask]
-        
+
         if len(stratum_global_indices) <= sample_counts[i]:
             sampled_indices.append(stratum_global_indices)
         else:
             selected = np.random.choice(
-                stratum_global_indices, 
-                size=sample_counts[i], 
+                stratum_global_indices,
+                size=sample_counts[i],
                 replace=False
             )
             sampled_indices.append(np.sort(selected))
-    
+
     sampled_indices = np.concatenate(sampled_indices)
     sampled_indices.sort()
-    
+
     return time_points[sampled_indices], values[sampled_indices]
 
 
@@ -447,7 +447,7 @@ def _calculate_adaptive_window(data_size):
             1000: 20,
             10000: 50,
             100000: 100
-        }.items()) 
+        }.items())
         if data_size <= threshold
     ), 200)
 
@@ -456,10 +456,10 @@ def _exponential_moving_average(data, window_size, alpha=None):
     """Calculate exponential weighted moving average"""
     if alpha is None:
         alpha = 2 / (window_size + 1)
-    
+
     weights = np.exp(np.linspace(-alpha, 0, window_size))
     weights /= weights.sum()
-    
+
     return np.convolve(data, weights, mode='valid')
 
 
@@ -490,7 +490,7 @@ def _create_chart_figure(
     combined_title: str
 ) -> go.Figure:
     """
-    Create chart figure with traces 
+    Create chart figure with traces
     Uses efficient Plotly methods and avoids unnecessary data copies
     """
     fig = make_subplots(
@@ -519,23 +519,23 @@ def _create_chart_figure(
     traces_names_dict = dict()
 
     curr_chart_name = legend_trace_name_prefix_list[0]
-    traces_names_dict[curr_chart_name]=_add_time_rps_traces(fig, 
+    traces_names_dict[curr_chart_name]=_add_time_rps_traces(fig,
                                             normal_time_points, normal_rps_values,
                                             timing_anomaly_time_points, timing_anomaly_rps_values,
                                             burstiness_anomaly_time_points, burstiness_anomaly_rps_values,
                                             request_rate, ramp_up_strategy, ramp_up_start_rps, ramp_up_end_rps,
                                             curr_chart_name, row=1, col=1)
-    
+
     curr_chart_name = legend_trace_name_prefix_list[1]
-    traces_names_dict[curr_chart_name]=_add_classic_rps_traces(fig, finite_normal_rps, timing_anomaly_rps_values, 
+    traces_names_dict[curr_chart_name]=_add_classic_rps_traces(fig, finite_normal_rps, timing_anomaly_rps_values,
                                             display_min, display_max, num_bins,
                                             curr_chart_name, row=1, col=2)
-    
+
     curr_chart_name = legend_trace_name_prefix_list[2]
-    traces_names_dict[curr_chart_name]=_add_interval_traces(fig, normal_intervals, timing_anomaly_intervals, 
+    traces_names_dict[curr_chart_name]=_add_interval_traces(fig, normal_intervals, timing_anomaly_intervals,
                                             display_min_interval, display_max_interval, num_bins_interval,
                                             curr_chart_name, row=2, col=1)
-    
+
     _add_legend_explanation_table(fig, traces_names_dict, row=2, col=2)
 
     fig.update_traces(
@@ -615,7 +615,7 @@ def _add_time_rps_traces(
 
     if timing_anomaly_time_points.size > 0:
         sampled_time, sampled_rps = _density_based_sampling(
-            timing_anomaly_time_points, 
+            timing_anomaly_time_points,
             timing_anomaly_rps_values,
             max_samples=1000
         )
@@ -636,7 +636,7 @@ def _add_time_rps_traces(
 
     if burstiness_anomaly_time_points.size > 0:
         sampled_time, sampled_rps = _density_based_sampling(
-            burstiness_anomaly_time_points, 
+            burstiness_anomaly_time_points,
             burstiness_anomaly_rps_values,
             max_samples=1000
         )
@@ -659,15 +659,15 @@ def _add_time_rps_traces(
         finite_mask = np.isfinite(normal_rps_values)
         finite_rps = normal_rps_values[finite_mask]
         finite_time = normal_time_points[finite_mask]
-        
+
         adaptive_window = _calculate_adaptive_window(len(finite_rps))
-        
+
         if len(finite_rps) >= adaptive_window:
             global _ADAPTIVE_WINDOW_SIZE
             _ADAPTIVE_WINDOW_SIZE = adaptive_window
             moving_avg = _exponential_moving_average(finite_rps, adaptive_window)
             moving_avg_time = finite_time[adaptive_window-1:]
-        
+
             curr_trace_name = f'{legend_trace_name_prefix}{adaptive_window}-point EWMA'
             traces_names.append(curr_trace_name)
             fig.add_trace(
@@ -743,7 +743,7 @@ def _add_classic_rps_traces(
 
     if timing_anomaly_rps_values.size > 0:
         sampled_rps, _ = _density_based_sampling(
-            timing_anomaly_rps_values, 
+            timing_anomaly_rps_values,
             timing_anomaly_rps_values,
             max_samples=1000
         )
@@ -801,7 +801,7 @@ def _add_interval_traces(
 
     if timing_anomaly_intervals.size > 0:
         sampled_intervals, _ = _density_based_sampling(
-            timing_anomaly_intervals, 
+            timing_anomaly_intervals,
             timing_anomaly_intervals,
             max_samples=1000
         )
@@ -852,13 +852,13 @@ def _add_legend_explanation_table(
     calculations = []
     criteria = []
     visualizations = []
-    
+
     for group_prefix, trace_list in traces_names_dict.items():
         if not trace_list:
             continue
         group_names.append(group_prefix)
         trace_names.append("")
-        meanings.append("") 
+        meanings.append("")
         calculations.append("")
         criteria.append("")
         visualizations.append("")
@@ -871,12 +871,12 @@ def _add_legend_explanation_table(
             calculations.append(description[1])
             criteria.append(description[2])
             visualizations.append(description[3])
-    
+
     total_rows = 0
     for group_prefix, trace_list in traces_names_dict.items():
         if trace_list:
             total_rows += len(trace_list) + 1  # +1 for group header
-    
+
     base_row_height = 25
     max_table_height = 400
     row_height = min(base_row_height, max_table_height / max(total_rows, 1))
@@ -906,16 +906,16 @@ def _add_legend_explanation_table(
     )
 
     fig.update_xaxes(
-        showgrid=False, 
-        showticklabels=False, 
-        zeroline=False, 
+        showgrid=False,
+        showticklabels=False,
+        zeroline=False,
         row=row, col=col,
         domain=[0, 1]
     )
     fig.update_yaxes(
-        showgrid=False, 
-        showticklabels=False, 
-        zeroline=False, 
+        showgrid=False,
+        showticklabels=False,
+        zeroline=False,
         row=row, col=col,
         domain=[0, 1]
     )
@@ -953,10 +953,10 @@ def _log_statistics(
         total_timing_anomaly = int(total_timing_anomaly * scale_factor)
         total_burstiness_anomaly = int(total_burstiness_anomaly * scale_factor)
         total_invalid = total_requests - total_normal - total_timing_anomaly - total_burstiness_anomaly
-    
+
     core_stats = [
         ("Total Requests", total_requests),
-        ("Request Classification", 
+        ("Request Classification",
          f"Normal: {total_normal} | "
          f"Timing Anomaly: {total_timing_anomaly} | "
          f"Burstiness Anomaly: {total_burstiness_anomaly} | "
@@ -973,11 +973,11 @@ def _log_statistics(
         ])
 
     interval_stats = [
-        ("Interval Stats", 
+        ("Interval Stats",
          f"Avg: {intervals.mean():.3f}s | "
          f"Min: {intervals.min():.3f}s | "
          f"Max: {intervals.max():.3f}s"),
-        ("Interval Classification", 
+        ("Interval Classification",
          f"Normal (Normal + Burstiness Anomaly): {normal_intervals.size} | "
          f"Anomaly (Timing Anomaly + Infinite RPS Anomaly): {timing_anomaly_intervals.size}")
     ]
@@ -1009,7 +1009,7 @@ def add_actual_rps_to_chart(
 ) -> None:
     """
     Add actual request posting times to an existing RPS distribution chart
-    
+
     Parameters:
         base_chart: Existing chart (json file path, Figure object, or dict)
         post_time_list: List of actual request posting times
@@ -1040,7 +1040,7 @@ def add_actual_rps_to_chart(
         marker_size=marker_size,
         line_width=line_width
     )
-    
+
     def update_legend_callback(fig: go.Figure, src_dict: dict):
         description = (
             "实际请求率(排除异常值)",
@@ -1049,7 +1049,7 @@ def add_actual_rps_to_chart(
             "橙色实线 + 点状标记"
         )
         _update_legend_explanation(fig, trace_name, description)
-    
+
     def define_layout_rollback(fig: go.Figure):
         fig.update_xaxes(title_text="Time (seconds)", showgrid=True, gridwidth=1,
                          gridcolor='rgba(200, 200, 200, 0.5)')
@@ -1067,7 +1067,7 @@ def add_actual_rps_to_chart(
             paper_bgcolor="rgba(0,0,0,0)",
             autosize=True
         )
-        
+
     # Add trace to the base chart at position (1,1)
     merged_fig = _merge_into_subplot(
         dst=base_chart,
@@ -1078,7 +1078,7 @@ def add_actual_rps_to_chart(
         callback=update_legend_callback,
         rollback=define_layout_rollback,
     )
-    
+
     # Export the updated chart
     if merged_fig is not None:
         _export_to_html(merged_fig, output_path, save_json=False)
@@ -1109,7 +1109,7 @@ def _determine_output_path(
             Output to base_chart's directory with output_name
         - Else:
             Output to base_chart if it's a directory, else to base_chart's parent directory (if exists), else current directory
-    
+
     2. If output_name is not provided:
         - If base_chart is a valid HTML file path:
             Output to base_chart's directory with "[original_basename]_with_actual_rps.html"
@@ -1123,7 +1123,7 @@ def _determine_output_path(
             dir_name = os.path.dirname(base_chart)
             base_name = os.path.basename(base_chart)
             base_name, _ = os.path.splitext(base_name) # _is_valid_chart_html_file makes sure base_name must .endswith('.html')
-            
+
             new_name = f"{base_name}_with_actual_rps.html"
             return os.path.join(dir_name, new_name)
         else:
@@ -1133,10 +1133,10 @@ def _determine_output_path(
                 base_dir = os.path.dirname(base_chart)
                 base_dir = base_dir if os.path.isdir(base_dir) else os.getcwd()
             return os.path.join(base_dir, "rps_distribution_plot_with_actual_rps.html")
-    
+
     if not output_name.lower().endswith('.html'):
         output_name += '.html'
-    
+
     if _is_valid_chart_html_file(base_chart):
         dir_name = os.path.dirname(base_chart)
         return os.path.join(dir_name, output_name)
@@ -1160,7 +1160,7 @@ def _create_time_rps_trace(
 ) -> go.Scatter:
     """
     Create a Time-RPS trace from actual request posting times
-    
+
     Parameters:
         post_time_list: List of actual request posting times (global delays)
         trace_name: Name for the trace (used in legend)
@@ -1169,19 +1169,19 @@ def _create_time_rps_trace(
         mode: Plot mode ('lines', 'markers', or 'lines+markers')
         marker_size: Size of markers
         line_width: Width of lines
-        
+
     Returns:
         go.Scatter trace object
     """
     # 1. Prepare time-RPS data
     time_points, rps_values = _prepare_actual_rps_data(post_time_list)
-    
+
     # 2. Apply density-based sampling for large datasets
     if len(time_points) > 5000:
         time_points, rps_values = _density_based_sampling(
             time_points, rps_values, max_samples=5000
         )
-    
+
     # 3. Create and return trace
     return go.Scatter(
         x=time_points,
@@ -1204,22 +1204,22 @@ def _create_time_rps_trace(
 def _prepare_actual_rps_data(post_time_list: List[float]) -> Tuple[np.ndarray, np.ndarray]:
     """
     Prepare time-RPS data from actual request posting times
-    
+
     Parameters:
         post_time_list: List of actual request posting times
-        
+
     Returns:
         Tuple of (time_points, rps_values)
     """
     post_times = np.array(post_time_list, dtype=float)
     sorted_indices = np.argsort(post_times)
     sorted_times = post_times[sorted_indices]
-    
+
     intervals = np.diff(sorted_times, prepend=0.0)
 
     rps_values = np.divide(
-        1.0, 
-        intervals, 
+        1.0,
+        intervals,
         where=intervals > 1e-6,
         out=np.full_like(intervals, np.inf)
     )
@@ -1257,18 +1257,18 @@ def _update_legend_explanation(
         if isinstance(trace, go.Table) and trace.cells.values[0] is not None:
             table_trace = trace
             break
-    
+
     if table_trace is None:
         logger.warning("Legend explanation table not found")
         return
-    
+
     group_names = list(table_trace.cells.values[0])
     trace_names = list(table_trace.cells.values[1])
     meanings = list(table_trace.cells.values[2])
     calculations = list(table_trace.cells.values[3])
     criteria = list(table_trace.cells.values[4])
     visualizations = list(table_trace.cells.values[5])
-    
+
     insert_index = -1
     for i in range(len(group_names)):
         if group_names[i] == group_prefix:
@@ -1277,7 +1277,7 @@ def _update_legend_explanation(
                 j += 1
             insert_index = j
             break
-    
+
     if insert_index == -1:
         logger.info(f"Creating new group: {group_prefix}")
         group_names.append(group_prefix)
@@ -1287,14 +1287,14 @@ def _update_legend_explanation(
         criteria.append("")
         visualizations.append("")
         insert_index = len(group_names)
-    
+
     group_names.insert(insert_index, "")
     trace_names.insert(insert_index, trace_name)
     meanings.insert(insert_index, description[0])
     calculations.insert(insert_index, description[1])
     criteria.insert(insert_index, description[2])
     visualizations.insert(insert_index, description[3])
-    
+
     table_trace.cells.values = [
         group_names,
         trace_names,
@@ -1303,19 +1303,19 @@ def _update_legend_explanation(
         criteria,
         visualizations
     ]
-    
+
     total_rows = len(group_names)
     base_row_height = 25
     max_table_height = 400
     row_height = min(base_row_height, max_table_height / max(total_rows, 1))
     base_font_size = 14
     font_size = max(10, base_font_size - max(0, total_rows - 10) // 2)
-    
+
     table_trace.header.height = row_height * 1.5
     table_trace.header.font.size = font_size * 1.2
     table_trace.cells.height = row_height
     table_trace.cells.font.size = font_size
-    
+
     logger.info(f"Added '{trace_name}' to group '{group_prefix}' in legend explanation table")
 
 
@@ -1336,7 +1336,7 @@ def _export_to_html(fig: go.Figure, output_path: str, save_json: bool = True) ->
                 }
             )
             logger.info(f"RPS distribution charts saved to {output_path}")
-            
+
             if save_json:
                 filename: str = output_path.replace('.html', '.json')
                 _export_to_json(fig, filename)
@@ -1372,7 +1372,7 @@ def _merge_into_subplot(
     """
     Merge source chart (src) into destination chart (dst) at specified subplot position
     Supports src as traces or trace lists
-    
+
     Parameters:
         dst: Destination chart (JSON file path, go.Figure object, or dict)
         src: Source chart (JSON file path, go.Figure object, dict, trace, or trace list)
@@ -1384,7 +1384,7 @@ def _merge_into_subplot(
         legendgroup: Legend group name to assign to all source traces
         callback: Optional callback function to perform custom operations after merging
         rollback: Optional rollback function to perform custom operations if loading dst failed
-    
+
     Returns:
         Merged go.Figure object
     """
@@ -1400,7 +1400,7 @@ def _merge_into_subplot(
         if os.path.exists(json_path):
             return json_path
         return ""
-    
+
     def load_chart_data(chart) -> dict:
         if isinstance(chart, str):
             chart_trans = convert_path_to_json_path(chart)
@@ -1424,7 +1424,7 @@ def _merge_into_subplot(
     except Exception as e:
         logger.info(f"Destination chart loading failed: {str(e)}.")
         dst_dict = None
-      
+
     try:
         src_dict = load_chart_data(src)
         if dst_dict is None:
@@ -1447,7 +1447,7 @@ def _merge_into_subplot(
         logger.error(f"Source chart loading failed: {str(e)}")
         logger.info(f"No information will be updated in any chart.")
         return
-    
+
     if 'data' not in dst_dict or 'layout' not in dst_dict:
         logger.error("Invalid destination chart format")
         logger.info(f"No information will be updated in any chart.")
@@ -1455,9 +1455,9 @@ def _merge_into_subplot(
 
     if 'data' not in src_dict:
         src_dict = {'data': src_dict, 'layout': {}}
-    
+
     dst_layout = dst_dict.get('layout', {})
-    
+
     total_cols = 1
     if 'grid' in dst_layout and 'columns' in dst_layout['grid']:
         total_cols = dst_layout['grid']['columns']
@@ -1465,16 +1465,16 @@ def _merge_into_subplot(
         axis_keys = [k for k in dst_layout.keys() if k.startswith('xaxis')]
         if axis_keys:
             total_cols = len(axis_keys)
-    
+
     subplot_index = (row - 1) * total_cols + col
-    
+
     if subplot_index == 1:
         xaxis_ref = 'x'
         yaxis_ref = 'y'
     else:
         xaxis_ref = f'x{subplot_index}'
         yaxis_ref = f'y{subplot_index}'
-    
+
     target_legendgroup = legendgroup
     if target_legendgroup is None:
         for trace in dst_dict['data']:
@@ -1482,19 +1482,19 @@ def _merge_into_subplot(
                 if 'legendgroup' in trace:
                     target_legendgroup = trace['legendgroup']
                     break
-        
+
         if target_legendgroup is None:
             target_legendgroup = f"group_{row}_{col}"
 
 
     for i, trace in enumerate(src_dict['data']):
         trace_copy = trace.copy()
-        
+
         if trace_names and i < len(trace_names):
             trace_copy['name'] = trace_names[i]
-        
+
         trace_copy['visible'] = visible
-        
+
         trace_copy['xaxis'] = xaxis_ref
         trace_copy['yaxis'] = yaxis_ref
 
@@ -1502,22 +1502,22 @@ def _merge_into_subplot(
         trace_copy['showlegend'] = True
 
         dst_dict['data'].append(trace_copy)
-    
+
     if merge_layout and 'layout' in src_dict:
         for axis_type in ['xaxis', 'yaxis']:
             axis_ref = xaxis_ref if axis_type == 'xaxis' else yaxis_ref
             if axis_ref in src_dict['layout']:
                 if axis_ref not in dst_dict['layout']:
                     dst_dict['layout'][axis_ref] = {}
-                
+
                 for key, value in src_dict['layout'][axis_ref].items():
                     if key not in dst_dict['layout'][axis_ref]:
                         dst_dict['layout'][axis_ref][key] = value
-        
+
         if 'title' in src_dict['layout']:
             if 'annotations' not in dst_dict['layout']:
                 dst_dict['layout']['annotations'] = []
-            
+
             dst_dict['layout']['annotations'].append({
                 'text': src_dict['layout']['title'].get('text', ''),
                 'xref': f"{xaxis_ref} domain",
@@ -1527,14 +1527,14 @@ def _merge_into_subplot(
                 'showarrow': False,
                 'font': {'size': 12}
             })
-    
+
     try:
         merged_fig = go.Figure(dst_dict)
     except Exception as e:
         logger.error(f"Failed to create Figure object: {str(e)}")
         logger.info(f"No information will be updated in any chart.")
         return
-    
+
     if callback is not None:
         try:
             callback(merged_fig, src_dict)
