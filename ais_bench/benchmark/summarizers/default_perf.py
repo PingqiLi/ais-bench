@@ -28,6 +28,7 @@ from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import i
 
 from ais_bench.benchmark.utils.logging.exceptions import AISBenchDataContentError, FileMatchError
 from ais_bench.benchmark.utils.logging.error_codes import SUMM_CODES
+from ais_bench.benchmark.utils.file.load_tokenizer import load_tokenizer, AISTokenizer
 
 
 def model_abbr_from_cfg_used_in_summarizer(model):
@@ -116,7 +117,7 @@ class DefaultPerfSummarizer:
             model_cfg: Model configuration
             perf_datas: Raw performance data
         """
-        model = build_model_from_cfg(model_cfg)
+        tokenizer = AISTokenizer(model_cfg.get("path"))
         conn = init_db(db_file_path)
         all_numpy_data = load_all_numpy_from_db(conn)
 
@@ -150,11 +151,11 @@ class DefaultPerfSummarizer:
                 manager_list.append({"success": False})
                 continue
             if not is_mm_prompt(perf_data["input"]):
-                perf_data["input_tokens"] = len(model.encode(perf_data["input"]))
+                perf_data["input_tokens"] = len(tokenizer.encode(perf_data["input"]))
             else:
                 perf_data["input_tokens"] = 0  # multi-modal input does not support input_tokens
             if not perf_data["output_tokens"]:
-                perf_data["output_tokens"] = len(model.encode(perf_data["prediction"]))
+                perf_data["output_tokens"] = len(tokenizer.encode(perf_data["prediction"]))
             perf_data.pop("input")
             perf_data.pop("prediction")
             perf_data.pop("db_name")
@@ -251,6 +252,9 @@ class DefaultPerfSummarizer:
             )
 
         details_perf_datas = defaultdict(list)
+
+        # check tokenizer
+        load_tokenizer(tokenizer_path=model_cfg.get("path"))
 
         with multiprocessing.Manager() as manager:
             manager_list = manager.list()

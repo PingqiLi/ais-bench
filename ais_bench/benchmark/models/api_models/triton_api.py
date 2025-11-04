@@ -76,15 +76,18 @@ class TritonCustomAPI(BaseAPIModel):
             if not self.stream
             else f"v2/models/{self.model_name}/generate_stream"
         )
-        return f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{endpoint}"
+        self.logger.debug(f"Request url: {url}")
+        return url
 
     async def get_request_body(self, input_data: PromptType, max_out_len: int, output: Output, **args):
         output.input = input_data
         generation_kwargs = self.generation_kwargs.copy()
         generation_kwargs.update({"max_new_tokens": max_out_len})
-        return dict(
+        request_body = dict(
             id=str(uuid.uuid4()), text_input=input_data, parameters=generation_kwargs
         )
+        return request_body
 
     async def parse_text_response(self, api_response:dict, output:Output):
         generated_text = api_response.get("text_output", "")
@@ -93,3 +96,4 @@ class TritonCustomAPI(BaseAPIModel):
     async def parse_stream_response(self, api_response:dict, output:Output):
         generated_text = api_response.get("text_output", "")
         output.content += generated_text
+        self.logger.debug(f"Output content: {output.content}")

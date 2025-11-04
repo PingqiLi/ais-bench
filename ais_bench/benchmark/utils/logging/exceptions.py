@@ -42,10 +42,6 @@ class AISBenchImplementationError(AISBenchBaseException):
     pass
 
 
-class AISRuntimeError(AISBenchBaseException):
-    pass
-
-
 class FileMatchError(AISBenchBaseException):
     pass
 
@@ -71,6 +67,26 @@ class AISBenchDataContentError(AISBenchBaseException):
 
 
 class PerfResultCalcException(AISBenchBaseException):
+    pass
+
+
+class AISBenchNotImplementedError(AISBenchBaseException):
+    pass
+
+
+class AISBenchKeyError(AISBenchBaseException):
+    pass
+
+
+class AISBenchTypeError(AISBenchBaseException):
+    pass
+
+
+class AISBenchRuntimeError(AISBenchBaseException):
+    pass
+
+
+class AISBenchModuleNotFoundError(AISBenchBaseException):
     pass
 
 

@@ -32,6 +32,7 @@ class ErrorType(Enum):
     DATA = "DATA"     # data error type
     METRIC = "MTRC"     # metric error type
     TYPE = "TYPE"     # type error type
+    MODULE = "MOD"     # module error type
     PARAM = "PARAM"     # parameter error type
 
 
@@ -168,6 +169,27 @@ class ICLR_CODES:
 
 class MODEL_CODES:
     UNKNOWN_ERROR = BaseErrorCode("MODEL-UNK-001", ErrorModule.MODEL, ErrorType.UNKNOWN, 1, "unknown error of model")
+    PARSE_TEXT_RSP_NOT_IMPLEMENTED = BaseErrorCode("MODEL-IMPL-001", ErrorModule.MODEL, ErrorType.IMPLEMENTATION, 1, "parse text response not implemented")
+    PARSE_STREAM_RSP_NOT_IMPLEMENTED = BaseErrorCode("MODEL-IMPL-002", ErrorModule.MODEL, ErrorType.IMPLEMENTATION, 2, "parse stream response not implemented")
+
+    INVALID_POS_IN_PROMPT_TEMPLATE = BaseErrorCode("MODEL-PARAM-001", ErrorModule.MODEL, ErrorType.PARAM, 1, "invalid pos in prompt template")
+    INVALID_ROLE_IN_PROMPT_TEMPLATE = BaseErrorCode("MODEL-PARAM-002", ErrorModule.MODEL, ErrorType.PARAM, 2, "invalid role in prompt template")
+    INVALID_ROLE_IN_CHAT_TEMPLATE = BaseErrorCode("MODEL-PARAM-003", ErrorModule.MODEL, ErrorType.PARAM, 3, "invalid role in chat template")
+    MISS_REQUIRED_PARAM_IN_META_TEMPLATE = BaseErrorCode("MODEL-PARAM-004", ErrorModule.MODEL, ErrorType.PARAM, 4, "miss required param in meta template")
+    ROLE_IN_META_TEMPLATE_IS_NOT_UNIQUE = BaseErrorCode("MODEL-PARAM-005", ErrorModule.MODEL, ErrorType.PARAM, 5, "role in meta prompt must be unique!")
+
+    MIX_STR_WITHOUT_EXPLICIT_ROLE = BaseErrorCode("MODEL-TYPE-001", ErrorModule.MODEL, ErrorType.TYPE, 1, "mixing str without explicit role is not allowed")
+    PARSE_TEMPLATE_INVALID_TYPE = BaseErrorCode("MODEL-TYPE-002", ErrorModule.MODEL, ErrorType.TYPE, 2, "invalid prompt template type")
+    PARSE_TEMPLATE_INVALID_MODE = BaseErrorCode("MODEL-TYPE-003", ErrorModule.MODEL, ErrorType.TYPE, 3, "invalid mode in prompt template")
+    INVALID_TYPE_OF_PARAM_IN_META_TEMPLATE = BaseErrorCode("MODEL-TYPE-004", ErrorModule.MODEL, ErrorType.TYPE, 4, "invalid type of param in meta template")
+
+    GET_SERVICE_MODEL_PATH_FAILED = BaseErrorCode("MODEL-DATA-001", ErrorModule.MODEL, ErrorType.DATA, 1, "fail to get service model path")
+    INVALID_PROMPT_CONTENT = BaseErrorCode("MODEL-DATA-002", ErrorModule.MODEL, ErrorType.DATA, 2, "invalid prompt content")
+    PARSE_TEXT_RSP_INVALID_FORMAT = BaseErrorCode("MODEL-DATA-003", ErrorModule.MODEL, ErrorType.DATA, 3, "parse text response invalid format")
+
+    MAX_SEQ_LEN_NOT_FOUND = BaseErrorCode("MODEL-CFG-001", ErrorModule.MODEL, ErrorType.CONFIG, 1, "max_seq_len is not provided and cannot be inferred from the model config.")
+    MODULE_NOT_FOUND = BaseErrorCode("MODEL-MOD-001", ErrorModule.MODEL, ErrorType.MODULE, 1, "module not found")
+
 
 
 class UNK_CODES:

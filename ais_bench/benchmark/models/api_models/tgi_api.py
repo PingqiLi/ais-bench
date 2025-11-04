@@ -68,7 +68,9 @@ class TGICustomAPI(BaseAPIModel):
 
     def _get_url(self) -> str:
         endpoint = "generate_stream" if self.stream else "generate"
-        return f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{endpoint}"
+        self.logger.debug(f"Request url: {url}")
+        return url
 
     async def get_request_body(
         self, input_data: PromptType, max_out_len: int, output: Output, **args
@@ -77,7 +79,8 @@ class TGICustomAPI(BaseAPIModel):
 
         generation_kwargs = self.generation_kwargs.copy()
         generation_kwargs.update({"max_new_tokens": max_out_len})
-        return dict(inputs=input_data, parameters=generation_kwargs)
+        request_body = dict(inputs=input_data, parameters=generation_kwargs)
+        return request_body
 
     async def parse_text_response(self, api_response:dict, output:Output):
         generated_text = api_response.get("generated_text", "")
@@ -87,3 +90,4 @@ class TGICustomAPI(BaseAPIModel):
         generated_text = api_response.get("generated_text", "")
         # TGI will return the generated text in last chunk
         output.content = generated_text
+        self.logger.debug(f"Output content: {output.content}")

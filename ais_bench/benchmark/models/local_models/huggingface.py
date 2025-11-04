@@ -8,8 +8,12 @@ import transformers
 from ais_bench.benchmark.models import BaseModel
 from ais_bench.benchmark.models import APITemplateParser
 from ais_bench.benchmark.registry import MODELS
-from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.prompt import PromptList
+from ais_bench.benchmark.utils.logging.error_codes import MODEL_CODES
+from ais_bench.benchmark.utils.logging.exceptions import (
+    AISBenchModuleNotFoundError, AISBenchValueError
+)
+
 
 PromptType = Union[PromptList, str, dict]
 
@@ -112,7 +116,6 @@ class HuggingFace(BaseModel):
                          meta_template=meta_template)
         if hf_cache_dir is None:
             hf_cache_dir = os.getenv('HF_MODEL_HUB', None)
-        self.logger = get_logger()
         self.pad_token_id = pad_token_id
         assert mode in ['none', 'mid']
         self.mode = mode
@@ -164,10 +167,10 @@ class HuggingFace(BaseModel):
                         'as pad_token_id.')
                     self.tokenizer.pad_token_id = gcfg.pad_token_id
                 else:
-                    raise ValueError(
-                        'pad_token_id is not set for this tokenizer. Try to '
-                        'set pad_token_id via passing '
-                        '`pad_token_id={PAD_TOKEN_ID}` in model_cfg.')
+                    raise AISBenchValueError(
+                        MODEL_CODES.UNKNOWN_ERROR,
+                        "pad_token_id is not set for this tokenizer. Please set `pad_token_id={PAD_TOKEN_ID}` in model_cfg."
+                    )
 
         # A patch for llama when batch_padding = True
         if 'decapoda-research/llama' in path or \
@@ -276,11 +279,12 @@ class HuggingFace(BaseModel):
         if self.use_fastchat_template:
             try:
                 from fastchat.model import get_conversation_template
-            except ModuleNotFoundError:
-                raise ModuleNotFoundError(
-                    'Fastchat is not implemented. You can use '
-                    '\'pip install "fschat[model_worker,webui]"\' '
-                    'to implement fastchat.')
+            except Exception:
+                raise AISBenchModuleNotFoundError(
+                    MODEL_CODES.MODULE_NOT_FOUND,
+                    'fastchat module not found. Please install with\npip install "fschat[model_worker,webui]"'
+                )
+
             for i in range(len(inputs)):
                 conv = get_conversation_template('vicuna')
                 conv.append_message(conv.roles[0], inputs[i])
@@ -360,11 +364,11 @@ class HuggingFace(BaseModel):
         if self.use_fastchat_template:
             try:
                 from fastchat.model import get_conversation_template
-            except ModuleNotFoundError:
-                raise ModuleNotFoundError(
-                    'Fastchat is not implemented. You can use '
-                    '\'pip install "fschat[model_worker,webui]"\' '
-                    'to implement fastchat.')
+            except Exception:
+                raise AISBenchModuleNotFoundError(
+                    MODEL_CODES.MODULE_NOT_FOUND,
+                    'fastchat module not found. Please install with\npip install "fschat[model_worker,webui]"'
+                )
             conv = get_conversation_template('vicuna')
             conv.append_message(conv.roles[0], inputs[0])
             conv.append_message(conv.roles[1], None)

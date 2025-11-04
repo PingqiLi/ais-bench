@@ -146,3 +146,68 @@
 ## ICLR-IMPL-003
 ### error description
 ### solution
+
+## MODEL-IMPL-001
+### error description
+### solution
+
+## MODEL-IMPL-002
+### error description
+### solution
+
+## MODEL-PARAM-001
+### error description
+### solution
+
+## MODEL-PARAM-002
+### error description
+### solution
+
+## MODEL-PARAM-003
+### error description
+### solution
+
+## MODEL-PARAM-004
+### error description
+### solution
+
+## MODEL-PARAM-005
+### error description
+### solution
+
+## MODEL-TYPE-001
+### error description
+### solution
+
+## MODEL-TYPE-002
+### error description
+### solution
+
+## MODEL-TYPE-003
+### error description
+### solution
+
+## MODEL-TYPE-004
+### error description
+### solution
+
+## MODEL-DATA-001
+### error description
+### solution
+
+## MODEL-DATA-002
+### error description
+### solution
+
+## MODEL-DATA-003
+### error description
+### solution
+
+## MODEL-CFG-001
+### error description
+### solution
+
+## MODEL-MOD-001
+### error description
+### solution
+

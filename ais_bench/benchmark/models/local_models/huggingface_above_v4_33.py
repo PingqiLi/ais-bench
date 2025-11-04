@@ -6,15 +6,14 @@ from typing import Dict, List, Optional, Union
 import torch
 from mmengine.device import is_npu_available
 
-from ais_bench.benchmark.models.local_models.performance import PerformanceModel
+from ais_bench.benchmark.models.local_models.base import BaseModel
 from ais_bench.benchmark.models import LMTemplateParser
 from ais_bench.benchmark.models import APITemplateParser
 from ais_bench.benchmark.registry import MODELS
-from ais_bench.benchmark.utils.logging import get_logger
-from ais_bench.benchmark.utils.prompt import PromptList
-
-PromptType = Union[PromptList, str, dict]
-
+from ais_bench.benchmark.utils.logging.error_codes import MODEL_CODES
+from ais_bench.benchmark.utils.logging.exceptions import (
+    AISBenchModuleNotFoundError, AISBenchValueError
+)
 
 def _get_stopping_criteria(stop_words, tokenizer, batch_size):
     from transformers import StoppingCriteria, StoppingCriteriaList
@@ -58,7 +57,10 @@ def _get_possible_max_seq_len(max_seq_len, path):
     for k in possible_keys:
         if hasattr(config, k):
             return getattr(config, k)
-    raise ValueError('max_seq_len is not provided and cannot be inferred from the model config.')
+    raise AISBenchValueError(
+        MODEL_CODES.MAX_SEQ_LEN_NOT_FOUND,
+        'max_seq_len is not provided and cannot be inferred from the model config.'
+    )
 
 
 def _convert_chat_messages(inputs, merge_role=True, skip_empty_prompt=True):
@@ -94,8 +96,11 @@ def _convert_chat_messages(inputs, merge_role=True, skip_empty_prompt=True):
 def _format_with_fast_chat_template(inputs: List[str], name: str='vicuna'):
     try:
         from fastchat.model import get_conversation_template
-    except ImportError:
-        raise ModuleNotFoundError('fastchat not found. Please install with\npip install "fschat[model_worker,webui]"')
+    except Exception:
+        raise AISBenchModuleNotFoundError(
+            MODEL_CODES.MODULE_NOT_FOUND,
+            'fastchat module not found. Please install with\npip install "fschat[model_worker,webui]"'
+        )
 
     outputs = []
     for _input in inputs:
@@ -108,7 +113,10 @@ def _format_with_fast_chat_template(inputs: List[str], name: str='vicuna'):
             elif item['role'] == 'system':
                 continue
             else:
-                raise ValueError(f"Unknown role {item['role']}")
+                raise AISBenchValueError(
+                    MODEL_CODES.INVALID_ROLE_IN_CHAT_TEMPLATE,
+                    f"Unknown role {item['role']} in chat template."
+                )
         template.append_message(template.roles[1], None)
         outputs.append(template.get_prompt())
     return outputs
@@ -149,7 +157,7 @@ def drop_error_generation_kwargs(generation_kwargs:dict)->dict:
 
 
 @MODELS.register_module()
-class HuggingFacewithChatTemplate(PerformanceModel):
+class HuggingFacewithChatTemplate(BaseModel):
     """Model wrapper for HuggingFace models designed for chat.
 
     Args:
@@ -182,7 +190,6 @@ class HuggingFacewithChatTemplate(PerformanceModel):
             generation_kwargs,
             False,
         )
-        self.logger = get_logger()
         self.path = path
         self.tokenizer_only = tokenizer_only
         self.template_parser = _get_meta_template(meta_template)
@@ -198,10 +205,6 @@ class HuggingFacewithChatTemplate(PerformanceModel):
         self.mode = mode
         self.logger.info(f'using stop words: {self.stop_words}')
         self.latencies, self.counts, self.timestamps = [], [], []
-
-    def handle_perf_result(self, output_filepath, output_filename):
-        e2e_latency = max(self.timestamps) - min(self.timestamps)
-        return {"Benchmark Duration":{"total":str(round(e2e_latency, 4)) + ' ms'}}
 
     def _load_tokenizer(self, path: Optional[str], kwargs: dict, pad_token_id: Optional[int] = None):
         from transformers import AutoTokenizer, GenerationConfig
@@ -231,7 +234,10 @@ class HuggingFacewithChatTemplate(PerformanceModel):
             self.logger.warning(f'Using eos_token_id {self.tokenizer.eos_token_id} as pad_token_id.')
             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
             return
-        raise ValueError('pad_token_id is not set for this tokenizer. Please set `pad_token_id={PAD_TOKEN_ID}` in model_cfg.')
+        raise AISBenchValueError(
+            MODEL_CODES.UNKNOWN_ERROR,
+            "pad_token_id is not set for this tokenizer. Please set `pad_token_id={PAD_TOKEN_ID}` in model_cfg."
+        )
 
     def _load_model(self, path: str, kwargs: dict, peft_path: Optional[str] = None, peft_kwargs: dict = dict()):
         from transformers import AutoModel, AutoModelForCausalLM
@@ -250,7 +256,13 @@ class HuggingFacewithChatTemplate(PerformanceModel):
             self.model = AutoModel.from_pretrained(path, **model_kwargs)
 
         if peft_path is not None:
-            from peft import PeftModel
+            try:
+                from peft import PeftModel
+            except ImportError:
+                raise AISBenchModuleNotFoundError(
+                    MODEL_CODES.MODULE_NOT_FOUND,
+                    'peft module not found. Please install with\npip install "peft"'
+                )
             peft_kwargs['is_trainable'] = False
             self.model = PeftModel.from_pretrained(self.model, peft_path, **peft_kwargs)
 
@@ -388,7 +400,6 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
                  stop_words: Optional[str] = [],
                  drop_middle: bool = False,
                  **other_kwargs):
-        self.logger = get_logger()
         self.path = path
         self.tokenizer_only = tokenizer_only
         self.template_parser = LMTemplateParser()
@@ -402,10 +413,6 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
         self.stop_words = stop_words
         self.latencies, self.counts, self.timestamps = [], [], []
         self.do_performance = False
-
-    def handle_perf_result(self, output_filepath, output_filename):
-        e2e_latency = max(self.timestamps) - min(self.timestamps)
-        return {"Benchmark Duration":{"total":str(round(e2e_latency, 4)) + ' ms'}}
 
     def generate(self,
                  inputs: List[str],

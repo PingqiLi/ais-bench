@@ -12,7 +12,11 @@ from transformers import AutoTokenizer
 import requests
 import aiohttp
 
-from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import MODEL_CODES
+from ais_bench.benchmark.utils.logging.exceptions import (
+    AISBenchNotImplementedError, AISBenchValueError, AISBenchKeyError,
+    AISBenchTypeError, AISBenchRuntimeError)
 from ais_bench.benchmark.utils.prompt import PromptList
 from ais_bench.benchmark.models import BaseModel
 from ais_bench.benchmark.models.output import Output
@@ -64,15 +68,8 @@ class BaseAPIModel(BaseModel):
         enable_ssl: bool = False,
         verbose: bool = False,
     ):
-        self.logger = get_logger()
+        self.logger = AISLogger()
         self.path = path
-        self.tokenizer = None
-        if path:
-            try:
-                self.tokenizer = AutoTokenizer.from_pretrained(path)
-            except Exception as e:
-                self.logger.error(f"Failed to load tokenizer from {path}. Error: {e}")
-                raise e
         self.stream = stream
         self.max_out_len = max_out_len
         self.retry = retry
@@ -90,11 +87,12 @@ class BaseAPIModel(BaseModel):
 
     @abstractmethod
     def _get_url(self) -> str:
-        raise NotImplementedError(
+        raise AISBenchNotImplementedError(
+            MODEL_CODES.UNKNOWN_ERROR,
             f"{self.__class__.__name__} does not supported"
             " to be called in base classes"
         )
-    
+
     def _get_base_url(self) -> str:
         if self.url:
             return self.url
@@ -107,41 +105,20 @@ class BaseAPIModel(BaseModel):
             url = osp.join(self.base_url, "v1/models")
             headers = self.headers
             response = requests.get(url, headers=headers, timeout=5)
-            
+
             if response.status_code == 200:
                 data = response.json()
                 model_id = data['data'][0]['id']
+                self.logger.debug(f"Service Model ID: {model_id}")
                 return model_id
             else:
                 response.raise_for_status()
-        
+
         except requests.exceptions.RequestException as e:
-            raise RuntimeError(
+            raise AISBenchRuntimeError(
+                MODEL_CODES.GET_SERVICE_MODEL_PATH_FAILED,
                 f"Failed to get service model path from {self.base_url}. Error: {e}"
             )
-
-    def encode(self, prompt: list) -> Tuple[float, List[int]]:
-        """Encode a string into tokens, measuring processing time."""
-        if not self.tokenizer:
-            self.logger.error("Tokenizer is not initialized.")
-            return []
-        if isinstance(prompt, list):
-            messages = self.tokenizer.apply_chat_template(
-                prompt, add_generation_prompt=True, tokenize=False
-            )
-        elif isinstance(prompt, str):
-            messages = prompt
-        else:
-            self.logger.error(f"Prompt: {prompt} is not a list or string.")
-            return []
-        tokens = self.tokenizer.encode(messages)
-        return tokens
-
-    def decode(self, tokens: List[int]) -> Tuple[List[float], str]:
-        if not self.tokenizer:
-            self.logger.error("Tokenizer is not initialized.")
-            return [], ""
-        return self.tokenizer.decode(tokens)
 
     async def iter_lines(self, stream):
         """
@@ -183,18 +160,21 @@ class BaseAPIModel(BaseModel):
     async def get_request_body(
         self, input_data: PromptType, max_out_len: int, output: Output, **args
     ):
-        raise NotImplementedError(
+        raise AISBenchNotImplementedError(
+            MODEL_CODES.UNKNOWN_ERROR,
             f"{self.__class__.__name__} does not supported"
             " to be called in base classes"
         )
 
     async def parse_text_response(self, data, output):
-        raise NotImplementedError(
+        raise AISBenchNotImplementedError(
+            MODEL_CODES.PARSE_TEXT_RSP_NOT_IMPLEMENTED,
             f"{self.__class__.__name__} should be implemented if stream is False"
         )
 
     async def parse_stream_response(self, data, output):
-        raise NotImplementedError(
+        raise AISBenchNotImplementedError(
+            MODEL_CODES.PARSE_STREAM_RSP_NOT_IMPLEMENTED,
             f"{self.__class__.__name__} should be implemented if stream is True"
         )
 
@@ -217,6 +197,7 @@ class BaseAPIModel(BaseModel):
         request_body = await self.get_request_body(
             input_data, max_out_len, output, **args
         )
+        self.logger.debug(f"Request body: {request_body}")
         retry_count = 0
         for _ in range(self.retry):
             try:
@@ -244,6 +225,7 @@ class BaseAPIModel(BaseModel):
                 await output.clear_time_points()
                 continue
         if close_session:
+            self.logger.debug(f"Waiting for session close ...")
             await self.session.close()
         return output
 
@@ -269,7 +251,10 @@ class BaseAPIModel(BaseModel):
                     except json.JSONDecodeError as e:
                         output.success = False
                         output.error_info = f"Unexpected response format: {raw_chunk}. Please check if server is working correctly."
-                        raise e
+                        raise AISBenchValueError(
+                            MODEL_CODES.PARSE_TEXT_RSP_INVALID_FORMAT,
+                            f"Unexpected response format. Please check ***_detail.jsonl for more information."
+                        )
                     await self.parse_stream_response(data, output)
                 output.success = True
             else:
@@ -289,7 +274,10 @@ class BaseAPIModel(BaseModel):
                 except json.JSONDecodeError as e:
                     output.success = False
                     output.error_info = f"Unexpected response format: {raw_data}. Please check if server is working correctly."
-                    raise e
+                    raise AISBenchValueError(
+                        MODEL_CODES.PARSE_TEXT_RSP_INVALID_FORMAT,
+                        f"Unexpected response format. Please check ***_detail.jsonl for more information."
+                    )
                 await self.parse_text_response(data, output)
                 output.success = True
             else:
@@ -305,25 +293,44 @@ class APITemplateParser:
     """
 
     def __init__(self, meta_template: Optional[Dict] = None):
+        self.logger = AISLogger()
         self.meta_template = meta_template
         # Check meta template
         if meta_template:
-            assert "round" in meta_template, "round is required in meta" " template"
-            assert isinstance(meta_template["round"], list)
+            if "round" not in meta_template:
+                raise AISBenchTypeError(
+                    MODEL_CODES.MISS_REQUIRED_PARAM_IN_META_TEMPLATE,
+                    "round is required in meta template"
+                )
+            if not isinstance(meta_template["round"], list):
+                raise AISBenchTypeError(
+                    MODEL_CODES.INVALID_TYPE_OF_PARAM_IN_META_TEMPLATE,
+                    "round must be a list in meta template"
+                )
             keys_to_check = ["round"]
 
             if "reserved_roles" in meta_template:
-                assert isinstance(meta_template["reserved_roles"], list)
+                if not isinstance(meta_template["reserved_roles"], list):
+                    raise AISBenchTypeError(
+                        MODEL_CODES.INVALID_TYPE_OF_PARAM_IN_META_TEMPLATE,
+                        "reserved_roles must be a list in meta template"
+                    )
                 keys_to_check.append("reserved_roles")
 
             self.roles: Dict[str, dict] = dict()  # maps role name to config
             for meta_key in keys_to_check:
                 for item in meta_template[meta_key]:
-                    assert isinstance(item, (str, dict))
+                    if not isinstance(item, (str, dict)):
+                        raise AISBenchTypeError(
+                            MODEL_CODES.INVALID_TYPE_OF_PARAM_IN_META_TEMPLATE,
+                            f"each item in {meta_key} must be a string or a dict in meta template"
+                        )
                     if isinstance(item, dict):
-                        assert (
-                            item["role"] not in self.roles
-                        ), "role in meta prompt must be unique!"
+                        if item["role"] in self.roles:
+                            raise AISBenchTypeError(
+                                MODEL_CODES.ROLE_IN_META_TEMPLATE_IS_NOT_UNIQUE,
+                                f"role {item['role']} in meta prompt must be unique!"
+                            )
                         self.roles[item["role"]] = item.copy()
 
     def parse_template(self, prompt_template: PromptType, mode: str) -> PromptType:
@@ -344,12 +351,22 @@ class APITemplateParser:
         Returns:
             List[PromptType]: The finalized prompt or a conversation.
         """
-        assert isinstance(prompt_template, (str, list, PromptList, tuple))
+        if not isinstance(prompt_template, (str, list, PromptList, tuple)):
+            raise AISBenchTypeError(
+                MODEL_CODES.PARSE_TEMPLATE_INVALID_TYPE,
+                f"prompt_template must be a string, list of strings, PromptList, or tuple of strings, but got {type(prompt_template)}"
+            )
 
         if not isinstance(prompt_template, (str, PromptList)):
             return [self.parse_template(p, mode=mode) for p in prompt_template]
 
-        assert mode in ["ppl", "gen"]
+        if not mode in ["ppl", "gen"]:
+            raise AISBenchTypeError(
+                MODEL_CODES.PARSE_TEMPLATE_INVALID_MODE,
+                f"Parsing mode must be 'ppl' or 'gen', but got {mode}"
+            )
+
+
         if isinstance(prompt_template, str):
             return prompt_template
 
@@ -374,7 +391,11 @@ class APITemplateParser:
                 elif isinstance(item, dict) and "section" in item:
                     if item["pos"] == "end":
                         section_name, start_idx = section_stack.pop(-1)
-                        assert section_name == item["section"]
+                        if not section_name == item["section"]:
+                            raise AISBenchValueError(
+                                MODEL_CODES.UNKNOWN_ERROR,
+                                f"section {item['section']} in prompt template must match the last section {section_name}"
+                            )
                         if section_name in ["round", "ice"]:
                             dialogue = prompt_template[start_idx:i]
                             round_ranges = self._split_rounds(
@@ -399,10 +420,18 @@ class APITemplateParser:
                                 )
                                 prompt += api_prompts
                     elif item["pos"] == "begin":
-                        assert item["section"] in ["begin", "round", "end", "ice"]
+                        if not item["section"] in ["begin", "round", "end", "ice"]:
+                            raise AISBenchValueError(
+                                MODEL_CODES.UNKNOWN_ERROR,
+                                f"section {item['section']} in prompt template is not valid, "
+                                "it must be 'begin', 'round', 'end', or 'ice'"
+                            )
                         section_stack.append((item["section"], i + 1))
                     else:
-                        raise ValueError(f'Invalid pos {item["pos"]}')
+                        raise AISBenchValueError(
+                            MODEL_CODES.INVALID_POS_IN_PROMPT_TEMPLATE,
+                            f'Invalid prompt template item pos {item["pos"]}'
+                        )
                 elif section_stack[-1][0] in ["begin", "end"]:
                     role_dict = self._update_role_dict(item)
                     api_prompts, generate = self._prompt2api(
@@ -457,7 +486,7 @@ class APITemplateParser:
                 if role not in self.roles:
                     role = prompt.get("fallback_role", None)
                     if not role:
-                        print(
+                        self.logger.warning(
                             f"{prompt} neither has an appropriate role nor "
                             "a fallback role."
                         )
@@ -491,8 +520,9 @@ class APITemplateParser:
                 try:
                     role_idx = role_idxs[template["fallback_role"]]
                 except KeyError:
-                    raise KeyError(
-                        f"{template} neither has an appropriate "
+                    raise AISBenchKeyError(
+                        MODEL_CODES.INVALID_ROLE_IN_PROMPT_TEMPLATE,
+                        f"prompt template item {template} neither has an appropriate "
                         "role nor a fallback role."
                     )
             if role_idx <= last_role_idx:
@@ -531,8 +561,9 @@ class APITemplateParser:
         res = []
         for prompt in prompts:
             if isinstance(prompt, str):
-                raise TypeError(
-                    "Mixing str without explicit role is not " "allowed in API models!"
+                raise AISBenchTypeError(
+                    MODEL_CODES.MIX_STR_WITHOUT_EXPLICIT_ROLE,
+                    "Mixing str without explicit role is not allowed in API models!"
                 )
             else:
                 api_role, cont = self._role2api_role(prompt, role_dict, for_gen)
@@ -573,5 +604,8 @@ class APITemplateParser:
         elif "prompt_mm" in merged_prompt:
             res["prompt"] = merged_prompt.get("prompt_mm", [])
         else:
-            raise ValueError("Invalid prompt content: without prompt/prompt_mm !")
+            raise AISBenchValueError(
+                MODEL_CODES.INVALID_PROMPT_CONTENT,
+                "Invalid prompt content: without 'prompt' or 'prompt_mm' param!"
+            )
         return res, True
