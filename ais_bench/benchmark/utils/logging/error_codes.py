@@ -231,6 +231,7 @@ ERROR_CODES_CLASSES = [
     MODEL_CODES,
     UNK_CODES,
     UTILS_CODES,
+    CALC_CODES,
 ]
 
 # init error code manager
