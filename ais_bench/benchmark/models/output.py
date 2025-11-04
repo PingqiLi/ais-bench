@@ -17,15 +17,15 @@ class Output:
         self.extra_perf_data: dict = {}
         self.extra_details_data: dict = {}
         self.input: list | str = None
-        self.uuid: str = ""  # A unique identifier for each case: 
-                             # In multi-turn dialogue scenarios, all turns of the same sample share the same uuid. 
+        self.uuid: str = ""  # A unique identifier for each case:
+                             # In multi-turn dialogue scenarios, all turns of the same sample share the same uuid.
                              # In pass@k scenarios, the same sample is sampled k times and each run receives a distinct uuid
         self.turn_id: int = 0
 
     @abstractmethod
     def get_metrics(self) -> dict:
         """Calculate and return performance metrics for the output.
-            
+
         Returns:
             dict: Cleaned metrics dictionary with performance data
         """
@@ -33,11 +33,11 @@ class Output:
 
     def _concate_reasoning_content(self, content, reasoning_content) -> str:
         """Concatenate reasoning content with main content.
-        
+
         Args:
             content: Main content string
             reasoning_content: Reasoning content string
-            
+
         Returns:
             str: Combined content with reasoning
         """
@@ -51,7 +51,7 @@ class Output:
 
     def get_prediction(self) -> dict:
         """Get the final prediction by combining content and reasoning.
-        
+
         Returns:
             dict: Combined prediction content
         """
@@ -72,7 +72,7 @@ class Output:
 
     def to_dict(self):
         """Convert all instance attributes to dictionary.
-        
+
         Returns:
             dict: Dictionary containing all instance attributes
         """
@@ -80,15 +80,15 @@ class Output:
 
     async def record_time_point(self) -> None:
         """Record a time point for performance measurement.
-        
+
         This method is called by the model to record timing data.
         """
         if self.perf_mode:
             self.time_points.append(time.perf_counter())
-    
+
     async def clear_time_points(self) -> None:
         """Clear the time points for performance measurement.
-        
+
         This method is called by the model to clear the time points.
         """
         self.time_points = []
@@ -98,7 +98,7 @@ class RequestOutput(Output):
 
     def get_metrics(self) -> dict:
         """Calculate and return detailed performance metrics for request output.
-            
+
         Returns:
             dict: Enhanced metrics dictionary with request-specific performance data
         """
@@ -106,13 +106,13 @@ class RequestOutput(Output):
             for key in ["content", "reasoning_content", "perf_mode"]:
                 res.pop(key, None)
             return res
-            
+
         self.prediction = self.get_prediction()
         self.time_points = np.array(self.time_points, dtype=np.float64)
         if not self.success:
             result = clean_result(self.to_dict())
             return result
-        
+
         if self.time_points.size <= 1:
             self.success = False
             self.error_info = "chunk size is less than 2"

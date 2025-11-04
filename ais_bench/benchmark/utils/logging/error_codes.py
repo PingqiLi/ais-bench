@@ -32,9 +32,10 @@ class ErrorType(Enum):
     DATA = "DATA"     # data error type
     METRIC = "MTRC"     # metric error type
     TYPE = "TYPE"     # type error type
+    MODULE = "MOD"     # module error type
     PARAM = "PARAM"     # parameter error type
-    
-    
+
+
 class BaseErrorCode:
     FAQ_BASE_URL = "https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/faqs/error_codes.html#"
 
@@ -128,39 +129,39 @@ class TEVAL_CODES:
 
 class ICLI_CODES:
     UNKNOWN_ERROR = BaseErrorCode("ICLI-UNK-001", ErrorModule.ICL_INFERENCER, ErrorType.UNKNOWN, 1, "unknown error of icl inferencer")
-    
+
     INVALID_PARAM_VALUE = BaseErrorCode("ICLI-PARAM-001", ErrorModule.ICL_INFERENCER, ErrorType.PARAM, 1, "invalid parameter value")
     MULTITRUN_MODE_OUT_OF_RANGE = BaseErrorCode("ICLI-PARAM-002", ErrorModule.ICL_INFERENCER, ErrorType.PARAM, 2, "multiturn mode out of range")
     CONCURRENCY_NOT_SET_IN_PRESSEURE_MODE = BaseErrorCode("ICLI-PARAM-003", ErrorModule.ICL_INFERENCER, ErrorType.PARAM, 3, "concurrency not set in pressure mode")
     BATCH_SIZE_OUT_OF_RANGE = BaseErrorCode("ICLI-PARAM-004", ErrorModule.ICL_INFERENCER, ErrorType.PARAM, 4, "batch size out of range")
     INVALID_OUTPUT_FILEPATH = BaseErrorCode("ICLI-PARAM-005", ErrorModule.ICL_INFERENCER, ErrorType.PARAM, 5, "invalid output jsonl filepath")
-    
+
     IMPLEMENTATION_ERROR = BaseErrorCode("ICLI-IMPL-001", ErrorModule.ICL_INFERENCER, ErrorType.IMPLEMENTATION, 1, "not implemented error")
     IMPLEMENTATION_ERROR_DO_REQUEST_METHOD_NOT_IMPLEMENTED = BaseErrorCode("ICLI-IMPL-002", ErrorModule.ICL_INFERENCER, ErrorType.IMPLEMENTATION, 2, "do request method for api inferencer not implemented")
     IMPLEMENTATION_ERROR_BATCH_INFERENCE_METHOD_NOT_IMPLEMENTED = BaseErrorCode("ICLI-IMPL-003", ErrorModule.ICL_INFERENCER, ErrorType.IMPLEMENTATION, 3, "batch inference method for local inferencer not implemented")
-    
+
     INFER_RESULT_WRITE_ERROR = BaseErrorCode("ICLI-FILE-001", ErrorModule.ICL_INFERENCER, ErrorType.FILE, 1, "failed to write results files")
     SQLITE_WRITE_ERROR = BaseErrorCode("ICLI-FILE-002", ErrorModule.ICL_INFERENCER, ErrorType.FILE, 2, "failed to write results to sqlite database")
-    
+
 class ICLE_CODES:
     UNKNOWN_ERROR = BaseErrorCode("ICLE-UNK-001", ErrorModule.ICL_EVALUATOR, ErrorType.UNKNOWN, 1, "unknown error of icl evaluator")
-    
+
     PREDICTION_LENGTH_MISMATCH = BaseErrorCode("ICLE-DATA-001", ErrorModule.ICL_EVALUATOR, ErrorType.DATA, 1, "prediction result length mismatch")
     REPLICATION_LENGTH_MISMATCH = BaseErrorCode("ICLE-DATA-002", ErrorModule.ICL_EVALUATOR, ErrorType.DATA, 2, "replication length mismatch")
-    
+
     IMPLEMENTATION_ERROR = BaseErrorCode("ICLE-IMPL-001", ErrorModule.ICL_EVALUATOR, ErrorType.IMPLEMENTATION, 1, "not implemented error")
 
 class ICLR_CODES:
     UNKNOWN_ERROR = BaseErrorCode("ICLR-UNK-001", ErrorModule.ICL_RETRIEVER, ErrorType.UNKNOWN, 1, "unknown error of icl retriever")
-    
+
     TEMPLATE_TYPE_ERROR = BaseErrorCode("ICLR-TYPE-001", ErrorModule.ICL_RETRIEVER, ErrorType.TYPE, 1, "template type error")
     TEMPLATE_VALUE_TYPE_ERROR = BaseErrorCode("ICLR-TYPE-002", ErrorModule.ICL_RETRIEVER, ErrorType.TYPE, 2, "template value type error")
-    
+
     TEMPLATE_ICE_TOKEN_NOT_IN_VALUE = BaseErrorCode("ICLR-PARAM-001", ErrorModule.ICL_RETRIEVER, ErrorType.PARAM, 1, "ice token not in value of template")
     TEMPLATE_ICE_TOKEN_NOT_IN_TEMPLATE = BaseErrorCode("ICLR-PARAM-002", ErrorModule.ICL_RETRIEVER, ErrorType.PARAM, 2, "ice template not set")
     MULTIMODAL_TEMPLATE_TYPE_ERROR = BaseErrorCode("ICLR-PARAM-003", ErrorModule.ICL_RETRIEVER, ErrorType.PARAM, 3, "multimodal template type error")
     FIX_K_RETRIEVER_INDEX_OUT_OF_RANGE = BaseErrorCode("ICLR-PARAM-004", ErrorModule.ICL_RETRIEVER, ErrorType.PARAM, 4, "fix-k retriever index out of range")
-    
+
     IMPLEMENTATION_ERROR = BaseErrorCode("ICLR-IMPL-001", ErrorModule.ICL_RETRIEVER, ErrorType.IMPLEMENTATION, 1, "not implemented error")
     IMPLEMENTATION_ERROR_ICE_TOKEN_NOT_PROVIDED = BaseErrorCode("ICLR-IMPL-002", ErrorModule.ICL_RETRIEVER, ErrorType.IMPLEMENTATION, 2, "ice token not provided")
     IMPLEMENTATION_ERROR_PROMPT_TEMPLATE_NOT_PROVIDED = BaseErrorCode("ICLR-IMPL-003", ErrorModule.ICL_RETRIEVER, ErrorType.IMPLEMENTATION, 3, "template not provided")
@@ -168,6 +169,27 @@ class ICLR_CODES:
 
 class MODEL_CODES:
     UNKNOWN_ERROR = BaseErrorCode("MODEL-UNK-001", ErrorModule.MODEL, ErrorType.UNKNOWN, 1, "unknown error of model")
+    PARSE_TEXT_RSP_NOT_IMPLEMENTED = BaseErrorCode("MODEL-IMPL-001", ErrorModule.MODEL, ErrorType.IMPLEMENTATION, 1, "parse text response not implemented")
+    PARSE_STREAM_RSP_NOT_IMPLEMENTED = BaseErrorCode("MODEL-IMPL-002", ErrorModule.MODEL, ErrorType.IMPLEMENTATION, 2, "parse stream response not implemented")
+
+    INVALID_POS_IN_PROMPT_TEMPLATE = BaseErrorCode("MODEL-PARAM-001", ErrorModule.MODEL, ErrorType.PARAM, 1, "invalid pos in prompt template")
+    INVALID_ROLE_IN_PROMPT_TEMPLATE = BaseErrorCode("MODEL-PARAM-002", ErrorModule.MODEL, ErrorType.PARAM, 2, "invalid role in prompt template")
+    INVALID_ROLE_IN_CHAT_TEMPLATE = BaseErrorCode("MODEL-PARAM-003", ErrorModule.MODEL, ErrorType.PARAM, 3, "invalid role in chat template")
+    MISS_REQUIRED_PARAM_IN_META_TEMPLATE = BaseErrorCode("MODEL-PARAM-004", ErrorModule.MODEL, ErrorType.PARAM, 4, "miss required param in meta template")
+    ROLE_IN_META_TEMPLATE_IS_NOT_UNIQUE = BaseErrorCode("MODEL-PARAM-005", ErrorModule.MODEL, ErrorType.PARAM, 5, "role in meta prompt must be unique!")
+
+    MIX_STR_WITHOUT_EXPLICIT_ROLE = BaseErrorCode("MODEL-TYPE-001", ErrorModule.MODEL, ErrorType.TYPE, 1, "mixing str without explicit role is not allowed")
+    PARSE_TEMPLATE_INVALID_TYPE = BaseErrorCode("MODEL-TYPE-002", ErrorModule.MODEL, ErrorType.TYPE, 2, "invalid prompt template type")
+    PARSE_TEMPLATE_INVALID_MODE = BaseErrorCode("MODEL-TYPE-003", ErrorModule.MODEL, ErrorType.TYPE, 3, "invalid mode in prompt template")
+    INVALID_TYPE_OF_PARAM_IN_META_TEMPLATE = BaseErrorCode("MODEL-TYPE-004", ErrorModule.MODEL, ErrorType.TYPE, 4, "invalid type of param in meta template")
+
+    GET_SERVICE_MODEL_PATH_FAILED = BaseErrorCode("MODEL-DATA-001", ErrorModule.MODEL, ErrorType.DATA, 1, "fail to get service model path")
+    INVALID_PROMPT_CONTENT = BaseErrorCode("MODEL-DATA-002", ErrorModule.MODEL, ErrorType.DATA, 2, "invalid prompt content")
+    PARSE_TEXT_RSP_INVALID_FORMAT = BaseErrorCode("MODEL-DATA-003", ErrorModule.MODEL, ErrorType.DATA, 3, "parse text response invalid format")
+
+    MAX_SEQ_LEN_NOT_FOUND = BaseErrorCode("MODEL-CFG-001", ErrorModule.MODEL, ErrorType.CONFIG, 1, "max_seq_len is not provided and cannot be inferred from the model config.")
+    MODULE_NOT_FOUND = BaseErrorCode("MODEL-MOD-001", ErrorModule.MODEL, ErrorType.MODULE, 1, "module not found")
+
 
 
 class UNK_CODES:

@@ -82,10 +82,12 @@ class VLLMCustomAPIChat(BaseAPIModel):
         self.model = model if model else self._get_service_model_path()
         self.url = self._get_url()
         self.template_parser = APITemplateParser(self.meta_template)
-    
+
     def _get_url(self) -> str:
         endpoint = "v1/chat/completions"
-        return f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{endpoint}"
+        self.logger.debug(f"Request url: {url}")
+        return url
 
     async def get_request_body(
         self, input: PromptType, max_out_len: int, output: RequestOutput, **args
@@ -127,6 +129,8 @@ class VLLMCustomAPIChat(BaseAPIModel):
                 output.reasoning_content += item["delta"]["reasoning_content"]
         if json_content.get("usage"):
             output.output_tokens = json_content["usage"]["completion_tokens"]
+        self.logger.debug(f"Output content: {output.content}")
+        self.logger.debug(f"Output reasoning content: {output.reasoning_content}")
 
     async def parse_text_response(self, json_content, output):
         for item in json_content.get("choices", []):
@@ -136,3 +140,5 @@ class VLLMCustomAPIChat(BaseAPIModel):
                 output.reasoning_content += reasoning_content
         if json_content.get("usage"):
             output.output_tokens = json_content["usage"]["completion_tokens"]
+        self.logger.debug(f"Output content: {output.content}")
+        self.logger.debug(f"Output reasoning content: {output.reasoning_content}")

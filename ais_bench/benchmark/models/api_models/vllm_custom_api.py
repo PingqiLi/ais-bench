@@ -71,7 +71,9 @@ class VLLMCustomAPI(BaseAPIModel):
 
     def _get_url(self) -> str:
         endpoint = "v1/completions"
-        return f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{endpoint}"
+        self.logger.debug(f"Request url: {url}")
+        return url
 
     async def get_request_body(
         self, input_data: PromptType, max_out_len: int, output: Output, **args
@@ -90,9 +92,11 @@ class VLLMCustomAPI(BaseAPIModel):
     async def parse_text_response(self, api_response: dict, output: Output):
         generated_text = api_response.get("choices", [{}])[0].get("text", "")
         output.content = generated_text
+        self.logger.debug(f"Output content: {output.content}")
 
     async def parse_stream_response(self, api_response: dict, output: Output):
         if len(api_response.get("choices", [])) > 0:
             generated_text = api_response["choices"][0]["text"]
         if generated_text:
             output.content += generated_text
+        self.logger.debug(f"Output content: {output.content}")

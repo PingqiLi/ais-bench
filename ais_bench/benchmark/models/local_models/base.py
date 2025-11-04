@@ -6,6 +6,11 @@ import torch
 from mmengine import dist
 
 from ais_bench.benchmark.utils.prompt import PromptList
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import MODEL_CODES
+from ais_bench.benchmark.utils.logging.exceptions import (
+    AISBenchNotImplementedError, AISBenchValueError
+)
 
 PromptType = Union[PromptList, str, dict]
 
@@ -38,6 +43,7 @@ class BaseModel:
                  meta_template: Optional[Dict] = None,
                  generation_kwargs: Optional[Dict] = dict(),
                  sync_rank: bool = False):
+        self.logger = AISLogger()
         self.path = path
         self.max_seq_len = max_seq_len
         self.tokenizer_only = tokenizer_only
@@ -49,7 +55,7 @@ class BaseModel:
         self.generation_kwargs = generation_kwargs
         self.sync_rank = sync_rank
         self.is_synthetic = False
-        
+
     @abstractmethod
     def _generate(self, input, max_out_len: int) -> List[str]:
         """Generate result given a input.
@@ -63,8 +69,10 @@ class BaseModel:
         Returns:
             str: The generated string.
         """
-        raise NotImplementedError(f'{self.__class__.__name__} does not supported'
-                                  ' to be called in base classes')
+        raise AISBenchNotImplementedError(
+            MODEL_CODES.UNKNOWN_ERROR,
+            f'{self.__class__.__name__} does not supported'
+            ' to be called in base classes')
 
 
     @abstractmethod
@@ -77,7 +85,8 @@ class BaseModel:
         Returns:
             torch.Tensor: Encoded tokens.
         """
-        raise NotImplementedError(
+        raise AISBenchNotImplementedError(
+            MODEL_CODES.UNKNOWN_ERROR,
             f'{self.__class__.__name__} does not implement'
             '`encode` method.')
 
@@ -91,7 +100,8 @@ class BaseModel:
         Returns:
             str: Decoded text.
         """
-        raise NotImplementedError(
+        raise AISBenchNotImplementedError(
+            MODEL_CODES.UNKNOWN_ERROR,
             f'{self.__class__.__name__} does not implement'
             '`decode` method.')
 
@@ -105,7 +115,7 @@ class BaseModel:
         Returns:
             int: Length of the input tokens
         """
-    
+
     def set_synthetic(self):
         self.is_synthetic = True
 
@@ -173,8 +183,7 @@ class BaseModel:
             tokens = self.encode(inputs)
             length = self.get_token_len(inputs)
             if length > 2048:
-                from ais_bench.benchmark.utils.logging import get_logger
-                get_logger().info(f'Large tokens nums: {length}')
+                self.logger.info(f'Large tokens nums: {length}')
             size = torch.tensor([tokens.shape], dtype=torch.long)
         else:
             tokens = None
@@ -295,7 +304,10 @@ class LMTemplateParser:
                         ]
                         section_stack.append((item['section'], i + 1))
                     else:
-                        raise ValueError(f'Invalid pos {item["pos"]}')
+                        raise AISBenchValueError(
+                            MODEL_CODES.INVALID_POS_IN_PROMPT_TEMPLATE,
+                            f'Invalid prompt template item pos {item["pos"]}'
+                        )
                 # if in "begin" or "end" section
                 elif section_stack[-1][0] in ['begin', 'end']:
                     role_dict = self._update_role_dict(item)

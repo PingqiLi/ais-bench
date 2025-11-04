@@ -18,7 +18,7 @@ from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.results import safe_write
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.db_utils import init_db, save_numpy_to_db
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError, FileOperationError, AISRuntimeError
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError, FileOperationError, AISBenchRuntimeError
 
 DB_REF_KEY = "__db_ref__"
 DB_DATA_DIR = "db_data"
@@ -72,7 +72,7 @@ class BaseInferencerOutputHandler:
             AISBenchImplementationError: If not implemented by subclass
         """
 
-        raise AISBenchImplementationError(ICLI_CODES.UNKNOWN_ERROR, 
+        raise AISBenchImplementationError(ICLI_CODES.UNKNOWN_ERROR,
                                            f"Method {self.__class__.__name__} hasn't been implemented yet")
 
     def write_to_json(self, save_dir: str, perf_mode: bool) -> None:
@@ -92,7 +92,7 @@ class BaseInferencerOutputHandler:
             ValueError: If save_dir is invalid
         """
         if not isinstance(save_dir, str) or not save_dir.strip():
-            raise ParameterValueError(ICLI_CODES.INVALID_OUTPUT_FILEPATH, 
+            raise ParameterValueError(ICLI_CODES.INVALID_OUTPUT_FILEPATH,
                                       f"'save_dir' must be a non-empty string representing a directory path, but got {save_dir}")
 
         file_path = Path(save_dir)
@@ -114,7 +114,7 @@ class BaseInferencerOutputHandler:
                 self.logger.debug(f"Process {os.getpid()} write results to {file_path}")
         except Exception as e:
             raise FileOperationError(
-                ICLI_CODES.INFER_RESULT_WRITE_ERROR, 
+                ICLI_CODES.INFER_RESULT_WRITE_ERROR,
                 f"Failed to write results to {file_path}: {str(e)}",
             )
 
@@ -386,6 +386,6 @@ class BaseInferencerOutputHandler:
         try:
             self.cache_queue.sync_q.put(None)
         except Exception as e:
-            raise AISRuntimeError(ICLI_CODES.UNKNOWN_ERROR, f"Failed to send stop signal to cache consumer: {str(e)}")
+            raise AISBenchRuntimeError(ICLI_CODES.UNKNOWN_ERROR, f"Failed to send stop signal to cache consumer: {str(e)}")
         self.logger.debug("Stop signal sent to cache consumer")
 
