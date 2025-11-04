@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 
 import sqlite3
+import uuid
 
 from ais_bench.benchmark.openicl.icl_inferencer.output_handler.base_handler import BaseInferencerOutputHandler
 from ais_bench.benchmark.models.output import Output
@@ -59,7 +60,15 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
             result_data = self._extract_and_write_arrays(
                 result_data, conn
             )
-
+        elif isinstance(output, str):
+            result_data = {
+                "success": True,
+                "uuid": uuid.uuid4().hex[:8],
+                "origin_prompt": input,
+                "prediction": output,
+            }
+            if gold:
+                result_data["gold"] = gold
         else:
             # Accuracy mode: store full input/output data
             result_data = {
