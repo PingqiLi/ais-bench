@@ -83,4 +83,3 @@ class MindieStreamApi(BaseAPIModel):
     async def parse_stream_response(self, api_response: dict, output: Output):
         generated_text = api_response.get("generated_text", "")
         output.content = generated_text
-        self.logger.debug(f"Output content: {output.content}")

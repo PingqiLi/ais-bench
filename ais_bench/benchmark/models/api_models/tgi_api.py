@@ -90,4 +90,3 @@ class TGICustomAPI(BaseAPIModel):
         generated_text = api_response.get("generated_text", "")
         # TGI will return the generated text in last chunk
         output.content = generated_text
-        self.logger.debug(f"Output content: {output.content}")

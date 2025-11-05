@@ -99,4 +99,3 @@ class VLLMCustomAPI(BaseAPIModel):
             generated_text = api_response["choices"][0]["text"]
         if generated_text:
             output.content += generated_text
-        self.logger.debug(f"Output content: {output.content}")

@@ -96,4 +96,3 @@ class TritonCustomAPI(BaseAPIModel):
     async def parse_stream_response(self, api_response:dict, output:Output):
         generated_text = api_response.get("text_output", "")
         output.content += generated_text
-        self.logger.debug(f"Output content: {output.content}")

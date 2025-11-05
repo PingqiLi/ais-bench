@@ -324,7 +324,7 @@ class BaseInferencerOutputHandler:
 
                         # Pre-compute JSON string to avoid repeated serialization
                         json_str = json.dumps(json_data, ensure_ascii=False) + '\n'
-                        self.logger.debug(f"Saving result to cache_data: {json_str}")
+                        # self.logger.debug(f"Saving result to cache_data: {json_str}")
                         cache_data.append(json_str)
 
                         # Write batch if reached save_every threshold

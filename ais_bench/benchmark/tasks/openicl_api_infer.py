@@ -355,13 +355,8 @@ class OpenICLApiInferTask(BaseTask):
             request_num,
             self.pressure,
         )
-        token_thread = threading.Thread(
-            target=token_producer.produce_token,
-            args=(self.stop_evt,),
-            daemon=True,
-        )
-        # Message queue collecting per-process request state; polled periodically
         message_shms = {}
+        # Message queue collecting per-process request state; polled periodically
         
         try:
             processes = []
@@ -384,6 +379,11 @@ class OpenICLApiInferTask(BaseTask):
                 )
                 pb_thread.start()
                 # Start produce tokens
+                token_thread = threading.Thread(
+                    target=token_producer.produce_token,
+                    args=(self.stop_evt, message_shms),
+                    daemon=True,
+                )
                 token_thread.start()
 
                 global_data_index_process = Process(
@@ -425,7 +425,6 @@ class OpenICLApiInferTask(BaseTask):
                     ),
                     daemon=True,
                 )
-
                 global_data_index_process.start()
                 # Start ProgressBar after getting process IDs in multi-process mode
                 # Create progress bar
@@ -444,6 +443,11 @@ class OpenICLApiInferTask(BaseTask):
                 )
                 pb_thread.start()
                 # Start produce tokens
+                token_thread = threading.Thread(
+                    target=token_producer.produce_token,
+                    args=(self.stop_evt, message_shms),
+                    daemon=True,
+                )
                 token_thread.start()
             if processes:
                 while True:
@@ -454,9 +458,9 @@ class OpenICLApiInferTask(BaseTask):
         except KeyboardInterrupt:
             # Wait for all subprocesses to finish, timeout 1 minute and force terminate
             self.stop_evt.set()
+            global_data_index_process.join(timeout=TASK_WAIT_TIME)
             pb_thread.join()
             pb.set_message_flag(1)
-            global_data_index_process.join(timeout=TASK_WAIT_TIME)
             if processes:
                 for p in processes:
                     p.join(timeout=TASK_WAIT_TIME)
@@ -470,9 +474,9 @@ class OpenICLApiInferTask(BaseTask):
                         p.join(timeout=TASK_WAIT_TIME)
         finally:
             self.stop_evt.set()
+            global_data_index_process.join(timeout=TASK_WAIT_TIME)
             pb_thread.join()
             pb.set_message_flag(1)
-            global_data_index_process.join(timeout=TASK_WAIT_TIME)
             token_thread.join()
             for pid, shm in message_shms.items():
                 self._cleanup_shms(shm)

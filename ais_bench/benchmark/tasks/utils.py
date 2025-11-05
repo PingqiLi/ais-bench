@@ -15,10 +15,11 @@ from ais_bench.benchmark.utils.logging import get_logger
 STATUS_REPORT_INTERVAL = 1
 INDEX_READ_FLAG = -1
 WAIT_FLAG = 2
+SYNC_MAIN_PROCESS_INTERVAL = 0.1
 # Message queue format for communication with subprocesses: 6 integers.
 # The 6 integers represent status, post, recv, fail, finish, and data_index respectively.
 # Using signed integers to support -1 for data_index
-FMT = "5I1B1i"
+FMT = "6I1i"
 MESSAGE_SIZE = struct.calcsize(FMT)
 
 logger = get_logger()
@@ -43,7 +44,7 @@ FIELDS = OrderedDict(
         ("RECV", "I"),
         ("FAIL", "I"),
         ("FINISH", "I"),
-        ("DATA_SYNC_FLAG", "B"),
+        ("DATA_SYNC_FLAG", "I"),
         ("DATA_INDEX", "i"),
     ]
 )
@@ -61,29 +62,37 @@ def update_global_data_index(
 ):
     """Update data index for shared memory."""
     shms = [shared_memory.SharedMemory(name=shm_name) for shm_name in shm_names]
+    statuses = [0] * len(shms)
     cur_pos = 0
     def set_data_index(shm: shared_memory.SharedMemory, data_index: int):
-        shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 0)  # set status to 0 before update data_index
+        shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("I", 0)  # set status to 0 before update data_index
         shm.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]] = struct.pack("i", data_index)
-        shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("B", 1)  # set status to 1 after update data_index, ensure data consist
-    
+        shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("I", 1)  # set status to 1 after update data_index, ensure data consist
     try:
         while True:
-            for shm in shms:
-                status, _, _, _, _, _, data_index = struct.unpack(FMT, shm.buf)
+            for i, shm in enumerate(shms):
+                if statuses[i]: # subprocess already finished
+                    continue
+                status = struct.unpack_from("I", shm.buf[MESSAGE_INFO.STATUS[0]:MESSAGE_INFO.STATUS[1]])[0]
+                data_index = struct.unpack_from("i", shm.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]])[0]
                 while data_index != INDEX_READ_FLAG:
-                    if status == 1:
+                    if status == 1: # subprocess exit
                         break
                     time.sleep(0.01)
-                    status, _, _, _, _, _, data_index = struct.unpack(FMT, shm.buf)
+                    status = struct.unpack_from("I", shm.buf[MESSAGE_INFO.STATUS[0]:MESSAGE_INFO.STATUS[1]])[0]
+                    data_index = struct.unpack_from("i", shm.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]])[0]
+                # Check status after exiting the while loop
                 if status == 1:
-                    for shm in shms:
-                        shm.close()
-                    return
+                    statuses[i] = 1
+                    if sum(statuses) == len(shms):
+                        return
+                    continue
                 if cur_pos >= len(global_data_indexes) and not pressure:
                     global_data_index = data_num - 1  # get None
+                    cur_pos = len(global_data_indexes) - 1
                 elif cur_pos >= len(global_data_indexes):
                     cur_pos = 0
+                    global_data_index = global_data_indexes[cur_pos]
                 else:
                     global_data_index = global_data_indexes[cur_pos]
                 cur_pos += 1
@@ -104,7 +113,7 @@ def create_message_share_memory():
     shm = shared_memory.SharedMemory(create=True, size=MESSAGE_SIZE)
     buf = shm.buf
     # Set flag to 2, indicating child process is ready for first batch data deserialization
-    buf[:] = struct.pack(FMT, WAIT_FLAG, 0, 0, 0, 0, 0, INDEX_READ_FLAG)
+    buf[:] = struct.pack(FMT, 0, 0, 0, 0, 0, 0, INDEX_READ_FLAG)
     return shm
 
 
@@ -440,17 +449,7 @@ class ProgressBar:
             task_state_manager: Task state manager for updating status
         """
         while self.stop_event.is_set():
-            need_wait = any(
-                struct.unpack_from(FMT, shm.buf, 0)[0] == WAIT_FLAG
-                for shm in self.per_pid_shms.values()
-            )
-            if not need_wait:
-                self.logger.info(
-                    "All subprocesses have finished deserializing the first batch of data"
-                )
-                self.stop_event.clear()
-                break
-            time.sleep(STATUS_REPORT_INTERVAL)
+            time.sleep(SYNC_MAIN_PROCESS_INTERVAL)
         if not self.debug:
             self._refresh_task_monitor(task_state_manager)
         else:
@@ -579,18 +578,30 @@ class TokenProducer:
             delay_ts = [delay * normalize_factor for delay in delay_ts]
         return delay_ts
 
-    def produce_token(self, stop_evt: Event):
+    def produce_token(self, stop_evt: Event, per_pid_shms: Dict[int, shared_memory.SharedMemory]):
         """Produce tokens for request pacing.
 
         Args:
             stop_evt: Event to signal when to stop token production
         """
-        if not self.token_bucket:
-            return
 
         # Wait for child process to complete first batch data loading
         while stop_evt.is_set():
-            time.sleep(0.5)
+            need_wait = any(
+                struct.unpack_from("I", shm.buf, 0)[0] != WAIT_FLAG
+                for shm in per_pid_shms.values()
+            )
+            if not need_wait:
+                self.logger.info(
+                    "All subprocesses have finished deserializing the first batch of data"
+                )
+                stop_evt.clear()
+                for shm in per_pid_shms.values():
+                    struct.pack_into("I", shm.buf, 0, 0) # set sync flag to 0
+                break
+            time.sleep(SYNC_MAIN_PROCESS_INTERVAL)
+        if not self.token_bucket:
+            return
         interval_index = 0
         theta = 1.0 / (self.request_rate * self.burstiness)
 

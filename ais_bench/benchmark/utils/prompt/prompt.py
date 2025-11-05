@@ -256,8 +256,8 @@ class PromptList(list):
                 res.append(item)
             elif isinstance(item, dict):
                 if 'prompt' in item:
-                    res.append(item['prompt'])
+                    res.append(json.dumps(item['prompt']))
             else:
-                raise TypeError('Invalid type in prompt list when '
-                                'converting to string')
-        return ''.join(res)
+                raise TypeError("Invalid type in prompt list when "
+                                "converting to string")
+        return "".join(res)

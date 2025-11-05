@@ -129,8 +129,6 @@ class VLLMCustomAPIChat(BaseAPIModel):
                 output.reasoning_content += item["delta"]["reasoning_content"]
         if json_content.get("usage"):
             output.output_tokens = json_content["usage"]["completion_tokens"]
-        self.logger.debug(f"Output content: {output.content}")
-        self.logger.debug(f"Output reasoning content: {output.reasoning_content}")
 
     async def parse_text_response(self, json_content, output):
         for item in json_content.get("choices", []):

@@ -15,11 +15,13 @@ from typing import Any, Dict, Optional, Tuple
 import aiohttp
 import janus
 from tqdm import tqdm
+
+from ais_bench.benchmark.models.output import Output
 from ais_bench.benchmark.utils.core.valid_global_consts import get_request_time_out, get_max_chunk_size
-from ais_bench.benchmark.tasks.utils import STATUS_REPORT_INTERVAL, MESSAGE_INFO
+from ais_bench.benchmark.tasks.utils import STATUS_REPORT_INTERVAL, MESSAGE_INFO, WAIT_FLAG, SYNC_MAIN_PROCESS_INTERVAL
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import BaseInferencer
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError, AISBenchRuntimeError
 from ais_bench.benchmark.utils.logging.logger import AISLogger
 
 MESSAGE_TYPE_NUM = 4  # post_req, get_req, failed_req, finish_req
@@ -76,21 +78,20 @@ class BaseApiInferencer(BaseInferencer):
             finish_req = self.status_counter.finish_req
 
             # Pack -> bytes, then write back to corresponding slice of shared memory
-            packed = struct.pack("<4I", post_req, get_req, failed_req, finish_req)
+            packed = struct.pack("4I", post_req, get_req, failed_req, finish_req)
             # Write to 16 bytes starting from offset=4 (4 unsigned ints)
-            flag = struct.unpack_from("<I", message_buf, 0)[0]
-            if flag == 1:
-                stop_event.set()
+            flag = struct.unpack_from("I", message_buf[MESSAGE_INFO.STATUS[0]:MESSAGE_INFO.STATUS[1]])[0]
+            if flag == 1 or stop_event.is_set():
                 break
-            message_buf[4 : 4 + len(packed)] = packed
+            message_buf[MESSAGE_INFO.POST[0]:MESSAGE_INFO.POST[0] + len(packed)] = packed
             time.sleep(STATUS_REPORT_INTERVAL)
         try:
             post_req = self.status_counter.post_req
             get_req = self.status_counter.get_req
             failed_req = self.status_counter.failed_req
             finish_req = self.status_counter.finish_req
-            packed = struct.pack("<4I", post_req, get_req, failed_req, finish_req)
-            message_buf[4 : 4 + len(packed)] = packed
+            packed = struct.pack("4I", post_req, get_req, failed_req, finish_req)
+            message_buf[MESSAGE_INFO.POST[0]:MESSAGE_INFO.POST[0] + len(packed)] = packed
         except Exception as e:
             self.logger.debug(f"Failed to update status counter: {str(e)}")
             pass
@@ -125,6 +126,26 @@ class BaseApiInferencer(BaseInferencer):
         for i in tqdm(range(warmup_times), desc="Warmup"):
             data = data_list[i % len(data_list)]
             await self.do_request(data, None, None)
+            res = None
+            # do request main producer multi results, warm up fail if any result is not success
+            while not self.output_handler.cache_queue.async_q.empty(): 
+                try:
+                    res = await asyncio.wait_for(self.output_handler.cache_queue.async_q.get(), timeout=1)
+                except Exception as e:
+                    raise AISBenchRuntimeError(ICLI_CODES.WARMUP_GET_RESULT_FAILED, 
+                                        f"Get result from cache queue failed: {str(e)}")
+                data_id, data_abbr, input, output, gold = res
+                if not isinstance(output, Output) or not output.success:
+                    raise AISBenchRuntimeError(ICLI_CODES.WARMUP_FAILED, f"Warmup failed: {output.error_info}")
+                self.logger.debug(
+                    f"Warmup success: data_id: {data_id}, "
+                    f"data_abbr: {data_abbr}, "
+                    f"input: {input}, "
+                    f"output: {output.get_prediction()}, "
+                    f"gold: {gold}"
+                )
+            if not res:
+                raise AISBenchRuntimeError(ICLI_CODES.WARMUP_GET_RESULT_FAILED, f"Empty result from cache queue")
 
     def _read_and_unpickle(
         self, buf: memoryview, index_data: Tuple[int, int, int]
@@ -148,6 +169,7 @@ class BaseApiInferencer(BaseInferencer):
         share_memory: shared_memory.SharedMemory,
         indexes: Dict,
         message_share_memory: shared_memory.SharedMemory,
+        stop_event: threading.Event,
     ) -> Optional[Any]:
         """Attempt to consume one token (if configured) and one index entry.
 
@@ -164,14 +186,18 @@ class BaseApiInferencer(BaseInferencer):
             Deserialized data or None if no data available
         """
         data_index = -1
-        while data_index == -1:
-            flag = struct.unpack_from("B", message_share_memory.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]], 0)[0]
+        while data_index == -1 and not stop_event.is_set():
+            flag = struct.unpack_from("I", message_share_memory.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]], 0)[0]
             if flag != 1:
                 continue
-            data_index = struct.unpack("i", message_share_memory.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]])[0]
+            data_index = struct.unpack_from("i", message_share_memory.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]], 0)[0]
+        message_share_memory.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]] = struct.pack("i", -1)
+        if data_index <0 or data_index >= len(indexes):
+            self.logger.debug(f"Data index out of range: {data_index}, return None")
+            return None
         index_data = indexes[data_index]
-        struct.pack_into("i", message_share_memory.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]], 0, -1)
         if not index_data:
+            self.logger.debug(f"Index data is None, return None")
             return None
         return self._read_and_unpickle(share_memory.buf, index_data)
 
@@ -197,7 +223,7 @@ class BaseApiInferencer(BaseInferencer):
             if stop_event.is_set():
                 break
             data = self._get_single_data(
-                dataset_share_memory, indexes, message_share_memory
+                dataset_share_memory, indexes, message_share_memory, stop_event
             )
             # Block if queue is full -> natural backpressure
             janus_queue.sync_q.put(data)
@@ -225,17 +251,15 @@ class BaseApiInferencer(BaseInferencer):
         # Continuous fill until stop_event or sentinel
         while not stop_event.is_set():
             data = self._get_single_data(
-                dataset_share_memory, indexes, message_share_memory
+                dataset_share_memory, indexes, message_share_memory, stop_event
             )
             while True:
                 try:
                     janus_queue.sync_q.put(data, timeout=1)
-                except (
-                    TimeoutError,
-                    janus.SyncQueueFull,
-                ):  # janus queue is full, wait for a while
+                except Exception as e:
                     if stop_event.is_set():
-                        break
+                        self.logger.debug(f"Producer thread stopped by stop_event with {e}")
+                        return
                     continue
                 break
             if data is None:
@@ -243,17 +267,29 @@ class BaseApiInferencer(BaseInferencer):
                 break
 
     def _sync_main_process_with_message(
-        self, message_share_memory: shared_memory.SharedMemory, info: int
+        self, message_share_memory: shared_memory.SharedMemory,
     ):
         """Synchronize with main process using shared memory message.
 
         Args:
             message_share_memory: Shared memory for communication
-            info: Information to send to main process
         """
         message_buf = message_share_memory.buf
-        struct.pack_into("I", message_buf, 0, info)
-        self.logger.debug(f"Sync main process with message: {info}")
+        struct.pack_into("I", message_buf, 0, WAIT_FLAG)
+        self.logger.debug(f"Sync main process, wait for main process to sync flag to 0")
+        while struct.unpack_from("I", message_buf, 0)[0] != 0:
+            time.sleep(SYNC_MAIN_PROCESS_INTERVAL)
+        self.logger.debug(f"Main process sync flag to 0")
+    
+    async def wait_get_data(self, async_queue: janus.Queue.async_q, stop_event: asyncio.Event):
+        """Wait for data from async queue.
+        """
+        while not stop_event.is_set():
+            try:
+                data = await asyncio.wait_for(async_queue.get(), timeout=1)
+                return data
+            except asyncio.exceptions.TimeoutError:
+                continue
 
     async def _worker_loop(
         self,
@@ -302,11 +338,11 @@ class BaseApiInferencer(BaseInferencer):
                     while time.perf_counter() - start_time < self.pressure_time:
                         if stop_event.is_set():
                             break
-                        data = await async_queue.get()
+                        data = await self.wait_get_data(async_queue, stop_event)
 
                         # Main process interrupt -> put sentinel -> exit pressure test
                         if data is None:
-                            await async_queue.put(None)
+                            await asyncio.wait_for(async_queue.put(None), timeout=1)
                             break
                         await self.do_request(data, token_bucket, session)
         tasks = []
@@ -320,7 +356,7 @@ class BaseApiInferencer(BaseInferencer):
                     # Slightly limit RR when no token to avoid high CPU usage causing TTFT accumulation
                     await asyncio.sleep(BLOCK_INTERVAL)
 
-                data = await async_queue.get()
+                data = await self.wait_get_data(async_queue, stop_event)
 
                 # data == None -> sentinel
                 if data is None or (
@@ -328,7 +364,7 @@ class BaseApiInferencer(BaseInferencer):
                     and time.perf_counter() - start_time
                     > self.pressure_time  # pressure mode, exit when time is up even task not reach stable state
                 ):
-                    await async_queue.put(None)
+                    await asyncio.wait_for(async_queue.put(None), timeout=1)
                     break
                 # Call user-provided async request
                 tasks.append(asyncio.create_task(limited_request_func(data)))
@@ -429,7 +465,7 @@ class BaseApiInferencer(BaseInferencer):
         )
         cache_consumer_thread.start()
         # Notify main process to start generating tokens
-        self._sync_main_process_with_message(message_share_memory, 0)
+        self._sync_main_process_with_message(message_share_memory)
         # Create a fresh event loop dedicated for running the async consumers
         loop = asyncio.new_event_loop()
         loop.set_default_executor(
@@ -447,14 +483,22 @@ class BaseApiInferencer(BaseInferencer):
                 "Keyboard interrupt. Please wait for tasks exit gracefully..."
             )
             stop_event.set()
+            message_share_memory.buf[MESSAGE_INFO.STATUS[0]:MESSAGE_INFO.STATUS[1]] = struct.pack("I", 1)
+            message_share_memory.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]] = struct.pack("i", -1)
             worker_task.cancel()
-            loop.run_until_complete(asyncio.wait_for(worker_task, timeout=None))
+            try:
+                loop.run_until_complete(asyncio.wait_for(worker_task, timeout=10))
+                self.logger.debug(f"Worker task completed")
+            except Exception as e:
+                self.logger.warning(f"Error waiting for worker task: {str(e)}")
         finally:
             # Orderly shutdown
             stop_event.set()
+            producer_thread.join()
+            message_share_memory.buf[MESSAGE_INFO.STATUS[0]:MESSAGE_INFO.STATUS[1]] = struct.pack("I", 1)
+            message_share_memory.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]] = struct.pack("i", -1)
             self.logger.debug(f"Stop event set")
              # Join threads
-            producer_thread.join()
             report_thread.join()
 
             self.status_counter.stop()
@@ -464,7 +508,6 @@ class BaseApiInferencer(BaseInferencer):
 
             # Close janus queue properly
             janus_queue.close()
-            
             loop.run_until_complete(janus_queue.wait_closed())
 
             loop.close()
