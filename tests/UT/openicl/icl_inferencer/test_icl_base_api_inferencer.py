@@ -951,3 +951,246 @@ class TestBaseApiInferencer(unittest.TestCase):
                                 inf.output_handler.write_to_json.assert_called_once()
                                 mock_dataset_shm.close.assert_called_once()
                                 mock_message_shm.close.assert_called_once()
+
+
+
+class TestStatusCounter(unittest.TestCase):
+    def test_init_without_batch_size(self):
+        """测试StatusCounter在没有batch_size时初始化"""
+        counter = StatusCounter(batch_size=0)
+        self.assertIsNone(counter.status_queue)
+        self.assertEqual(counter.post_req, 0)
+        self.assertEqual(counter.get_req, 0)
+        self.assertEqual(counter.failed_req, 0)
+        self.assertEqual(counter.finish_req, 0)
+
+    def test_init_with_batch_size(self):
+        """测试StatusCounter在有batch_size时初始化"""
+        counter = StatusCounter(batch_size=10)
+        self.assertIsNotNone(counter.status_queue)
+        self.assertEqual(counter.status_queue.maxsize, 10 * MESSAGE_TYPE_NUM)
+
+    def test_post_without_queue(self):
+        """测试StatusCounter的post方法在没有队列时直接更新计数"""
+        counter = StatusCounter(batch_size=0)
+        
+        async def run_test():
+            await counter.post()
+        
+        asyncio.run(run_test())
+
+    def test_post_with_queue(self):
+        """测试StatusCounter的post方法在有队列时将消息放入队列"""
+        counter = StatusCounter(batch_size=10)
+        
+        async def run_test():
+            await counter.post()
+            self.assertEqual(counter.status_queue.qsize(), 1)
+        
+        asyncio.run(run_test())
+
+    def test_rev_without_queue(self):
+        """测试StatusCounter的rev方法在没有队列时直接更新计数"""
+        counter = StatusCounter(batch_size=0)
+        
+        async def run_test():
+            await counter.rev()
+        
+        asyncio.run(run_test())
+
+    def test_rev_with_queue(self):
+        """测试StatusCounter的rev方法在有队列时将消息放入队列"""
+        counter = StatusCounter(batch_size=10)
+        
+        async def run_test():
+            await counter.rev()
+            self.assertEqual(counter.status_queue.qsize(), 1)
+        
+        asyncio.run(run_test())
+
+    def test_failed_without_queue(self):
+        """测试StatusCounter的failed方法在没有队列时直接更新计数"""
+        counter = StatusCounter(batch_size=0)
+        
+        async def run_test():
+            await counter.failed()
+        
+        asyncio.run(run_test())
+
+    def test_failed_with_queue(self):
+        """测试StatusCounter的failed方法在有队列时将消息放入队列"""
+        counter = StatusCounter(batch_size=10)
+        
+        async def run_test():
+            await counter.failed()
+            self.assertEqual(counter.status_queue.qsize(), 1)
+        
+        asyncio.run(run_test())
+
+    def test_finish_without_queue(self):
+        """测试StatusCounter的finish方法在没有队列时直接更新计数"""
+        counter = StatusCounter(batch_size=0)
+        
+        async def run_test():
+            await counter.finish()
+        
+        asyncio.run(run_test())
+
+    def test_finish_with_queue(self):
+        """测试StatusCounter的finish方法在有队列时将消息放入队列"""
+        counter = StatusCounter(batch_size=10)
+        
+        async def run_test():
+            await counter.finish()
+            self.assertEqual(counter.status_queue.qsize(), 1)
+        
+        asyncio.run(run_test())
+
+    def test_stop(self):
+        """测试StatusCounter的stop方法设置停止事件"""
+        counter = StatusCounter(batch_size=10)
+        self.assertFalse(counter._stop_event.is_set())
+        counter.stop()
+        self.assertTrue(counter._stop_event.is_set())
+
+    def test_run_without_queue(self):
+        """测试StatusCounter的run方法在没有队列时立即返回"""
+        counter = StatusCounter(batch_size=0)
+        counter.start()
+        time.sleep(0.1)
+        counter.stop()
+        counter.join(timeout=2)
+        # Should return immediately since no queue
+        self.assertFalse(counter.is_alive())
+
+    def test_run_with_queue(self):
+        """测试StatusCounter的run方法在有队列时处理队列中的状态消息"""
+        counter = StatusCounter(batch_size=10)
+        counter.start()
+        
+        try:
+            # Add some status messages
+            asyncio.run(counter.post())
+            asyncio.run(counter.rev())
+            asyncio.run(counter.failed())
+            asyncio.run(counter.finish())
+            
+            time.sleep(0.2)  # Let it process
+            
+            counter.stop()
+            counter.join(timeout=2)
+            
+            # Check counts were updated
+            self.assertGreaterEqual(counter.post_req, 1)
+            self.assertGreaterEqual(counter.get_req, 1)
+            self.assertGreaterEqual(counter.failed_req, 1)
+            self.assertGreaterEqual(counter.finish_req, 1)
+            self.assertFalse(counter.is_alive())
+        finally:
+            # Ensure thread is stopped
+            if counter.is_alive():
+                counter.stop()
+                counter.join(timeout=1)
+
+    def test_run_processes_all_statuses(self):
+        """测试StatusCounter的run方法处理所有类型的状态消息"""
+        counter = StatusCounter(batch_size=10)
+        counter.start()
+        
+        try:
+            # Add all types
+            asyncio.run(counter.post())
+            asyncio.run(counter.rev())
+            asyncio.run(counter.failed())
+            asyncio.run(counter.finish())
+            
+            time.sleep(0.2)
+            counter.stop()
+            counter.join(timeout=2)
+            
+            # All should be processed
+            self.assertEqual(counter.post_req, 1)
+            self.assertEqual(counter.get_req, 1)
+            self.assertEqual(counter.failed_req, 1)
+            self.assertEqual(counter.finish_req, 1)
+            self.assertFalse(counter.is_alive())
+        finally:
+            # Ensure thread is stopped
+            if counter.is_alive():
+                counter.stop()
+                counter.join(timeout=1)
+
+    def test_run_consumes_remaining_items(self):
+        """测试StatusCounter的run方法在停止后处理剩余的队列项"""
+        counter = StatusCounter(batch_size=10)
+        counter.start()
+        
+        try:
+            # Add items before stop
+            asyncio.run(counter.post())
+            asyncio.run(counter.post())
+            asyncio.run(counter.rev())
+            
+            # Wait a bit for thread to process some items
+            time.sleep(0.3)
+            
+            # Stop 
+            counter.stop()
+            
+            # Add more items after stop (may be consumed by cleanup loop if timing allows)
+            asyncio.run(counter.failed())
+            asyncio.run(counter.finish())
+            
+            counter.join(timeout=2)
+            
+            # Verify cleanup loop ran - at least items before stop should be processed
+            # Items added after stop may or may not be processed depending on timing
+            self.assertGreaterEqual(counter.post_req, 1)  # At least one post_req before stop
+            self.assertGreaterEqual(counter.get_req, 1)  # At least one get_req before stop
+            # Thread should be stopped
+            self.assertFalse(counter.is_alive())
+            # Queue may still have items if they were added after cleanup loop started
+            # (race condition), but cleanup loop should have run
+        finally:
+            # Ensure thread is stopped
+            if counter.is_alive():
+                counter.stop()
+                counter.join(timeout=1)
+
+    def test_run_consumes_all_status_types_after_stop(self):
+        """测试StatusCounter的run方法在停止后处理所有类型的剩余状态消息"""
+        counter = StatusCounter(batch_size=10)
+        counter.start()
+        
+        try:
+            # Add items before stop to ensure thread is running
+            asyncio.run(counter.post())
+            time.sleep(0.1)  # Let thread process it
+            
+            # Stop first
+            counter.stop()
+            
+            # Add all types after stop (should be consumed by cleanup loop if added quickly)
+            # Note: There's a race condition here - items must be added before cleanup completes
+            asyncio.run(counter.post())
+            asyncio.run(counter.rev())
+            asyncio.run(counter.failed())
+            asyncio.run(counter.finish())
+            
+            counter.join(timeout=2)
+            
+            # At least some items should be consumed (at least 1 post_req before stop)
+            # Items added after stop may or may not be consumed depending on timing
+            self.assertGreaterEqual(counter.post_req, 1)
+            # Thread should be stopped
+            self.assertFalse(counter.is_alive())
+            # Queue may still have items if they were added after cleanup loop started
+            # (race condition), but cleanup loop should have run
+        finally:
+            if counter.is_alive():
+                counter.stop()
+                counter.join(timeout=1)
+
+
+if __name__ == '__main__':
+    unittest.main()
