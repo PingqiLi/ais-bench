@@ -307,7 +307,6 @@ Meanwhile, the final generated directory structure is as follows:
 
 > ⚠️ Notes:
 > - In multi-task performance evaluation scenarios, the dataset tasks specified by `--datasets` must belong to different dataset types; otherwise, performance data will be missing due to overwriting. For example, you cannot specify both `aime2024_gen_0_shot_str` and `aime2024_gen_0_shot_chat_prompt` through `--datasets`.
-> - Note: In performance evaluation scenarios, due to the need to maintain concurrency continuity, you cannot use `--disable-cb` to turn off Continuous Batch; nor can you perform subtask parallel inference through `--max-num-workers` (multi-task parallelism is restricted in this mode).
 
 ### Custom Sequence Length Evaluation
 #### 1 Configure Input and Output Distribution for Custom Sequence Dataset

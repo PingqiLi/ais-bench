@@ -32,23 +32,24 @@ from ais_bench.benchmark.models import VLLMCustomAPI
 
 models = [
     dict(
-        attr="service",             # 后端类型标识
-        type=VLLMCustomAPI,         # API 类型
-        abbr='vllm-api-general',    # 唯一标识
-        path="/weight/DeepSeek-R1", # 模型路径
-        model="DeepSeek-R1",        # 模型名称
-        request_rate=0,             # 请求速率
-        retry=2,                    # 最大重试次数
-        host_ip="localhost",        # 推理服务 IP
-        host_port=8080,             # 推理服务端口
-        max_out_len=512,            # 最大输出长度
-        batch_size=1,               # 请求并发数
-        generation_kwargs=dict(     # 后处理参数
-            temperature=0.5,
-            top_k=10,
-            top_p=0.95,
-            seed=None,
-            repetition_penalty=1.03,
+        attr="service",
+        type=VLLMCustomAPI,
+        abbr='vllm-api-general',
+        path="",                    # 指定模型序列化词表文件绝对路径（精度测试场景一般不需要配置）
+        model="",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）
+        stream=False,    # 是否为流式接口
+        request_rate = 0,           # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
+        retry = 2,                  # 每个请求最大重试次数
+        headers={"Content-Type": "application/json"}, # 自定义请求头，默认{"Content-Type": "application/json"}
+        host_ip = "localhost",      # 指定推理服务的IP
+        host_port = 8080,           # 指定推理服务的端口
+        url="",                     # 自定义访问推理服务的URL路径(当base url不是http://host_ip:host_port的组合时需要配置)
+        max_out_len = 512,          # 推理服务输出的token的最大数量
+        batch_size=1,               # 请求发送的最大并发数
+        trust_remote_code=False,    # tokenizer是否信任远程代码，默认False;
+        generation_kwargs = dict(   # 模型推理参数，参考VLLM文档配置，AISBench评测工具不做处理，在发送的请求中附带
+            temperature = 0.01,
+            ignore_eos=False,
         )
     )
 ]
@@ -64,14 +65,18 @@ models = [
 | `path` | String | Tokenizer 路径，通常与模型路径相同，使用 `AutoTokenizer.from_pretrained(path)` 加载。指定可访问的本地路径，例如：`/weight/DeepSeek-R1` |
 | `model` | String | 服务端可访问的模型名称，必须与服务化部署时指定的名称一致 |
 | `model_name` | String | 仅适用于 Triton 服务，拼接为 endpoint 的 URI `/v2/models/{modelname}/{infer、generate、generate_stream}`，应与部署时名称一致 |
+| `stream` | Boolean | 是否为流式接口，必填|
 | `request_rate` | Float | 请求发送速率（单位：秒），每隔 `1/request_rate` 秒发送一个请求；若小于 0.1 则自动合并为批量发送。合法范围：[0, 64000]。当`traffic_cfg`项配置启用时，该项功能可能被覆盖 （具体原因请参考 🔗 [请求速率(RPS)分布控制及可视化说明中的参数解读章节](../../advanced_tutorials/rps_distribution.md#参数解读)）|
 | `traffic_cfg` | Dict | 请求发送速率波动控制参数（具体使用说明请参考 🔗 [请求速率(RPS)分布控制及可视化说明](../../advanced_tutorials/rps_distribution.md)），不填写此项默认不启用该功能。 |
 | `retry` | Int | 连接服务端失败后的最大重试次数。合法范围：[0, 1000] |
+| `headers` | Dict | 自定义 HTTP 请求头，例如：`{"Authorization": "Bearer YOUR_API_KEY"}` |
 | `host_ip` | String | 服务端 IP 地址，支持合法 IPv4 或 IPv6，例如：`127.0.0.1` |
 | `host_port` | Int | 服务端端口号，应与服务化部署指定的端口一致 |
+| `url` | String | 自定义访问推理服务的URL路径(当base url不是http://host_ip:host_port的组合时需要配置，配置后host_ip和host_port将被忽略) ，例如当`models`的`type`为`VLLMCustomAPI`时，配置`url`为`https://xxxxxxx/yyyy/`，实际请求访问的URL为`https://xxxxxxx/yyyy/v1/completions`|
 | `max_out_len` | Int | 推理响应的最大输出长度，实际长度可能受服务端限制。合法范围：(0, 131072] |
 | `batch_size` | Int | 请求的并发批处理大小。合法范围：(0, 64000] |
-| `generation_kwargs` | Dict | 推理生成参数配置，依赖具体的服务化后端和接口类型。注意：当前不支持 `best_of` 和 `n` 等多次采样参数，但支持通过`num_return_sequences`参数进行多次独立推理(具体请参考🔗[Text Generation 文档](https://huggingface.co/docs/transformers/v4.18.0/en/main_classes/text_generation#transformers.generation_utils.GenerationMixin.generate.num_return_sequences\(int,)中`num_return_sequences`的作用) |
+| `trust_remote_code` | Boolean | tokenizer是否信任远程代码，默认False; |
+| `generation_kwargs` | Dict | 推理生成参数配置，依赖具体的服务化后端和接口类型。注意：当前不支持 `best_of` 和 `n` 等多次采样参数，但支持通过`num_return_sequences`参数进行多次独立推理(具体请参考🔗[Text Generation 文档](https://huggingface.co/docs/transformers/v4.18.0/en/main_classes/text_generation#transformers.generation_utils.GenerationMixin.generate.num_return_sequences)中`num_return_sequences`的作用) |
 | `returns_tool_calls` | Bool | 控制函数调用信息的提取方式。当设置为True时，系统从API响应的`tool_calls`字段中提取函数调用信息；当设置为False时，系统从`content`字段中解析函数调用信息 |
 | `pred_postprocessor` | Dict | 模型输出结果的后处理配置。用于对原始模型输出进行格式化、清理或转换，以满足特定评估任务的要求 |
 

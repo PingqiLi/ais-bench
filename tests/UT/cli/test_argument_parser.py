@@ -186,7 +186,7 @@ class TestArgumentParser(unittest.TestCase):
         sys.argv = ['benchmark.py', '--custom-dataset-path', '/path/to/dataset',
                     '--custom-dataset-meta-path', '/path/to/meta',
                     '--custom-dataset-data-type', 'mcq',
-                    '--custom-dataset-infer-method', 'attr']
+                    '--custom-dataset-infer-method', 'gen']
 
         # 创建解析器并解析参数
         parser = ArgumentParser()
@@ -196,19 +196,19 @@ class TestArgumentParser(unittest.TestCase):
         self.assertEqual(args.custom_dataset_path, '/path/to/dataset')
         self.assertEqual(args.custom_dataset_meta_path, '/path/to/meta')
         self.assertEqual(args.custom_dataset_data_type, 'mcq')
-        self.assertEqual(args.custom_dataset_infer_method, 'attr')
+        self.assertEqual(args.custom_dataset_infer_method, 'gen')
 
     @patch('ais_bench.benchmark.cli.argument_parser.is_running_in_background')
     @patch('ais_bench.benchmark.cli.argument_parser.get_current_time_str')
-    def test_parse_args_mcq_and_openai_options(self, mock_get_current_time_str, mock_is_running_in_background):
-        """测试mcq数据类型和openai推理方法选项"""
+    def test_parse_args_mcq_and_gen_options(self, mock_get_current_time_str, mock_is_running_in_background):
+        """测试mcq数据类型和gen推理方法选项"""
         # 模拟返回值
         mock_is_running_in_background.return_value = False
         mock_get_current_time_str.return_value = "20230516_144254"
 
         # 设置命令行参数
         sys.argv = ['benchmark.py', '--custom-dataset-data-type', 'qa',
-                    '--custom-dataset-infer-method', 'openai']
+                    '--custom-dataset-infer-method', 'gen']
 
         # 创建解析器并解析参数
         parser = ArgumentParser()
@@ -216,7 +216,7 @@ class TestArgumentParser(unittest.TestCase):
 
         # 验证结果
         self.assertEqual(args.custom_dataset_data_type, 'qa')
-        self.assertEqual(args.custom_dataset_infer_method, 'openai')
+        self.assertEqual(args.custom_dataset_infer_method, 'gen')
 
     def test_init_method_creates_parser(self):
         """测试初始化方法创建了解析器并添加了所有参数组"""

@@ -33,7 +33,6 @@ ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_ch
 
 执行查询命令可以得到如下查询结果：
 ```shell
-06/28 11:52:25 - AISBench - INFO - Searching configs...
 ╒══════════════╤═══════════════════════════════════════╤════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╕
 │ Task Type    │ Task Name                             │ Config File Path                                                                                                               │
 ╞══════════════╪═══════════════════════════════════════╪════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╡
@@ -56,19 +55,20 @@ models = [
         type=VLLMCustomAPIChat,
         abbr='vllm-api-general-chat',
         path="",                    # 指定模型序列化词表文件绝对路径（精度测试场景一般不需要配置）
-        model="DeepSeek-R1",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）
-        request_rate = 0,           # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
-        retry = 2,                  # 每个请求最大重试次数
-        host_ip = "localhost",      # 指定推理服务的IP
-        host_port = 8080,           # 指定推理服务的端口
-        max_out_len = 512,          # 推理服务输出的token的最大数量
+        model="",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）
+        stream=False,
+        request_rate=0,           # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
+        retry=2,                  # 每个请求最大重试次数
+        headers={"Content-Type": "application/json"}, # 自定义请求头，默认{"Content-Type": "application/json"}
+        host_ip="localhost",      # 指定推理服务的IP
+        host_port=8080,           # 指定推理服务的端口
+        url="",                     # 自定义访问推理服务的URL路径(当base url不是http://host_ip:host_port的组合时需要配置，配置后host_ip和host_port将被忽略)
+        max_out_len=512,          # 推理服务输出的token的最大数量
         batch_size=1,               # 请求发送的最大并发数
-        generation_kwargs = dict(   # 模型推理参数，参考VLLM文档配置，AISBench评测工具不做处理，在发送的请求中附带
-            temperature = 0.5,
-            top_k = 10,
-            top_p = 0.95,
-            seed = None,
-            repetition_penalty = 1.03,
+        trust_remote_code=False,    # tokenizer是否信任远程代码，默认False;
+        generation_kwargs=dict(   # 模型推理参数，参考VLLM文档配置，AISBench评测工具不做处理，在发送的请求中附带
+            temperature=0.01,
+            ignore_eos=False,
         )
     )
 ]
@@ -79,15 +79,40 @@ models = [
 # 命令行加上--debug，
 ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt --debug
 ```
-### 查看任务执行细节
-执行AISBench命令后，任务执行的细节会不断落盘在默认的输出路径，这个输出路径在运行中的打屏日志中有提示，例如：
-```shell
-06/28 15:13:26 - AISBench - INFO - Current exp folder: outputs/default/20250628_151326
+### 执行命令
+修改好配置文件后，执行命令启动服务化精度评测：
+```bash
+ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt
+```
+#### 查看任务执行细节
+执行AISBench命令后，正在执行的任务状态会在命令行实时刷新的看板上显示（键盘按"P"键可以停止刷新，用于复制看板信息，再按"P"可以继续刷新），例如：
+```
+Base path of result&log : outputs/default/20250628_151326
+Task Progress Table (Updated at: 2025-11-06 10:08:21)
+Page: 1/1  Total 2 rows of data
+Press Up/Down arrow to page,  'P' to PAUZE/RESUME screen refresh, 'Ctrl + C' to exit
+
++----------------------------------+-----------+-------------------------------------------------+-------------+-------------+-------------------------------------------------+------------------------------------------------+
+| Task Name                        |   Process | Progress                                        | Time Cost   | Status      | Log Path                                        | Extend Parameters                              |
++==================================+===========+=================================================+=============+=============+=================================================+================================================+
+| vllm-api-general-chat/demo_gsm8k |    547141 | [###############               ] 4/8 [0.5 it/s] | 0:00:11     | inferencing | logs/infer/vllm-api-general-chat/demo_gsm8k.out | {'POST': 5, 'RECV': 4, 'FINISH': 4, 'FAIL': 0} |
++----------------------------------+-----------+-------------------------------------------------+-------------+-------------+-------------------------------------------------+------------------------------------------------+
+
 ```
 
-这段日志说明任务执行的细节落盘在执行命令的路径下的`outputs/default/20250628_151326`中。
-命令执行结束后`outputs/default/20250628_151326`中的任务执行的细节如下所示：
+任务执行的细节日志会不断落盘在默认的输出路径，这个输出路径在实时刷新的看板上显示，即`Log Path`。`Log Path`（`logs/infer/vllm-api-general-chat/demo_gsm8k.out`）是在`Base path`（`outputs/default/20250628_151326`）下的路径，以上述的看板信息为例，任务执行的详细日志路径为：
+```shell
+# {Base path}/{Log Path}
+outputs/default/20250628_151326/logs/infer/vllm-api-general-chat/demo_gsm8k.out
+```
 
+> 💡 如果希望执行过程中将详细日志直接打印，执行命令时可以加上 `--debug`:
+`ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt --debug`
+
+
+
+
+`Base path`（`outputs/default/20250628_151326`）下包含了所有任务的执行细节，命令执行结束后所有的执行细节如下：
 ```shell
 20250628_151326/
 ├── configs # 模型任务、数据集任务和结构呈现任务对应的配置文件合成的一个配置
@@ -111,6 +136,7 @@ ais_bench --models vllm_api_general_chat --datasets demo_gsm8k_gen_4_shot_cot_ch
     └── summary_20250628_151326.txt # # 最终精度分数呈现（文本格式）
 ```
 > ⚠️ **注意**： 不同评测场景落盘任务执行细节内容不同，具体请参考具体评测场景的指南。
+
 
 ### 输出结果
 因为只有8条数据，会很快跑出结果，结果显示的示例如下

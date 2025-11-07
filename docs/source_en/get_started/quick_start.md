@@ -56,18 +56,19 @@ models = [
         abbr='vllm-api-general-chat',
         path="",                    # Specify the absolute path of the model serialized vocabulary file (configuration is generally not required for accuracy testing scenarios).
         model="DeepSeek-R1",        # Specify the name of the model loaded on the server, configured according to the actual model name pulled by the VLLM inference service (configure as an empty string to get it automatically)
-        request_rate = 0,           # Request sending frequency: send 1 request to the server every 1/request_rate seconds; if less than 0.1, all requests are sent at once
-        retry = 2,                  # Maximum number of retries per request
-        host_ip = "localhost",      # Specify the IP of the inference service
-        host_port = 8080,           # Specify the port of the inference service
-        max_out_len = 512,          # Maximum number of tokens output by the inference service
+        stream=False,
+        request_rate=0,           # Request sending frequency: send 1 request to the server every 1/request_rate seconds; if less than 0.1, all requests are sent at once
+        retry=2,                  # Maximum number of retries per request
+        headers={"Content-Type": "application/json"}, # Custom request headers, default {"Content-Type": "application/json"}
+        host_ip="localhost",      # Specify the IP of the inference service
+        host_port=8080,           # Specify the port of the inference service
+        url="",                     # Custom access path for the inference service (required when the base URL is not http://host_ip:host_port, and will ignore host_ip and host_port)
+        max_out_len=512,          # Maximum number of tokens output by the inference service
         batch_size=1,               # Maximum concurrency for sending requests
-        generation_kwargs = dict(   # Model inference parameters shall be configured with reference to the VLLM documentation. The AISBench evaluation tool does not process these parameters, which will be included in the sent request.
-            temperature = 0.5,
-            top_k = 10,
-            top_p = 0.95,
-            seed = None,
-            repetition_penalty = 1.03,
+        trust_remote_code=False,    # Whether to trust remote code in the tokenizer, default False;
+        generation_kwargs=dict(   # Model inference parameters shall be configured with reference to the VLLM documentation. The AISBench evaluation tool does not process these parameters, which will be included in the sent request.
+            temperature=0.01,
+            ignore_eos=False,
         )
     )
 ]

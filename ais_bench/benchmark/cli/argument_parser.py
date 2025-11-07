@@ -163,7 +163,7 @@ class ArgumentParser():
                             choices=['mcq', 'qa'])
         parser.add_argument('--custom-dataset-infer-method',
                             type=str,
-                            choices=['attr', 'openai'])
+                            choices=['gen'])
 
 
 

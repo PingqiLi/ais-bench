@@ -111,9 +111,8 @@ At the same time, the final generated directory structure is as follows:
 ### Multi-Task Parallel Evaluation
 By default, multiple subtasks are executed serially. Continuous Batch is enabled by default within a single task, and multiple processes will be launched to send and process requests according to the maximum concurrency configured by the user, allowing for large concurrency settings. When the concurrency of a single task is low, multi-task parallelism can be achieved by setting the 📚 [`--max-num-workers`](../all_params/cli_args.md#accuracy-evaluation-parameters) parameter. Example as follows:
 
-> ⚠️ Note: When `--max-num-workers` is enabled, Continuous Batch cannot take effect (it needs to be manually disabled by specifying `--disable-cb`). In this case, the maximum concurrency for each task is recommended not to exceed 500.
 ```bash
-ais_bench --models vllm_api_general vllm_api_stream_chat --datasets gsm8k_gen math500_gen_0_shot_cot_chat_prompt --disable-cb --max-num-workers 4
+ais_bench --models vllm_api_general vllm_api_stream_chat --datasets gsm8k_gen math500_gen_0_shot_cot_chat_prompt  --max-num-workers 4
 ```
 In the example, the maximum number of concurrent tasks is set to 4, and the four subtasks will be executed simultaneously. The generated results are consistent with the example in [Multi-Task Evaluation](#multi-task-evaluation).
 

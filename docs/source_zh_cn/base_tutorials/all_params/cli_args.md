@@ -32,23 +32,23 @@ ais_bench [OPTIONS]
 | `--dry-run`    | 开启 Dry Run 模式（只打屏不实际跑任务）开关，配置该参数表示开启，未配置表示关闭，默认未配置。  | `--dry-run` |
 | `--max-workers-per-gpu` | 预留参数，暂不支持。 | `--max-workers-per-gpu 1` |
 | `--merge-ds`   | 开启同类数据集合并推理（同一任务多数据集一起跑）。| `--merge-ds`|
+| `--num-prompts` | 指定数据集测评条数，需传入正整数，超过数据集条数或默认情况下表示对全量数据集进行测评。 | `--num-prompts 500` |
+| `--max-num-workers`   | 并行任务数，范围 `[1, CPU 核数]`，默认 `1`。在 Continuous Batch 或性能模式下无效。  | `--max-num-workers 2` |
+|`--num-warmups`|发送请求前预热次数，默认 `1`；若设为0，则不预热。| `--num-warmups 10` |
 
 ### 精度测评参数
 仅在模式为 `all、infer、eval` 或 `viz` 时有效。
 | 参数| 说明  | 示例|
 | ---- | ---- | ---- |
-| `--max-num-workers`   | 并行任务数，范围 `[1, CPU 核数]`，默认 `1`。在 Continuous Batch 或性能模式下无效。  | `--max-num-workers 2` |
 | `--dump-eval-details` | 是否dump出评测过程细节的开关，配置该参数表示开启，未配置表示关闭，默认未配置。  | `--dump-eval-details` |
 | `--dump-extract-rate` | 是否dump出评测速度的开关，配置该参数表示开启，未配置表示关闭，默认未配置。    | `--dump-extract-rate` |
-| `--disable-cb`  | 关闭 Continous Batch 推理（仅对服务化 API 类型模型生效）。配置该参数表示关闭，未配置表示开启，默认未配置。开启 CB 时会并发多个进程，单进程并发上限 500。<br>禁用后恢复单进程模式，且 `--max-num-workers` 生效。 | `--disable-cb`  |
 
 ### 性能测评参数
 仅在模式为 `perf` 或 `perf_viz` 时有效。
 | 参数| 说明| 示例 |
 | ---- | ---- | ---- |
-| `--num-prompts` | 指定数据集测评条数，需传入正整数，超过数据集条数或默认情况下表示对全量数据集进行测评。 | `--num-prompts 500` |
 | `--pressure`   | 	是否开启性能压测方式的开关，仅当 `--mode perf` 时有效，配置该参数表示开启，未配置表示关闭，默认未配置。压力测试详情可参考:📚 [压力测试使能稳态测试](../../advanced_tutorials/stable_stage.md#压力测试使能稳态测试)。| `--pressure`|
-
+|`--pressure-time`|压测持续时间，仅在指定 `--pressure` 模式时生效。单位为秒，默认15秒，取值范围为 `[1, 86400]`（即 1 秒 至 24 小时）。| `--pressure-time 30`|
 
 ## 配置常量文件参数
 
@@ -57,8 +57,6 @@ ais_bench [OPTIONS]
 | 参数名| 说明| 取值范围 / 要求 |
 | ----------- | ----------- | ----------- |
 |`WORKERS_NUM`|请求发送所用的进程数。 默认为0， 根据用户配置的请求最大并发数自动分配。|[0, cpu核数]|
-| `CUSTOM_PACKAGE_DIR`| 指定自定义 Python 包的目录路径，Benchmark 工具将从该目录加载用户自定义的包。| 需为用户可访问的本地路径，指向包含自定义包的文件夹   |
-| `PRESSURE_TIME`| 压测持续时间，仅在指定 `--pressure` 模式时生效。单位为秒。| `[1, 86400]`（即 1 秒 至 24 小时） |
-| `CONNECTION_ADD_RATE`| 并发线程创建速率。表示每秒新增的并发线程数，直至达到最大并发限制。仅在指定 `--pressure` 模式时生效。 | `> 0.1`（单位：线程数 / 秒） |
 | `MAX_CHUNK_SIZE` | 流式推理模型后端返回的单个 chunk 最大缓存大小。默认值为 65535 字节（64KB）。 | `(0, 16777216]`（单位：Byte） |
 | `REQUEST_TIME_OUT` | Client 端请求发送后等待返回的超时时间。默认为 None，即无限等待，始终等待模型返回结果。 | `None` 或 `>0`（单位：秒）|
+|`LOG_LEVEL`|日志级别，可选：`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`。默认 `INFO`。|`[DEBUG, INFO, WARNING, ERROR, CRITICAL]`|

@@ -39,7 +39,6 @@ ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_cha
 
 执行查询命令可以得到如下查询结果：
 ```shell
-06/28 11:52:25 - AISBench - INFO - Searching configs...
 ╒══════════════╤═══════════════════════════════════════╤════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╕
 │ Task Type    │ Task Name                             │ Config File Path                                                                                                               │
 ╞══════════════╪═══════════════════════════════════════╪════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╡
@@ -59,112 +58,130 @@ from ais_bench.benchmark.models import VLLMCustomAPIChatStream
 models = [
     dict(
         attr="service",
-        type=VLLMCustomAPIChatStream,
-        abbr='vllm-api-stream-chat',
-        path="",                    # 指定模型序列化词表文件绝对路径，一般来说就是模型权重文件夹路径
-        model="DeepSeek-R1",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）
-        request_rate = 0,           # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
-        retry = 2,                  # 每个请求最大重试次数
-        host_ip = "localhost",      # 指定推理服务的IP
-        host_port = 8080,           # 指定推理服务的端口
-        max_out_len = 512,          # 推理服务输出的token的最大数量
+        type=VLLMCustomAPIChat,
+        abbr='vllm-api-general-chat',
+        path="",                    # 指定模型序列化词表文件绝对路径（精度测试场景一般不需要配置）
+        model="",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）
+        stream=True, # 服务化性能只支持评测流式接口
+        request_rate=0,           # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
+        retry=2,                  # 每个请求最大重试次数
+        headers={"Content-Type": "application/json"}, # 自定义请求头，默认{"Content-Type": "application/json"}
+        host_ip="localhost",      # 指定推理服务的IP
+        host_port=8080,           # 指定推理服务的端口
+        url="",                     # 自定义访问推理服务的URL路径(当base url不是http://host_ip:host_port的组合时需要配置，配置后host_ip和host_port将被忽略)
+        max_out_len=512,          # 推理服务输出的token的最大数量
         batch_size=1,               # 请求发送的最大并发数
-        generation_kwargs = dict(   # 模型推理参数，参考VLLM文档配置，AISBench评测工具不做处理，在发送的请求中附带
-            temperature = 0.5,
-            top_k = 10,
-            top_p = 0.95,
-            seed = None,
-            repetition_penalty = 1.03,
-            ignore_eos = True,      # 推理服务输出忽略eos（输出长度一定会达到max_out_len）
+        trust_remote_code=False,    # tokenizer是否信任远程代码，默认False;
+        generation_kwargs=dict(   # 模型推理参数，参考VLLM文档配置，AISBench评测工具不做处理，在发送的请求中附带
+            temperature=0.01,
+            ignore_eos=True, # 测性能时如果需要限定输出长度，需要将ignore_eos设置为True
         )
     )
 ]
 ```
 ### 执行命令
-修改好配置文件后，执行命令启动服务化性能评测（⚠️ 第一次执行建议加上`--debug`，可以将具体日志打屏，如果有请求推理服务过程中的报错更方便处理）：
+修改好配置文件后，执行命令启动服务化性能评测：
 ```bash
-# 命令行加上--debug
-ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt -m perf --debug
+ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt -m perf
 ```
+#### 查看任务执行细节
+执行AISBench命令后，正在执行的任务状态会在命令行实时刷新的看板上显示（键盘按"P"键可以停止刷新，用于复制看板信息，再按"P"可以继续刷新），例如：
+```
+Base path of result&log : outputs/default/20251106_103326
+Task Progress Table (Updated at: 2025-11-06 10:34:41)
+Page: 1/1  Total 2 rows of data
+Press Up/Down arrow to page,  'P' to PAUZE/RESUME screen refresh, 'Ctrl + C' to exit
+
++---------------------------------+-----------+-------------------------------------------------+-------------+-------------+------------------------------------------------+------------------------------------------------+
+| Task Name                       |   Process | Progress                                        | Time Cost   | Status      | Log Path                                       | Extend Parameters                              |
++=================================+===========+=================================================+=============+=============+================================================+================================================+
+| vllm-api-stream-chat/demo_gsm8k |    744887 | [###########                   ] 3/8 [0.1 it/s] | 0:00:54     | inferencing | logs/infer/vllm-api-stream-chat/demo_gsm8k.out | {'POST': 4, 'RECV': 3, 'FINISH': 3, 'FAIL': 0} |
++---------------------------------+-----------+-------------------------------------------------+-------------+-------------+------------------------------------------------+------------------------------------------------+
+`
+
+```
+
+任务执行的细节日志会不断落盘在默认的输出路径，这个输出路径在实时刷新的看板上显示，即`Log Path`。`Log Path`（`logs/infer/vllm-api-stream-chat/demo_gsm8k.out`）是在`Base path`（`outputs/default/20251106_103326`）下的路径，以上述的看板信息为例，任务执行的详细日志路径为：
+```shell
+# {Base path}/{Log Path}
+outputs/default/20251106_103326/logs/infer/vllm-api-stream-chat/demo_gsm8k.out
+```
+
+> 💡 如果希望执行过程中将详细日志直接打印，执行命令时可以加上 `--debug`:
+`ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt -m perf --debug`
 
 ### 查看性能结果
 性能结果打屏示例如下：
 
 ```bash
-06/05 20:22:24 - AISBench - INFO - Performance Results of task: vllm-api-stream-chat/gsm8kdataset:
-
-╒══════════════════════════╤═════════╤══════════════════╤══════════════════╤══════════════════╤══════════════════╤══════════════════╤══════════════════╤══════════════════╤══════╕
-│ Performance Parameters   │ Stage   │ Average          │ Min              │ Max              │ Median           │ P75              │ P90              │ P99              │  N   │
-╞══════════════════════════╪═════════╪══════════════════╪══════════════════╪══════════════════╪══════════════════╪══════════════════╪══════════════════╪══════════════════╪══════╡
-│ E2EL                     │ total   │ 2048.2945  ms    │ 1729.7498 ms     │ 3450.96 ms       │ 2491.8789 ms     │ 2750.85 ms       │ 3184.9186 ms     │ 3424.4354 ms     │ 8    │
-├──────────────────────────┼─────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────┤
-│ TTFT                     │ total   │ 50.332 ms        │ 50.6244 ms       │ 52.0585 ms       │ 50.3237 ms       │ 50.5872 ms       │ 50.7566 ms       │ 50 .0551 ms      │ 8    │
-├──────────────────────────┼─────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────┤
-│ TPOT                     │ total   │ 10.6965 ms       │ 10.061 ms        │ 10.8805 ms       │ 10.7495 ms       │ 10.7818 ms       │ 10.808 ms        │ 10.8582 ms       │ 8    │
-├──────────────────────────┼─────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────┤
-│ ITL                      │ total   │ 10.6965 ms       │ 7.3583 ms        │ 13.7707 ms       │ 10.7513 ms       │ 10.8009 ms       │ 10.8358 ms       │ 10.9322 ms       │ 8    │
-├──────────────────────────┼─────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────┤
-│ InputTokens              │ total   │ 1512.5           │ 1481.0           │ 1566.0           │ 1511.5           │ 1520.25          │ 1536.6           │ 1563.06          │ 8    │
-├──────────────────────────┼─────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────┤
-│ OutputTokens             │ total   │ 287.375          │ 200.0            │ 407.0            │ 280.0            │ 322.75           │ 374.8            │ 403.78           │ 8    │
-├──────────────────────────┼─────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┼──────┤
-│ OutputTokenThroughput    │ total   │ 115.9216 token/s │ 107.6555 token/s │ 116.5352 token/s │ 117.6448 token/s │ 118.2426 token/s │ 118.3765 token/s │ 118.6388 token/s │ 8    │
-╘══════════════════════════╧═════════╧══════════════════╧══════════════════╧══════════════════╧══════════════════╧══════════════════╧══════════════════╧══════════════════╧══════╛
-╒══════════════════════════╤═════════╤════════════════════╕
-│ Common Metric            │ Stage   │ Value              │
-╞══════════════════════════╪═════════╪════════════════════╡
-│ Benchmark Duration       │ total   │ 19897.8505 ms      │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Total Requests           │ total   │ 8                  │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Failed Requests          │ total   │ 0                  │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Success Requests         │ total   │ 8                  │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Concurrency              │ total   │ 0.9972             │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Max Concurrency          │ total   │ 1                  │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Request Throughput       │ total   │ 0.4021 req/s       │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Total Input Tokens       │ total   │ 12100              │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Prefill Token Throughput │ total   │ 17014.3123 token/s │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Total generated tokens   │ total   │ 2299               │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Input Token Throughput   │ total   │ 608.7438 token/s   │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Output Token Throughput  │ total   │ 115.7835 token/s   │
-├──────────────────────────┼─────────┼────────────────────┤
-│ Total Token Throughput   │ total   │ 723.5273 token/s   │
-╘══════════════════════════╧═════════╧════════════════════╛
-
-06/05 20:22:24 - AISBench - INFO - Performance Result files locate in outputs/default/20250605_202220/performances/vllm-api-stream-chat.
-
+[2025-11-06 10:35:43,667] [ais_bench] [INFO] Performance Results of task: vllm-api-stream-chat/demo_gsm8k:
+╒══════════════════════════╤═════════╤═════════════════╤═════════════════╤═════════════════╤═════════════════╤═════════════════╤═════════════════╤═════════════════╤═════╕
+│ Performance Parameters   │ Stage   │ Average         │ Min             │ Max             │ Median          │ P75             │ P90             │ P99             │  N  │
+╞══════════════════════════╪═════════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪═════╡
+│ E2EL                     │ total   │ 12300.2 ms      │ 12295.9 ms      │ 12305.2 ms      │ 12300.0 ms      │ 12302.1 ms      │ 12304.3 ms      │ 12305.1 ms      │  8  │
+├──────────────────────────┼─────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────┤
+│ TTFT                     │ total   │ 2006.0 ms       │ 2005.1 ms       │ 2007.4 ms       │ 2006.1 ms       │ 2006.2 ms       │ 2006.6 ms       │ 2007.3 ms       │  8  │
+├──────────────────────────┼─────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────┤
+│ TPOT                     │ total   │ 20.1 ms         │ 20.1 ms         │ 20.2 ms         │ 20.1 ms         │ 20.1 ms         │ 20.2 ms         │ 20.2 ms         │  8  │
+├──────────────────────────┼─────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────┤
+│ ITL                      │ total   │ 20.1 ms         │ 19.8 ms         │ 21.3 ms         │ 20.1 ms         │ 20.2 ms         │ 20.2 ms         │ 20.4 ms         │  8  │
+├──────────────────────────┼─────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────┤
+│ InputTokens              │ total   │ 1512.5          │ 1481.0          │ 1566.0          │ 1511.5          │ 1520.25         │ 1536.6          │ 1563.06         │  8  │
+├──────────────────────────┼─────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────┤
+│ OutputTokens             │ total   │ 512.0           │ 512.0           │ 512.0           │ 512.0           │ 512.0           │ 512.0           │ 512.0           │  8  │
+├──────────────────────────┼─────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────┤
+│ OutputTokenThroughput    │ total   │ 41.6254 token/s │ 41.6085 token/s │ 41.6398 token/s │ 41.6261 token/s │ 41.6338 token/s │ 41.6375 token/s │ 41.6395 token/s │  8  │
+╘══════════════════════════╧═════════╧═════════════════╧═════════════════╧═════════════════╧═════════════════╧═════════════════╧═════════════════╧═════════════════╧═════╛
+╒══════════════════════════╤═════════╤══════════════════╕
+│ Common Metric            │ Stage   │ Value            │
+╞══════════════════════════╪═════════╪══════════════════╡
+│ Benchmark Duration       │ total   │ 98409.4916 ms    │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Total Requests           │ total   │ 8                │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Failed Requests          │ total   │ 0                │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Success Requests         │ total   │ 8                │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Concurrency              │ total   │ 0.9999           │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Max Concurrency          │ total   │ 1                │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Request Throughput       │ total   │ 0.0813 req/s     │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Total Input Tokens       │ total   │ 12100            │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Prefill Token Throughput │ total   │ 753.9843 token/s │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Total Generated Tokens   │ total   │ 4096             │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Input Token Throughput   │ total   │ 122.9556 token/s │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Output Token Throughput  │ total   │ 41.622 token/s   │
+├──────────────────────────┼─────────┼──────────────────┤
+│ Total Token Throughput   │ total   │ 164.5776 token/s │
+╘══════════════════════════╧═════════╧══════════════════╛
+[2025-11-06 10:35:43,672] [ais_bench] [INFO] Performance Result files located in outputs/default/20251106_103326/performances/vllm-api-stream-chat.
 ```
 💡 具体性能参数的含义请参考📚 [性能测评结果说明](../results_intro/performance_metric.md)
 
 ### 性能细节查看
-执行AISBench命令后，任务执行更多细节最终会落盘在默认的输出路径，这个输出路径在运行中的打屏日志中有提示，例如：
-```shell
-06/28 15:13:26 - AISBench - INFO - Current exp folder: outputs/default/20250628_151326
-```
-这段日志说明任务执行的细节落盘在执行命令的路径下的`outputs/default/20250628_151326`中。
+执行AISBench命令后，任务执行更多细节最终会落盘在`Base path`（`outputs/default/20251106_103326`）
+
 命令执行结束后`outputs/default/20250628_151326`中的任务执行的细节如下所示：
 ```shell
-20250628_151326           # 每次实验基于时间戳生成的唯一目录
+20251106_103326          # 每次实验基于时间戳生成的唯一目录
 ├── configs               # 自动存储的所有已转储配置文件
 ├── logs                  # 执行过程中日志，命令中如果加--debug，不会有过程日志落盘（都直接打印出来了）
 │   └── performance/      # 推理阶段的日志文件
 └── performance           # 性能测评结果
 │    └── vllm-api-stream-chat/          # “服务化模型配置”名称，对应模型任务配置文件中models的 abbr参数
-│         ├── gsm8kdataset.csv          # 单次请求性能输出（CSV），与性能结果打屏中的Performance Parameters表格一致
-│         ├── gsm8kdataset.json         # 端到端性能输出（JSON），与性能结果打屏中的Common Metric表格一致
-│         ├── gsm8kdataset_details.json # 全量打点日志（JSON）
-│         └── gsm8kdataset_plot.html    # 请求并发可视化报告（HTML）
+│         ├── demo_gsm8k.csv          # 单次请求性能输出（CSV），与性能结果打屏中的Performance Parameters表格一致
+│         ├── demo_gsm8k.json         # 端到端性能输出（JSON），与性能结果打屏中的Common Metric表格一致
+│         ├── demo_gsm8k_plot.html    # 请求并发可视化报告（HTML）
+│         └── ......
 ```
-💡其中 `gsm8kdataset_plot.html`这个请求并发可视化报告建议使用Chrome或者Edge等浏览器打开，可以看到每个请求的时延以及每个时刻client端感知的服务时间并发数：
+💡其中 `demo_gsm8k_plot.html`这个请求并发可视化报告建议使用Chrome或者Edge等浏览器打开，可以看到每个请求的时延以及每个时刻client端感知的服务时间并发数：
   ![full_plot_example.img](../../img/request_concurrency/full_plot_example.png)
 该html可视化图文件的使用方式请参考📚 [性能测试可视化并发图使用说明](../results_intro/performance_visualization.md)
 
@@ -220,14 +237,13 @@ ais_bench --models vllm_api_general_stream vllm_api_stream_chat --datasets gsm8k
 #### 执行评测命令
 执行命令：
 ```bash
-# 服务化性能评测场景第一次运行时建议加 --debug打印推理过程
-ais_bench --models vllm_api_general_stream vllm_api_stream_chat --datasets gsm8k_gen_4_shot_cot_str aime2024_gen_0_shot_str --mode perf --debug
+ais_bench --models vllm_api_general_stream vllm_api_stream_chat --datasets gsm8k_gen_4_shot_cot_str aime2024_gen_0_shot_str --mode perf
 ```
 
 执行过程中会在📚 [`--work-dir`](../all_params/cli_args.md#公共参数)路径（默认是`outputs/default/`）下创建时间戳目录用于保存执行细节。
 4个性能评测任务结束后会一次性打印4个任务的性能结果：
 ```bash
-07/01 10:57:19 - AISBench - INFO - Performance Results of task: vllm-api-general-stream/gsm8kdataset:
+[2025-11-06 10:35:43,667] [ais_bench] [INFO] Performance Results of task: vllm-api-stream-chat/demo_gsm8k:
 ╒══════════════════════════╤═════════╤═════════════════╤═══════════════╤═════════════════╤═════════════════╤═════════════════╤═════════════════╤═════════════════╤══════╕
 │ Performance Parameters   │ Stage   │ Average         │ Min           │ Max             │ Median          │ P75             │ P90             │ P99             │  N   │
 ╞══════════════════════════╪═════════╪═════════════════╪═══════════════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪══════╡
@@ -238,8 +254,8 @@ ais_bench --models vllm_api_general_stream vllm_api_stream_chat --datasets gsm8k
 ╞══════════════════════════╪═════════╪════════════════════╡
 │ Benchmark Duration       │ total   │ 38039.9928 ms      │
 ......
-07/01 10:57:19 - AISBench - INFO - Performance Result files locate in outputs/default/20250701_105506/performances/vllm-api-general-stream.
-07/01 10:57:19 - AISBench - INFO - Performance Results of task: vllm-api-general-stream/aime2024dataset:
+[2025-11-06 11:11:33,468] [ais_bench] [INFO] Performance Result files located in outputs/default/20251106_110904/performances/vllm-api-general-stream.
+[2025-11-06 11:11:33,468] [ais_bench] [INFO] Performance Results of task: vllm-api-general-stream/aime2024:
 ╒══════════════════════════╤═════════╤═════════════════╤════════════════╤════════════════╤═══════════════╤═════════════════╤═════════════════╤═════════════════╤═════╕
 │ Performance Parameters   │ Stage   │ Average         │ Min            │ Max            │ Median        │ P75             │ P90             │ P99             │  N  │
 ╞══════════════════════════╪═════════╪═════════════════╪════════════════╪════════════════╪═══════════════╪═════════════════╪═════════════════╪═════════════════╪═════╡
@@ -250,8 +266,8 @@ ais_bench --models vllm_api_general_stream vllm_api_stream_chat --datasets gsm8k
 ╞══════════════════════════╪═════════╪═══════════════════╡
 │ Benchmark Duration       │ total   │ 3346.9782 ms      │
 ......
-07/01 10:57:19 - AISBench - INFO - Performance Result files locate in outputs/default/20250701_105506/performances/vllm-api-general-stream.
-07/01 10:57:19 - AISBench - INFO - Performance Results of task: vllm-api-stream-chat/gsm8kdataset:
+[2025-11-06 11:11:33,471] [ais_bench] [INFO] Performance Result files located in outputs/default/20251106_110904/performances/vllm-api-general-stream.
+[2025-11-06 11:11:33,471] [ais_bench] [INFO] Performance Results of task: vllm-api-stream-chat/gsm8k:
 ╒══════════════════════════╤═════════╤═════════════════╤════════════════╤═════════════════╤═════════════════╤═════════════════╤════════════════╤═════════════════╤══════╕
 │ Performance Parameters   │ Stage   │ Average         │ Min            │ Max             │ Median          │ P75             │ P90            │ P99             │  N   │
 ╞══════════════════════════╪═════════╪═════════════════╪════════════════╪═════════════════╪═════════════════╪═════════════════╪════════════════╪═════════════════╪══════╡
@@ -262,8 +278,8 @@ ais_bench --models vllm_api_general_stream vllm_api_stream_chat --datasets gsm8k
 ╞══════════════════════════╪═════════╪════════════════════╡
 │ Benchmark Duration       │ total   │ 38101.2396 ms      │
 ......
-07/01 10:57:19 - AISBench - INFO - Performance Result files locate in outputs/default/20250701_105506/performances/vllm-api-stream-chat.
-07/01 10:57:19 - AISBench - INFO - Performance Results of task: vllm-api-stream-chat/aime2024dataset:
+[2025-11-06 11:11:33,474] [ais_bench] [INFO] Performance Result files located in outputs/default/20251106_110904/performances/vllm-api-stream-chat.
+[2025-11-06 11:11:33,474] [ais_bench] [INFO] Performance Results of task: vllm-api-stream-chat/aime2024:
 ╒══════════════════════════╤═════════╤═════════════════╤═══════════════╤════════════════╤═════════════════╤═════════════════╤═════════════════╤═════════════════╤═════╕
 │ Performance Parameters   │ Stage   │ Average         │ Min           │ Max            │ Median          │ P75             │ P90             │ P99             │  N  │
 ╞══════════════════════════╪═════════╪═════════════════╪═══════════════╪════════════════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪═════╡
@@ -274,7 +290,7 @@ ais_bench --models vllm_api_general_stream vllm_api_stream_chat --datasets gsm8k
 ╞══════════════════════════╪═════════╪═══════════════════╡
 │ Benchmark Duration       │ total   │ 3335.7672 ms      │
 ......
-07/01 10:57:19 - AISBench - INFO - Performance Result files locate in outputs/default/20250701_105506/performances/vllm-api-stream-chat.
+[2025-11-06 11:11:33,477] [ais_bench] [INFO] Performance Result files located in outputs/default/20251106_110904/performances/vllm-api-stream-chat.
 
 ```
 
@@ -283,43 +299,51 @@ ais_bench --models vllm_api_general_stream vllm_api_stream_chat --datasets gsm8k
 
 ```bash
 # output/default下
-20250701_105506/     # 任务创建时间对应的输出目录
+20251106_110904/     # 任务创建时间对应的输出目录
 ├── configs          # 模型任务、数据集任务和结构呈现任务对应的配置文件合成的一个配置件
-│   └── 20250701_105506_29250.py
 ├── logs             # 包含推理与精度评估阶段的日志，命令加--debug时会直接打屏不会生成落盘文件
 │   └── performance  # 推理阶段的日志文件
 └── performances     # 性能测评结果
     ├── vllm-api-general-stream            # “服务化模型配置”名称，对应模型任务配置文件中models的 abbr参数
-    │   ├── aime2024dataset.csv            # 单次请求性能输出（CSV）
-    │   ├── aime2024dataset_details.json   # 端到端性能输出（JSON）
-    │   ├── aime2024dataset.json           # 全量打点日志（JSON）
-    │   ├── aime2024dataset_plot.html      # 请求并发可视化报告（HTML）
-    │   ├── gsm8kdataset.csv
-    │   ├── gsm8kdataset_details.json
-    │   ├── gsm8kdataset.json
-    │   └── gsm8kdataset_plot.html
+    │   ├── aime2024.csv            # 单次请求性能输出（CSV），与性能结果打屏中的Performance Parameters表格一致
+    │   ├── aime2024.json           # 端到端性能输出（JSON），与性能结果打屏中的Common Metric表格一致
+    │   ├── aime2024_plot.html      # 请求并发可视化报告（HTML）
+    │   ├── gsm8k.csv
+    │   ├── gsm8k.json
+    │   ├── gsm8k_plot.html
+    │   └── ......
     └── vllm-api-stream-chat
-        ├── aime2024dataset.csv
-        ├── aime2024dataset_details.json
-        ├── aime2024dataset.json
-        ├── aime2024dataset_plot.html
-        ├── gsm8kdataset.csv
-        ├── gsm8kdataset_details.json
-        ├── gsm8kdataset.json
-        └── gsm8kdataset_plot.html
+        ├── aime2024.csv
+        ├── aime2024.json
+        ├── aime2024_plot.html
+        ├── gsm8k.csv
+        ├── gsm8k.json
+        ├── gsm8k_plot.html
+        └── ......
 
 ```
 > ⚠️ 注意：
 > - 在多任务性能测评场景下，`--datasets`指定的数据集任务必须属于不同的数据集类型，性能数据会因为覆盖而缺失。例如不可通过`--datasets`同时指定`aime2024_gen_0_shot_str` 和 `aime2024_gen_0_shot_chat_prompt`这两个数据集任务。
-> - 注意：在性能测评场景下，由于需要维护并发连续性，无法使用 `--disable-cb` 关闭 Continuous Batch；也无法通过 `--max-num-workers` 进行子任务并行推理（多任务并行在此模式下受限）。
+
 
 ### 自定义序列长度测评
 #### 1 配置自定义序列数据集输入输出分布
-自定义序列长度测评需要指定特殊的数据集任务`synthetic_gen`：
+自定义序列长度测评需要指定特殊的数据集任务`synthetic_gen_string`，执行如下命令来检索`synthetic_gen_string`对应的配置文件所在路径”：
 ```bash
-ais_bench --models vllm_api_stream_chat --datasets synthetic_gen -m perf
+ais_bench --models vllm_api_stream_chat --datasets synthetic_gen_string --search
 ```
-如果想要针对特定的输入长度分布进行性能测试，需要先配置`synthetic_gen`的分布配置文件[synthetic_config.py](https://gitee.com/aisbench/benchmark/tree/master/ais_bench/datasets/synthetic/synthetic_config.py)。配置内容如下所示：
+得到：
+```
+╒══════════════╤═══════════════════════════════════════╤════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╕
+│ Task Type    │ Task Name                             │ Config File Path                                                                                                               │
+╞══════════════╪═══════════════════════════════════════╪════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╡
+│ --models     │ vllm_api_stream_chat                  │ /your_workspace/benchmark/ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py                                 │
+├──────────────┼───────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ --datasets   │ synthetic_gen_string                  │ /your_workspace/benchmark/ais_bench/benchmark/configs/datasets/synthetic/synthetic_gen_string.py                               │
+╘══════════════╧═══════════════════════════════════════╧════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╛
+```
+
+修改`/your_workspace/benchmark/ais_bench/benchmark/configs/datasets/synthetic/synthetic_gen_string.py`中的`synthetic_config`。配置内容如下所示：
 ```python
 synthetic_config = {
     "Type": "string",
@@ -362,11 +386,10 @@ models = [
 #### 3 启动性能测评
 执行以下命令：
 ```bash
-ais_bench --models  vllm_api_stream_chat --datasets synthetic_gen -m perf
+ais_bench --models  vllm_api_stream_chat --datasets synthetic_gen_string -m perf
 ```
-完成后，输出目录结构同[多任务测评](#多任务测评)章节所示，会在 performance/vllm-api-stream-chat/syntheticdataset* 下生成相应的 CSV/JSON/HTML 文件。
+完成后，输出目录结构同[多任务测评](#多任务测评)章节所示，会在 performance/vllm-api-stream-chat/synthetic* 下生成相应的 CSV/JSON/HTML 文件。
 > ⚠️ 注意：
-> - 部分模型任务不支持从服务获取到实际返回的token id数量，AISBench Benchmark 会将服务端返回的字符串先通过 Tokenizer 转换为对应的 Token id，再统计实际生成的 Token 长度。该统计值可能与服务端直接报告的 Token 数略有差异。
 > - 部分服务化后端不支持 `ignore_eos` 后处理参数，此时实际输出的 `Token` 数可能无法达到所配置的最大输出长度，需要通过其他后处理参数的配置达到最大输出长度（例如限定最小输出的后处理参数等）。
 
 ### 固定请求数测评
@@ -396,8 +419,9 @@ graph LR;
 ```bash
 ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt --mode perf
 ```
-同时提示落盘的时间戳为`20250628_151326`，打印出的`Performance Parameters`表格如下所示：
+打印出的`Performance Parameters`表格如下所示：
 ```bash
+[2025-11-06 11:11:33,463] [ais_bench] [INFO] Performance Results of task: vllm-api-general-stream/gsm8k:
 ╒══════════════════════════╤═════════╤═════════════════╤════════════════╤═════════════════╤═════════════════╤═════════════════╤════════════════╤═════════════════╤══════╕
 │ Performance Parameters   │ Stage   │ Average         │ Min            │ Max             │ Median          │ P75             │ P90            │ P99             │  N   │
 ╞══════════════════════════╪═════════╪═════════════════╪════════════════╪═════════════════╪═════════════════╪═════════════════╪════════════════╪═════════════════╪══════╡
@@ -407,7 +431,6 @@ ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_cha
 
 如果想知道“P95”维度的性能数据，需要修改`--summarizer`对应的默认结果呈现任务default_perf对应的配置文件内容，default_perf的路径通过`--search`命令查询：
 ```bash
-07/01 15:51:19 - AISBench - INFO - Searching configs...
 ╒══════════════╤══════════════╤═══════════════════════════════════════════════════════════════════════════════════════════════════════════════╕
 │ Task Type    │ Task Name    │ Config File Path                                                                                              │
 ╞══════════════╪══════════════╪═══════════════════════════════════════════════════════════════════════════════════════════════════════════════╡
@@ -440,7 +463,7 @@ ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_cha
 ```
 性能结果打屏如下：
 ```bash
-07/01 16:08:01 - AISBench - INFO - Performance Results of task: vllm-api-stream-chat/gsm8kdataset:
+[2025-11-06 11:11:33,463] [ais_bench] [INFO] Performance Results of task: vllm-api-general-stream/gsm8k:
 ╒══════════════════════════╤═════════╤════════════════╤═════════════════╤═════════════════╤════════════════╤═════════════════╤═════╕
 │ Performance Parameters   │ Stage   │ Average        │ Min             │ Max             │ Median         │ P95             │  N  │
 ╞══════════════════════════╪═════════╪════════════════╪═════════════════╪═════════════════╪════════════════╪═════════════════╪═════╡
@@ -451,10 +474,10 @@ ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_cha
 ╞══════════════════════════╪═════════╪═══════════════════╡
 │ Benchmark Duration       │ total   │ 3090.7835 ms      │
 ......
-07/01 16:08:01 - AISBench - INFO - Performance Result files locate in outputs/default/20250701_160106/performances/vllm-api-stream-chat.
+[2025-11-06 11:11:33,468] [ais_bench] [INFO] Performance Result files located in outputs/default/20251106_110904/performances/vllm-api-general-stream.
 
 ```
-> ⚠️  `20250628_151326/performance/`下`gsm8kdataset.csv`，`gsm8kdataset_details.json`和`gsm8kdataset_plot.html`会重新生成（覆盖原有的）。
+> ⚠️  `20251106_110904/performance/`下`gsm8kdataset.csv`，`gsm8kdataset_details.json`和`gsm8kdataset_plot.html`会重新生成（覆盖原有的）。
 
 ## 服务化性能测试规格说明
 服务化性能测试的规模决定了AISBench评测工具的资源占用。以[自定义序列长度测评](#自定义序列长度测评)为例，测试规模主要由总请求条数（`RequestCount`）、数据集输入tokens长度（`Input`）,输出tokens长度（`Output`）决定。在`Intel(R) Xeon(R) Platinum 8480P`型号cpu上测试，典型测试规模下资源的占用大致如下：
