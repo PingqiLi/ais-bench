@@ -10,19 +10,20 @@ from tqdm import tqdm
 from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.tasks.base import TaskStateManager
-from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.logging import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import TINFER_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ParameterValueError, AISBenchRuntimeError
+from ais_bench.benchmark.utils.config.message_constants import STATUS_REPORT_INTERVAL, MESSAGE_INFO, WAIT_FLAG, SYNC_MAIN_PROCESS_INTERVAL
 
-STATUS_REPORT_INTERVAL = 1
+MAX_VIRTUAL_MEMORY_USAGE_PERCENT = 80
 INDEX_READ_FLAG = -1
-WAIT_FLAG = 2
-SYNC_MAIN_PROCESS_INTERVAL = 0.1
 # Message queue format for communication with subprocesses: 6 integers.
 # The 6 integers represent status, post, recv, fail, finish, and data_index respectively.
 # Using signed integers to support -1 for data_index
 FMT = "6I1i"
 MESSAGE_SIZE = struct.calcsize(FMT)
 
-logger = get_logger()
+logger = AISLogger()
 
 
 class _MessageInfo:
@@ -58,12 +59,16 @@ for name, fmt in FIELDS.items():
 
 
 def update_global_data_index(
-    shm_names: List[str], data_num: int, global_data_indexes: list, pressure: bool = False
+    shm_names: List[str],
+    data_num: int,
+    global_data_indexes: list,
+    pressure: bool = False,
 ):
     """Update data index for shared memory."""
     shms = [shared_memory.SharedMemory(name=shm_name) for shm_name in shm_names]
     statuses = [0] * len(shms)
     cur_pos = 0
+
     def set_data_index(shm: shared_memory.SharedMemory, data_index: int):
         shm.buf[MESSAGE_INFO.DATA_SYNC_FLAG[0]:MESSAGE_INFO.DATA_SYNC_FLAG[1]] = struct.pack("I", 0)  # set status to 0 before update data_index
         shm.buf[MESSAGE_INFO.DATA_INDEX[0]:MESSAGE_INFO.DATA_INDEX[1]] = struct.pack("i", data_index)
@@ -117,7 +122,7 @@ def create_message_share_memory():
     return shm
 
 
-def check_virtual_memory_usage(dataset_bytes, threshold_percent=80):
+def check_virtual_memory_usage(dataset_bytes: int, threshold_percent: int = MAX_VIRTUAL_MEMORY_USAGE_PERCENT) -> None:
     """Check current virtual memory usage and raise exception if threshold is exceeded.
 
     Uses psutil library for cross-platform memory monitoring.
@@ -127,45 +132,35 @@ def check_virtual_memory_usage(dataset_bytes, threshold_percent=80):
         threshold_percent (int): Memory usage threshold percentage, default 80%
 
     Raises:
-        MemoryError: When virtual memory usage exceeds threshold
+        AISRuntimeError: When virtual memory usage exceeds threshold
     """
-    try:
-        # Get memory information using psutil
-        memory = psutil.virtual_memory()
 
-        # Extract memory information (all values are in bytes)
-        total_mem = memory.total
-        available_mem = memory.available
-        used_mem = memory.used
+    # Get memory information using psutil
+    memory = psutil.virtual_memory()
 
-        # Calculate memory usage after adding dataset
-        total_used_after_dataset = used_mem + dataset_bytes
-        usage_percent = (
-            (total_used_after_dataset / total_mem) * 100 if total_mem > 0 else 0
+    # Extract memory information (all values are in bytes)
+    total_mem = memory.total
+    available_mem = memory.available
+    used_mem = memory.used
+
+    # Calculate memory usage after adding dataset
+    total_used_after_dataset = used_mem + dataset_bytes
+    usage_percent = (total_used_after_dataset / total_mem) * 100 if total_mem > 0 else 0
+
+    # Check if usage exceeds threshold
+    if usage_percent > threshold_percent:
+        error_msg = (
+            f"Virtual memory usage too high: {usage_percent:.2f}% > {threshold_percent}% "
+            f"(Total memory: {total_mem / (1024**3):.2f} GB, "
+            f"Used: {used_mem / (1024**3):.2f} GB, "
+            f"Available: {available_mem / (1024**3):.2f} GB, "
+            f"Dataset needed memory size: {dataset_bytes / (1024**2):.8f} MB)"
         )
+        raise AISBenchRuntimeError(TINFER_CODES.VIRTUAL_MEMORY_USAGE_TOO_HIGH, error_msg)
 
-        # Check if usage exceeds threshold
-        if usage_percent > threshold_percent:
-            error_msg = (
-                f"Virtual memory usage too high: {usage_percent:.2f}% > {threshold_percent}% "
-                f"(Total memory: {total_mem / (1024**3):.2f} GB, "
-                f"Used: {used_mem / (1024**3):.2f} GB, "
-                f"Available: {available_mem / (1024**3):.2f} GB, "
-                f"Dataset needed memory size: {dataset_bytes / (1024**2):.8f} MB)"
-            )
-            logger.error(error_msg)
-            raise MemoryError(error_msg)
-
-        logger.info(f"Dataset needed memory size: {dataset_bytes / (1024**2):.8f} MB")
-        logger.info(
-            f"Memory usage check passed: {usage_percent:.2f}% < {threshold_percent}% "
-            f"(Available: {available_mem / (1024**3):.2f} GB)"
-        )
-
-    except Exception as e:
-        logger.warning(f"Error occurred while checking virtual memory usage: {e}")
-        raise
-
+    logger.info(f"Dataset needed memory size: {dataset_bytes / (1024**2):.8f} MB")
+    logger.info(f"Memory usage check passed: {usage_percent:.2f}% < {threshold_percent}% "
+                f"(Available: {available_mem / (1024**3):.2f} GB)")
 
 class ProgressBar:
     """Progress monitor reading per-worker SharedMemory objects.
@@ -190,13 +185,13 @@ class ProgressBar:
         pressure_time: int = 15,
         refresh_interval: float = 1.0,
     ):
+        self.logger = AISLogger()
         self.debug = debug
         self.stop_event = stop_event
         self.data_num = data_num
         self.finish_data_num = finish_data_num
         self.total_data_num = data_num + finish_data_num
         self.data_index = -1
-        self.logger = get_logger()
 
         # expected: pid -> SharedMemory instance
         # We copy the mapping so external mutations are allowed but won't break internal dict ops.
@@ -350,6 +345,7 @@ class ProgressBar:
 
                 time.sleep(min(0.2, self.refresh_interval))
         except KeyboardInterrupt:
+            self.logger.debug(f"Keyboard interrupt detected, stopping progress bar")
             pass
         finally:
             self._read_shared_memory_and_update_per_pid()
@@ -437,6 +433,7 @@ class ProgressBar:
         Args:
             flag: Flag value to set
         """
+        self.logger.debug(f"Set all message status to {flag}")
         for _, shm in self.per_pid_shms.items():
             shm.buf[:MESSAGE_SIZE] = struct.pack(
                 FMT, flag, 0, 0, 0, 0, 0, INDEX_READ_FLAG
@@ -478,7 +475,7 @@ class TokenProducer:
             pressure_mode: If True, after generating the first `request_num` tokens
                 (used to warm up connections), subsequent tokens are produced without sleep.
         """
-        self.logger = get_logger()
+        self.logger = AISLogger()
         self.request_rate = request_rate
         self.pressure_mode = pressure_mode
         self.burstiness = 1.0
@@ -553,7 +550,10 @@ class TokenProducer:
                 if not ramp_up_strategy:
                     current_request_rate = self.request_rate
                 else:
-                    raise ValueError(f"Invalid ramp_up_strategy: {ramp_up_strategy}")
+                    raise ParameterValueError(
+                        TINFER_CODES.INVALID_RAMP_UP_STRATEGY,
+                        f"Invalid ramp_up_strategy: {ramp_up_strategy} only support 'linear' and 'exponential'",
+                    )
             if current_request_rate == float("inf"):
                 delay_ts.append(0)
             else:
@@ -573,6 +573,11 @@ class TokenProducer:
             # NOTE: Accumulating random delta values from gamma distribution
             # would have 1-2% gap from target_total_delay_s. This logic
             # closes the gap to stabilize throughput data across different seeds
+            self.logger.info(
+                f"Ramp-up strategy is not set, "
+                f"assume fixed request rate and scale delay to "
+                f"time to align with target request time: {request_num / self.request_rate} seconds"
+            )
             target_total_delay_s = request_num / self.request_rate
             normalize_factor = target_total_delay_s / delay_ts[-1]
             delay_ts = [delay * normalize_factor for delay in delay_ts]
@@ -610,7 +615,14 @@ class TokenProducer:
         while not stop_evt.is_set():
             if interval_index < len(self.interval_lists):
                 interval = self.interval_lists[interval_index]
-                self.token_bucket.release()
+                try:
+                    self.token_bucket.release()
+                except ValueError as e:
+                    # ValueError: semaphore or lock released too many times
+                    # Indicates token bucket is full, wait for tokens to be used
+                    wait_interval = np.random.gamma(shape=self.burstiness, scale=theta)
+                    time.sleep(wait_interval)
+                    continue
                 current_time = time.perf_counter()
                 sleep_interval = interval - (current_time - start_time)
                 if sleep_interval > 0:

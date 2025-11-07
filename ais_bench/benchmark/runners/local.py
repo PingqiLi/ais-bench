@@ -17,12 +17,10 @@ from mmengine.config import ConfigDict
 from mmengine.device import is_npu_available
 
 from ais_bench.benchmark.registry import RUNNERS, TASKS
-from ais_bench.benchmark.utils.logging import get_logger
 from ais_bench.benchmark.utils.core.abbr import task_abbr_from_cfg
 from ais_bench.benchmark.runners.base import TasksMonitor
-
-
-from .base import BaseRunner
+from ais_bench.benchmark.runners.base import BaseRunner
+from ais_bench.benchmark.utils.logging.error_codes import RUNNER_CODES
 
 
 def get_command_template(gpu_ids: List[int]) -> str:
@@ -64,9 +62,8 @@ class LocalRunner(BaseRunner):
         self.max_num_workers = max_num_workers
         self.max_workers_per_gpu = max_workers_per_gpu
         self.keep_tmp_file = keep_tmp_file
-        logger = get_logger()
         for k, v in kwargs.items():
-            logger.warning(f'Ignored argument in {self.__module__}: {k}={v}')
+            self.logger.warning(f'Ignored argument in {self.__module__}: {k}={v}')
 
     def launch(self, tasks: List[Dict[str, Any]]) -> List[Tuple[str, int]]:
         """Launch multiple tasks.
@@ -78,6 +75,7 @@ class LocalRunner(BaseRunner):
         Returns:
             list[tuple[str, int]]: A list of (task name, exit code).
         """
+        self.logger.debug(f"LocalRunner.launch called with {len(tasks)} task(s)")
         task_names = [task_abbr_from_cfg(task) for task in tasks]
 
         def monitor_process(task_names, output_path, is_debug, refresh_interval=0.5, run_in_background=False):
@@ -88,7 +86,7 @@ class LocalRunner(BaseRunner):
             args=(task_names, tasks[0]['work_dir'], self.debug, 0.5, tasks[0]['cli_args']['run_in_background'])
 
         )
-        monitor_p.start()
+        self.logger.debug(f"Task monitor process started (PID: {monitor_p.pid})")
 
         if is_npu_available():
             visible_devices = 'ASCEND_RT_VISIBLE_DEVICES'
@@ -103,6 +101,9 @@ class LocalRunner(BaseRunner):
             ]
         else:
             all_gpu_ids = list(range(device_nums))
+        
+        self.logger.debug(f"Available devices: {all_gpu_ids} (total: {device_nums}, type: {visible_devices})")
+        monitor_p.start()
 
         if self.debug:
             status = self._run_debug(tasks, all_gpu_ids, monitor_p)
@@ -110,6 +111,7 @@ class LocalRunner(BaseRunner):
             status = self._run_normal(tasks, all_gpu_ids, monitor_p)
         monitor_p.join()
         TasksMonitor.rm_tmp_files(tasks[0]['work_dir'])
+        self.logger.debug(f"LocalRunner.launch completed, {len(status)} task(s) finished")
         return status
 
     def _run_debug(self, tasks: List[Dict[str, Any]], all_gpu_ids: List[int], monitor_p: multiprocessing.Process):
@@ -127,6 +129,7 @@ class LocalRunner(BaseRunner):
             task = TASKS.build(dict(cfg=task, type=self.task_cfg['type']))
             task_name = task.name
             num_gpus = task.num_gpus if hasattr(task, 'num_gpus') else 0
+            self.logger.debug(f"Debug mode: launching task '{task_name}' with {num_gpus} GPU(s)")
             assert len(all_gpu_ids) >= num_gpus
             # get cmd
             mmengine.mkdir_or_exist('tmp/')
@@ -141,7 +144,7 @@ class LocalRunner(BaseRunner):
                 # available resources which might cause inconsistent
                 # behavior.
                 if len(all_gpu_ids) > num_gpus and num_gpus > 0:
-                    get_logger().warning(f'Only use {num_gpus} GPUs for '
+                    self.logger.warning(f'Only use {num_gpus} GPUs for '
                                             f'total {len(all_gpu_ids)} '
                                             'available GPUs in debug mode.')
                 tmpl = get_command_template(all_gpu_ids[:num_gpus])
@@ -152,7 +155,7 @@ class LocalRunner(BaseRunner):
                     proc.wait()
                 except KeyboardInterrupt:
                     monitor_p.join()
-                    get_logger().warning(f"Subprocess of task:{task_name} interrupted by user!")
+                    self.logger.warning(f"Subprocess of task:{task_name} interrupted by user!")
                     proc.wait()  # ensure subprocess finished
             finally:
                 if not self.keep_tmp_file:
@@ -176,8 +179,10 @@ class LocalRunner(BaseRunner):
         if len(all_gpu_ids) > 0:
             gpus = np.zeros(max(all_gpu_ids) + 1, dtype=np.uint)
             gpus[all_gpu_ids] = self.max_workers_per_gpu
+            self.logger.debug(f"GPU resource pool initialized: {len(all_gpu_ids)} GPUs with {self.max_workers_per_gpu} workers per GPU")
         else:
             gpus = np.array([], dtype=np.uint)
+            self.logger.debug("No GPU devices available, running on CPU")
 
         lock = Lock()
 
@@ -206,10 +211,11 @@ class LocalRunner(BaseRunner):
         with ThreadPoolExecutor(
                 max_workers=self.max_num_workers) as executor:
             try:
+                self.logger.debug(f"ThreadPoolExecutor started with {self.max_num_workers} max workers")
                 status = list(executor.map(submit, tasks, range(len(tasks))))
             except KeyboardInterrupt:
                 monitor_p.join()
-                get_logger().warning("Main process interrupted by user! Waiting for running tasks to complete...")
+                self.logger.warning("Main process interrupted by user! Waiting for running tasks to complete...")
                 status = list(status) if status is not None else []
 
         return status
@@ -242,9 +248,6 @@ class LocalRunner(BaseRunner):
                               template=tmpl)
             cmd = get_cmd()
 
-            logger = get_logger()
-            logger.debug(f'Running command: {cmd}')
-
             # Run command
             out_path = task.get_log_path(file_extension='out')
             mmengine.mkdir_or_exist(osp.split(out_path)[0])
@@ -255,7 +258,7 @@ class LocalRunner(BaseRunner):
                                         stdout=stdout,
                                         stderr=stdout)
             if result.returncode != 0:
-                logger.error(f'task {task_name} fail, see\n{out_path}')
+                self.logger.error(RUNNER_CODES.TASK_FAILED, f"{task_name} failed with code {result.returncode}, see\n{out_path}")
         finally:
             # Clean up
             if not self.keep_tmp_file:

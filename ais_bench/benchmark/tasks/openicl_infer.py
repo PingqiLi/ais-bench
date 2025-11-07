@@ -10,13 +10,16 @@ from typing import Any
 from mmengine.config import Config, ConfigDict
 from mmengine.utils import mkdir_or_exist
 
-from ais_bench.benchmark.registry import (ICL_INFERENCERS, ICL_PROMPT_TEMPLATES,
-                                  ICL_RETRIEVERS, TASKS)
+from ais_bench.benchmark.registry import (ICL_INFERENCERS, ICL_RETRIEVERS, TASKS)
 from ais_bench.benchmark.tasks.base import BaseTask
-from ais_bench.benchmark.utils.config import build_dataset_from_cfg, build_model_from_cfg
-from ais_bench.benchmark.utils.logging import get_logger
-from ais_bench.benchmark.utils.core.abbr import get_infer_output_path, task_abbr_from_cfg, model_abbr_from_cfg
+from ais_bench.benchmark.utils.config import build_dataset_from_cfg
+from ais_bench.benchmark.utils.core.abbr import task_abbr_from_cfg, model_abbr_from_cfg
 from ais_bench.benchmark.tasks.base import TaskStateManager
+from ais_bench.benchmark.utils.logging import AISLogger
+from ais_bench.benchmark.utils.core.types import check_type
+from ais_bench.benchmark.utils.logging.error_codes import TINFER_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ParameterValueError
+from ais_bench.benchmark.openicl.icl_inferencer.icl_base_local_inferencer import BaseLocalInferencer
 
 
 
@@ -39,7 +42,7 @@ class OpenICLInferTask(BaseTask):
         self.nnodes = run_cfg.get('nnodes', 1)
         self.node_rank = run_cfg.get('node_rank', 0)
         self.master_addr = run_cfg.get('master_addr', "localhost")
-        self.logger = get_logger()
+        self.logger.debug(f"Local infer task config: {run_cfg}")
 
     def get_command(self, cfg_path, template):
         """Get the command template for the task.
@@ -76,22 +79,22 @@ class OpenICLInferTask(BaseTask):
         return template.format(task_cmd=command)
 
     def run(self, task_state_manager):
-        self.task_state_manager = task_state_manager
         self.logger.info(f'Task {task_abbr_from_cfg(self.cfg)}')
+        self.task_state_manager: TaskStateManager = task_state_manager
 
         self.max_out_len = self.model_cfg.get('max_out_len', None)
         self.batch_size = self.model_cfg.get('batch_size', None)
         self.min_out_len = self.model_cfg.get('min_out_len', None)
 
         num_return_sequences = getattr(self.model_cfg, 'generation_kwargs', {}).pop('num_return_sequences', 1)
-        assert isinstance(num_return_sequences, int), f"num_return_sequences expected an integer, but got {num_return_sequences}"
-        assert num_return_sequences > 0, f"num_return_sequences expected a positive integer, but got {num_return_sequences}"
-
-        for dataset_cfg in self.dataset_cfgs:
-            if 'n' not in dataset_cfg:
-                dataset_cfg['n'] = num_return_sequences
-            assert isinstance(dataset_cfg['n'], int), f"n expected an integer, but got {dataset_cfg['n']}"
-            assert dataset_cfg['n'] > 0, f"n expected a positive integer, but got {dataset_cfg['n']}"
+        check_type(num_return_sequences, int)
+        if num_return_sequences <= 0:
+            raise ParameterValueError(
+                TINFER_CODES.NUM_RETURN_SEQUENCES_NOT_POSITIVE,
+                f"num_return sequences must be a positive integer, but got {num_return_sequences}",
+            )
+        if num_return_sequences > 1:
+            self.logger.info(f'num_return_sequences is greater than 1, echo data will be infer independently {num_return_sequences} times')
 
         self.infer_cfg = self.dataset_cfgs[0]['infer_cfg']
         self.sub_cfg = {
@@ -109,7 +112,8 @@ class OpenICLInferTask(BaseTask):
                                 self.min_out_len)
         self._set_default_value(inferencer_cfg, 'batch_size', self.batch_size)
         inferencer_cfg['max_seq_len'] = self.model_cfg.get('max_seq_len')
-        self.inferencer = ICL_INFERENCERS.build(inferencer_cfg)
+        self.logger.debug(f'Inferencer config: {inferencer_cfg}')
+        self.inferencer: BaseLocalInferencer = ICL_INFERENCERS.build(inferencer_cfg)
         self.inferencer.set_task_state_manager(self.task_state_manager)
 
     def _inference(self):
@@ -128,18 +132,16 @@ class OpenICLInferTask(BaseTask):
             retrievers.append(retriever)
 
         # set inferencer's default value according to model's config'
-        self.task_state_manager.update_task_state(
-            {
-                "status": "load model",
-            }
-        )
+        self.task_state_manager.update_task_state({"status": "load model"})
         self.build_inference()
 
         out_dir = osp.join(self.work_dir, 'predictions', model_abbr_from_cfg(self.model_cfg))
         mkdir_or_exist(out_dir)
+        self.logger.debug(f'Local infer task output directory: {out_dir}')
 
         self.inferencer.inference(retrievers,
                                  output_json_filepath=out_dir)
+
     def _set_default_value(self, cfg: ConfigDict, key: str, value: Any):
         if key not in cfg:
             cfg[key] = value
@@ -153,6 +155,7 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    logger = AISLogger()
     args = parse_args()
     cfg = Config.fromfile(args.config)
     task_state_manager = TaskStateManager(
@@ -173,21 +176,13 @@ if __name__ == '__main__':
     )
     start_time = time.perf_counter()
     try:
-        inferencer = OpenICLInferTask(cfg)
+        inferencer: OpenICLInferTask = OpenICLInferTask(cfg)
         inferencer.run(task_state_manager)
     except Exception as e:
-        task_state_manager.update_task_state(
-            {
-                "status": "error",
-            }
-        )
+        task_state_manager.update_task_state({"status": "error"})
         raise e
 
     end_time = time.perf_counter()
-    get_logger().info(f'time elapsed: {end_time - start_time:.2f}s')
-    task_state_manager.update_task_state(
-        {
-            "status": "finish",
-        }
-    )
+    logger.info(f'Local infer task time elapsed: {end_time - start_time:.2f}s')
+    task_state_manager.update_task_state({"status": "finish"})
     manager_t.join()

@@ -9,8 +9,9 @@ from typing import List, Optional
 from mmengine.config import ConfigDict
 
 from ais_bench.benchmark.utils.core.abbr import get_infer_output_path, task_abbr_from_cfg
-from ais_bench.benchmark.registry import ICL_INFERENCERS
 from ais_bench.benchmark.utils.file import write_status
+from ais_bench.benchmark.utils.logging import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import TASK_CODES
 
 def extract_role_pred(s: str, begin_str: Optional[str], end_str: Optional[str]) -> str:
     """Extract the role prediction from the full prediction string. The role
@@ -60,15 +61,17 @@ class BaseTask:
     output_subdir: str = None
 
     def __init__(self, cfg: ConfigDict):
+        self.logger = AISLogger()
         cfg = copy.deepcopy(cfg)
         self.cfg = cfg
         if len(cfg["models"]) > 1:
-            raise ValueError(
-                "OpenICLApiInferTask only supports one model, but got {len(cfg['models'])}"
-            )
+            self.logger.error(TASK_CODES.MODEL_MULTIPLE, f"One task only supports one model, but got {len(cfg['models'])} models")
         self.model_cfg = cfg["models"][0]
+        self.logger.debug(f"Model config: {self.model_cfg}")
         self.dataset_cfgs = cfg["datasets"][0]
+        self.logger.debug(f"Dataset config: {self.dataset_cfgs}")
         self.work_dir = cfg["work_dir"]
+        self.logger.debug(f"Work directory: {self.work_dir}")
         self.cli_args = cfg["cli_args"]
         self.num_prompts = (
             self.cli_args["num_prompts"]
@@ -138,11 +141,13 @@ class BaseTask:
 
 class TaskStateManager:
     def __init__(self, tmp_path: str, task_name: str, is_debug: bool, refresh_interval: int = 0.5):
+        self.logger = AISLogger()
         self.tmp_file = os.path.join(tmp_path, f"tmp_{task_name.replace('/', '_')}.json")
         if os.path.exists(self.tmp_file):
             os.remove(self.tmp_file)
         with open(self.tmp_file, 'w') as f:
             json.dump([], f)
+        self.logger.debug(f"TaskStateManager initialized, temporary file: {self.tmp_file}")
 
         self.task_state = {"task_name": task_name, "process_id": os.getpid()}
         self.is_debug = is_debug
@@ -151,7 +156,7 @@ class TaskStateManager:
     def launch(self):
         self.task_state["start_time"] = time.time()
         if self.is_debug:
-            print("debug mode, print progress directly")
+            self.logger.info("debug mode, print progress directly")
             self._display_task_state()
         else:
             self._post_task_state()
@@ -163,8 +168,10 @@ class TaskStateManager:
         while(True):
             write_status(self.tmp_file, self.task_state)
             if self.task_state.get("status") == "error":
+                self.logger.warning("Task state is error, exit loop")
                 break
             elif self.task_state.get("status") == "finish":
+                self.logger.info("Task state is finish, exit loop")
                 break
             time.sleep(self.refresh_interval)
 

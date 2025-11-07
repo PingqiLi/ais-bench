@@ -21,13 +21,17 @@ from ais_bench.benchmark.tasks.utils import (
     ProgressBar,
     TokenProducer,
 )
-from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.openicl.icl_inferencer.icl_base_api_inferencer import BaseApiInferencer
 from ais_bench.benchmark.utils.core.abbr import task_abbr_from_cfg
 from ais_bench.benchmark.utils.config import build_dataset_from_cfg
+from ais_bench.benchmark.utils.logging.error_codes import TINFER_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ParameterValueError
+from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import MAX_BATCH_SIZE
+from ais_bench.benchmark.utils.logging import AISLogger
 
 CONCURRENCY_PER_PROCESS = 500
 MAX_WORKERS_NUM = mp.cpu_count() * 0.8
-TASK_WAIT_TIME = 60
+TASK_WAIT_TIME = 30
 
 
 def run_single_inferencer(
@@ -69,7 +73,7 @@ class OpenICLApiInferTask(BaseTask):
     Runs API inference with one or more inferencer workers in parallel.
     """
 
-    name_prefix = "OpenICLInfer"
+    name_prefix = "OpenICLApiInfer"
     log_subdir = "logs/infer"
     output_subdir = "predictions"
 
@@ -87,11 +91,13 @@ class OpenICLApiInferTask(BaseTask):
         )
         self.inferencer_cfg["batch_size"] = self.model_cfg.get("batch_size", 1)
         self.inferencer_cfg["output_json_filepath"] = self.work_dir
-        self.logger = get_logger()
+        self.logger.debug(f"Inferencer config: {self.inferencer_cfg}")
         # Control switch for async tasks within process
         self.stop_evt = Event()
         self.stop_evt.set()
         self.repeat = self.model_cfg["generation_kwargs"].get("num_return_sequences", 1)
+        if self.repeat > 1:
+            self.logger.info(f'num_return_sequences is greater than 1, echo data will be infer independently {self.repeat} times')
 
     def get_command(self, cfg_path, template):
         """Build the CLI command to execute this task.
@@ -116,8 +122,10 @@ class OpenICLApiInferTask(BaseTask):
         if isinstance(WORKERS_NUM, int):
             if WORKERS_NUM > 0:
                 return min(WORKERS_NUM, MAX_WORKERS_NUM)
-        work_num = (self.concurrency - 1) // CONCURRENCY_PER_PROCESS
-        return min(work_num + 1, MAX_WORKERS_NUM)
+        workers_num = (self.concurrency - 1) // CONCURRENCY_PER_PROCESS
+        workers_num = min(workers_num + 1, MAX_WORKERS_NUM)
+        self.logger.debug(f"Workers number: {workers_num}")
+        return workers_num
 
     def _get_data_list(self) -> tuple[List, List]:
         """Retrieve data from the inferencer and return a picklable dataset list.
@@ -128,8 +136,6 @@ class OpenICLApiInferTask(BaseTask):
             List: List of pickled dataset items
         """
         data_list, global_indexes = [], []
-        if not hasattr(self.inferencer, "get_data_list"):
-            raise ValueError("Inferencer must implement get_data_list method")
         finish_cache_data = {}
         try:
             finish_cache_data = self.inferencer.get_finish_data_list()
@@ -149,13 +155,13 @@ class OpenICLApiInferTask(BaseTask):
             retriever = ICL_RETRIEVERS.build(retriever_cfg)
             infer_data_list = self.inferencer.get_data_list(retriever)
             # get all data_list and data_indexes to infer
-            cur_data_indexes = [x for x in range(len(infer_data_list)) for _ in range(self.repeat)]  # [0,0,0,1,1,1,2,2,2]
-            cur_finish_indexes = [x["id"] for x in cur_data_cache]  # [0,0,0,1]
+            cur_data_indexes = [x for x in range(len(infer_data_list)) for _ in range(self.repeat)]
+            cur_finish_indexes = [x["id"] for x in cur_data_cache]
             for i in cur_finish_indexes:
                 cur_data_indexes.remove(i)
             finish_index_nums += len(cur_finish_indexes)
             data_list += infer_data_list
-            global_indexes += [x + total_data_nums for x in cur_data_indexes] # [1,1,2,2,2]
+            global_indexes += [x + total_data_nums for x in cur_data_indexes]
             total_data_nums += len(infer_data_list)
 
         if finish_index_nums > 0:
@@ -168,11 +174,10 @@ class OpenICLApiInferTask(BaseTask):
             global_indexes = [x for x in global_indexes if x < len(data_list)]
         
         # remove finished data in data_list and change indexes accordingly  
-        # data_list: [a b c d e] global_indexes: [1 1 3] ---> [b d] [0 0 1]
-        picked_data_list = [data_list[i] for i in global_indexes]  # [b b d]
-        data_list = [data_list[i] for i in set(global_indexes)]  # [b d]
-        pos_map = {v['data_abbr'] + '-' + str(v['index']): k for k, v in enumerate(data_list)}      # {b:0, d:1}
-        global_indexes = [pos_map[v['data_abbr'] + '-' + str(v['index'])] for v in picked_data_list] # [0 0 1]
+        picked_data_list = [data_list[i] for i in global_indexes]
+        data_list = [data_list[i] for i in set(global_indexes)]
+        pos_map = {v['data_abbr'] + '-' + str(v['index']): k for k, v in enumerate(data_list)}
+        global_indexes = [pos_map[v['data_abbr'] + '-' + str(v['index'])] for v in picked_data_list]
 
         return data_list, finish_index_nums, global_indexes
 
@@ -221,14 +226,16 @@ class OpenICLApiInferTask(BaseTask):
         workers_num = max(1, workers_num)
         # Ensure total concurrency is integer and non-negative
         total_concurrency = int(self.concurrency) if self.concurrency is not None else 0
-        if total_concurrency < 0:
-            raise ValueError(f"Invalid concurrency: {self.concurrency}")
-
+        if total_concurrency <= 0:
+            raise ParameterValueError(
+                TINFER_CODES.CONCURRENCY_ERROR,
+                f"Concurrency must be greater than 0 and <= {MAX_BATCH_SIZE}, but got {self.concurrency}",
+            )
         q, r = divmod(total_concurrency, workers_num)
         per_worker_concurrency = [q + 1] * r + [q] * (workers_num - r)
 
         self.logger.info(
-            f"Total concurrency: {total_concurrency}, Per worker concurrency: {per_worker_concurrency}"
+            f"Total concurrency: {total_concurrency}, per worker concurrency: {per_worker_concurrency}"
         )
         return per_worker_concurrency
 
@@ -254,7 +261,7 @@ class OpenICLApiInferTask(BaseTask):
                 "This may limit throughput. Recommend unsetting `--debug` to enable multi-process mode."
             )
         else:
-            self.logger.info(f"Running with concurrency: {self.concurrency}")
+            self.logger.info(f"Debug mode, run with concurrency: {self.concurrency}")
         self.inferencer.inference_with_shm(
             dataset_shm.name,
             message_shm.name,
@@ -288,6 +295,8 @@ class OpenICLApiInferTask(BaseTask):
         processes = []
 
         for i, concurrency in enumerate(per_worker_concurrency):
+            pid = None
+            message_shm = None
             try:
                 # Create named shared memory for this worker's message/status
                 message_shm = create_message_share_memory()
@@ -310,35 +319,34 @@ class OpenICLApiInferTask(BaseTask):
                 p.start()  # may raise
                 # p.pid should be set after start()
                 pid = p.pid
-
-                # Store mapping: pid -> SharedMemory object (parent retains handle)
-                if pid in message_shms:
-                    raise ValueError(f"pid {pid} already exists in message_shms")
                 message_shms[pid] = message_shm
                 processes.append(p)
 
             except Exception as exc:
                 # Any error creating shm or starting process -> clean up message_shm if created
-                self.logger.exception("Failed to start worker %d: %s", i, exc)
+                self.logger.error(TINFER_CODES.FAILED_TO_START_WORKER, f"Failed to start worker {i}: {exc}")
                 # Cleanup any shm created for this iteration
-                if pid in message_shms and message_shms[pid] is not None:
+                if pid is not None and pid in message_shms and message_shms[pid] is not None:
                     message_shm = message_shms[pid]
+                    self._cleanup_shms(message_shm)
+                elif message_shm is not None:
+                    # If pid is None but message_shm was created, clean it up directly
                     self._cleanup_shms(message_shm)
         return processes
 
     def run(self, task_state_manager: TaskStateManager):
         self.logger.info(f"Task [{task_abbr_from_cfg(self.cfg)}]")
         debug = self.cli_args.get("debug", False)
-        self.inferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
+        self.inferencer:BaseApiInferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
 
         data_list, finish_data_count, global_indexes = self._get_data_list()
         if len(data_list) == 0:
-            self.logger.info(f"No data to infer, task finished")
+            self.logger.info(f"Get no data to infer, task finished")
             return
 
         # warmup
-        self.logger.info(f"Starting warmup...")
-        warm_up_inferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
+        self.logger.info(f"Start warmup...")
+        warm_up_inferencer:BaseApiInferencer = ICL_INFERENCERS.build(self.inferencer_cfg)
         asyncio.run(warm_up_inferencer.warmup(data_list, self.warmup_size))
         
         dataset_size, dataset_shm, indexes = self._dump_dataset_to_share_memory(data_list)
@@ -457,6 +465,7 @@ class OpenICLApiInferTask(BaseTask):
                     time.sleep(1)
         except KeyboardInterrupt:
             # Wait for all subprocesses to finish, timeout 1 minute and force terminate
+            self.logger.warning(f"Keyboard interrupt!!! Task [{task_abbr_from_cfg(self.cfg)}] will be terminated")
             self.stop_evt.set()
             global_data_index_process.join(timeout=TASK_WAIT_TIME)
             pb_thread.join()
@@ -488,8 +497,13 @@ class OpenICLApiInferTask(BaseTask):
         Args:
             shm: Shared memory object to clean up
         """
-        shm.close()
-        shm.unlink()
+        try:
+            shm.close()
+            shm.unlink()
+            self.logger.debug(f"Cleanup shared memory: {shm.name}")
+        except (FileNotFoundError, OSError) as e:
+            # shared memory already cleaned up or not found
+            self.logger.debug(f"Shared memory {shm.name} already cleaned up or not found: {e}")
 
     def _set_default_value(self, cfg: ConfigDict, key: str, value: Any):
         """Set default value for configuration key if not present.
@@ -511,6 +525,7 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    logger = AISLogger()
     args = parse_args()
     cfg = Config.fromfile(args.config)
     task_state_manager = TaskStateManager(
@@ -531,13 +546,13 @@ if __name__ == "__main__":
     )
     start_time = time.perf_counter()
     try:
-        inferencer = OpenICLApiInferTask(cfg)
+        inferencer: OpenICLApiInferTask = OpenICLApiInferTask(cfg)
         inferencer.run(task_state_manager)
     except Exception as e:
         task_state_manager.update_task_state({"status": "error"})
         raise e
 
     end_time = time.perf_counter()
-    get_logger().info(f"Time elapsed: {end_time - start_time:.2f}s")
+    logger.info(f"Api infer task time elapsed: {end_time - start_time:.2f}s")
     task_state_manager.update_task_state({"status": "finish"})
     manager_t.join()

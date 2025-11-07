@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 from ais_bench.benchmark.models.output import Output
 from ais_bench.benchmark.utils.core.valid_global_consts import get_request_time_out, get_max_chunk_size
-from ais_bench.benchmark.tasks.utils import STATUS_REPORT_INTERVAL, MESSAGE_INFO, WAIT_FLAG, SYNC_MAIN_PROCESS_INTERVAL
+from ais_bench.benchmark.utils.config.message_constants import STATUS_REPORT_INTERVAL, MESSAGE_INFO, WAIT_FLAG, SYNC_MAIN_PROCESS_INTERVAL
 from ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer import BaseInferencer
 from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
 from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError, ParameterValueError, AISBenchRuntimeError

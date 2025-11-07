@@ -7,6 +7,7 @@ class ErrorModule(Enum):
     PARTITIONER = "PARTI"                        # Partitioner
     SUMMARY = "SUMM"                             # Summary
     RUNNER = "RUNNER"                            # Runner
+    TASK = "TASK"                                # Task
     TASK_INFER = "TINFER"                        # inference Task
     TASK_EVALUATE = "TEVAL"                      # evaluate Task
     TASK_MONITOR = "TMON"                        # TaskMonitor
@@ -35,8 +36,7 @@ class ErrorType(Enum):
     MODULE = "MOD"     # module error type
     PARAM = "PARAM"     # parameter error type
     RUNTIME = "RUNTIME"     # runtime error type
-    
-
+    TASK = "TASK"     # task error type
 
 class BaseErrorCode:
     FAQ_BASE_URL = "https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/faqs/error_codes.html#"
@@ -112,6 +112,7 @@ class SUMM_CODES:
 
 class RUNNER_CODES:
     UNKNOWN_ERROR = BaseErrorCode("RUNNER-UNK-001", ErrorModule.RUNNER, ErrorType.UNKNOWN, 1, "unknown error of runner")
+    TASK_FAILED = BaseErrorCode("RUNNER-TASK-001", ErrorModule.RUNNER, ErrorType.TASK, 1, "task failed")
 
 
 class TMON_CODES:
@@ -121,12 +122,23 @@ class TMON_CODES:
 class TSMAN_CODES:
     UNKNOWN_ERROR = BaseErrorCode("TSMAN-UNK-001", ErrorModule.TASK_STATUS_MANAGER, ErrorType.UNKNOWN, 1, "unknown error of task state manager")
 
+class TASK_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("TASK-UNK-001", ErrorModule.TASK, ErrorType.UNKNOWN, 1, "unknown error of task")
+    MODEL_MULTIPLE = BaseErrorCode("TASK-PARAM-001", ErrorModule.TASK, ErrorType.PARAM, 1, "task only supports one model")
 
 class TINFER_CODES:
     UNKNOWN_ERROR = BaseErrorCode("TINFER-UNK-001", ErrorModule.TASK_INFER, ErrorType.UNKNOWN, 1, "unknown error of infer task")
-
+    CONCURRENCY_ERROR = BaseErrorCode("TINFER-PARAM-001", ErrorModule.TASK_INFER, ErrorType.PARAM, 1, "concurrency error of infer task")
+    FAILED_TO_START_WORKER = BaseErrorCode("TINFER-IMPL-001", ErrorModule.TASK_INFER, ErrorType.IMPLEMENTATION, 1, "failed to start worker")
+    NUM_RETURN_SEQUENCES_NOT_POSITIVE = BaseErrorCode("TINFER-PARAM-002", ErrorModule.TASK_INFER, ErrorType.PARAM, 2, "num_return sequences must be a positive integer")
+    N_NOT_POSITIVE = BaseErrorCode("TINFER-PARAM-003", ErrorModule.TASK_INFER, ErrorType.PARAM, 3, "n expected a positive integer")
+    INVALID_RAMP_UP_STRATEGY = BaseErrorCode("TINFER-PARAM-004", ErrorModule.TASK_INFER, ErrorType.PARAM, 4, "invalid ramp up strategy")
+    VIRTUAL_MEMORY_USAGE_TOO_HIGH = BaseErrorCode("TINFER-PARAM-005", ErrorModule.TASK_INFER, ErrorType.PARAM, 5, "virtual memory usage too high")
+    
 class TEVAL_CODES:
     UNKNOWN_ERROR = BaseErrorCode("TEVAL-UNK-001", ErrorModule.TASK_EVALUATE, ErrorType.UNKNOWN, 1, "unknown error of evaluate task")
+    N_K_ILLEGAL = BaseErrorCode("TEVAL-PARAM-001", ErrorModule.TASK_EVALUATE, ErrorType.PARAM, 1, "n and k parameters illegal")
+    MODEL_PRED_STRS_EMPTY = BaseErrorCode("TEVAL-PARAM-002", ErrorModule.TASK_EVALUATE, ErrorType.PARAM, 2, "model pred strs empty")
 
 
 class ICLI_CODES:
