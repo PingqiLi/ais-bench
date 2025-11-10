@@ -3,10 +3,59 @@ import os
 import unittest
 from unittest.mock import patch, mock_open, MagicMock
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../../')))
+# Mock absl.flags 以避免在导入时阻塞
+# absl.flags 在 evaluation_main.py 模块级别定义了 required=True 的标志，会导致导入时阻塞
+# 方法：在导入前 mock DEFINE_string，使其不检查必需参数
+_original_argv = sys.argv[:]
+sys.argv = ['test']  # 设置一个简单的命令行参数
 
-from ais_bench.benchmark.datasets.ifeval.ifeval import IFEvalDataset, IFEvaluator
+# 创建一个 mock 标志对象
+_mock_flag_obj = MagicMock()
+_mock_flag_obj.value = '/tmp/test'
+
+# Mock DEFINE_string 函数，使其返回 mock 对象而不检查必需参数
+_original_define_string = None
+try:
+    import absl.flags as absl_flags_module
+    _original_define_string = absl_flags_module.DEFINE_string
+    
+    def _mock_define_string(name, default=None, help=None, required=False, **kwargs):
+        """Mock DEFINE_string，忽略 required 参数"""
+        return _mock_flag_obj
+    
+    absl_flags_module.DEFINE_string = _mock_define_string
+except ImportError:
+    pass
+
+# Mock nltk.download 以避免在导入时阻塞
+# instructions_util.py 在模块级别调用了 nltk.download('punkt_tab')，会导致阻塞
+try:
+    import nltk
+    _original_download = nltk.download
+    nltk.download = MagicMock(return_value=True)
+except ImportError:
+    pass
+
+try:
+    from ais_bench.benchmark.datasets.ifeval.ifeval import IFEvalDataset, IFEvaluator
+except Exception:
+    # 如果导入失败，尝试不 mock
+    if _original_define_string is not None:
+        try:
+            import absl.flags as absl_flags_module
+            absl_flags_module.DEFINE_string = _original_define_string
+        except:
+            pass
+    from ais_bench.benchmark.datasets.ifeval.ifeval import IFEvalDataset, IFEvaluator
+finally:
+    # 恢复原始函数
+    if _original_define_string is not None:
+        try:
+            import absl.flags as absl_flags_module
+            absl_flags_module.DEFINE_string = _original_define_string
+        except:
+            pass
+    sys.argv = _original_argv
 
 # 准备测试数据
 dataset_test_data = {
@@ -250,3 +299,6 @@ class TestIFEvaluator(unittest.TestCase):
         # 验证结果
         self.assertEqual(result['Prompt-level-strict-accuracy'], 100.0)
         self.assertEqual(result['details']['0']['grade'], 'strict')
+
+if __name__ == '__main__':
+    unittest.main()
