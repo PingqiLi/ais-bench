@@ -31,7 +31,6 @@ class TestVideoBenchDataset(unittest.TestCase):
         self.assertIn("video_url", row)
         self.assertIn("choices_prompt", row)
 
-    @unittest.skip("skip: video_base64 branch may cause slowness in some envs")
     @patch("ais_bench.benchmark.datasets.videobench.get_data_path", return_value="/fake/root")
     @patch("ais_bench.benchmark.datasets.videobench.os.path.exists", return_value=True)
     @patch("ais_bench.benchmark.datasets.videobench.Path")
@@ -39,10 +38,11 @@ class TestVideoBenchDataset(unittest.TestCase):
     @patch("ais_bench.benchmark.datasets.videobench.VideoAsset")
     @patch("ais_bench.benchmark.datasets.videobench.image_to_base64")
     def test_load_video_base64(self, mock_b64, mock_asset, mock_open_file, mock_Path, mock_exists, mock_get_path):
+        import json
         answers = {"ds": {"k1": "A"}}
-        m_ans = mock_open(read_data=str(answers).replace("'", '"'))
+        m_ans = mock_open(read_data=json.dumps(answers))
         new_data = {"k1": {"vid_path": "/x/ds/file.mp4", "video_id": 1, "question": "q?", "choices": {"A": "a", "B": "b", "C": None}}}
-        m_new = mock_open(read_data=str(new_data).replace("'", '"'))
+        m_new = mock_open(read_data=json.dumps(new_data))
         mock_open_file.side_effect = [m_ans.return_value, m_new.return_value]
         mock_path = MagicMock()
         mock_path.glob.return_value = ["/fake/root/ds_new.json"]

@@ -1,9 +1,13 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import sys
+import importlib
 
 import numpy as np
 from PIL import Image
 
+# Import the module using importlib to avoid import path confusion
+video_module = importlib.import_module("ais_bench.benchmark.datasets.utils.video")
 from ais_bench.benchmark.datasets.utils.video import (
     video_to_ndarrays,
     video_to_pil_images_list,
@@ -50,11 +54,12 @@ class TestVideoUtils(unittest.TestCase):
         with self.assertRaises(ValueError):
             video_to_ndarrays("/path.mp4", num_frames=3)
 
-    @patch("ais_bench.benchmark.datasets.utils.video.video_to_ndarrays")
+    @patch.object(video_module, "video_to_ndarrays")
     def test_video_to_pil_images_list(self, mock_ndarrays):
         # 2 frames of 2x2 black
         mock_ndarrays.return_value = np.zeros((2, 2, 2, 3), dtype=np.uint8)
-        images = video_to_pil_images_list("/path.mp4", num_frames=2)
+        # Use the function from the module to get the patched version
+        images = video_module.video_to_pil_images_list("/path.mp4", num_frames=2)
         self.assertEqual(len(images), 2)
         self.assertTrue(all(isinstance(img, Image.Image) for img in images))
 
@@ -64,7 +69,7 @@ class TestVideoUtils(unittest.TestCase):
         self.assertIsInstance(b64, str)
         self.assertGreater(len(b64), 0)
 
-    @patch("ais_bench.benchmark.datasets.utils.video.video_to_pil_images_list")
+    @patch.object(video_module, "video_to_pil_images_list")
     def test_video_asset_pil_images_property(self, mock_pil_list):
         mock_pil_list.return_value = [Image.new("RGB", (1, 1))]
         asset = VideoAsset("/path.mp4", num_frames=1)
@@ -72,7 +77,7 @@ class TestVideoUtils(unittest.TestCase):
         self.assertEqual(len(imgs), 1)
         mock_pil_list.assert_called_once()
 
-    @patch("ais_bench.benchmark.datasets.utils.video.video_to_ndarrays")
+    @patch.object(video_module, "video_to_ndarrays")
     def test_video_asset_np_ndarrays_property(self, mock_ndarrays):
         mock_ndarrays.return_value = np.zeros((1, 2, 2, 3), dtype=np.uint8)
         asset = VideoAsset("/path.mp4", num_frames=1)
