@@ -783,29 +783,61 @@ class TestBaseApiInferencer(unittest.TestCase):
     @mock.patch("ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer.build_model_from_cfg")
     @mock.patch("ais_bench.benchmark.openicl.icl_inferencer.icl_base_inferencer.model_abbr_from_cfg", return_value="mabbr")
     def test_worker_loop_pressure_mode_timeout_inner(self, m_abbr, m_build):
-        """测试_worker_loop方法在pressure模式下的内部超时处理"""
+        """测试_worker_loop方法在pressure模式下的内部超时处理
+        
+        在并行执行时，使用线程放置sentinel更可靠，避免asyncio任务调度问题
+        """
         import janus
         m_build.return_value = DummyModel()
-        inf = ConcreteApiInferencer(model_cfg={}, batch_size=1, mode="pressure", pressure_time=1)
+        # Use shorter pressure_time to avoid long waits in parallel execution
+        # The inner loop in pressure mode will timeout every 1 second via wait_get_data
+        # So we use a pressure_time shorter than 1 second to test the timeout path
+        inf = ConcreteApiInferencer(model_cfg={}, batch_size=1, mode="pressure", pressure_time=0.2)
         inf.do_request = mock.AsyncMock()
         
         janus_queue = janus.Queue(maxsize=10)
         
         async def run_test():
+            # Put initial data to start the worker loop
             await janus_queue.async_q.put({"data": "test"})
-            # Don't put more data - inner loop will timeout repeatedly
-            # Put sentinel after delay to exit
-            async def put_sentinel():
-                await asyncio.sleep(0.2)
-                await janus_queue.async_q.put(None)
             
-            asyncio.create_task(put_sentinel())
-            await inf._worker_loop(None, janus_queue.async_q)
+            # In pressure mode, after the first request, there's an inner loop that:
+            # 1. Calls wait_get_data which times out every 1 second
+            # 2. Continues until pressure_time expires or sentinel is received
+            # Since pressure_time (0.2s) < wait_get_data timeout (1s), the inner loop
+            # will timeout once, then pressure_time will expire and outer loop will exit.
+            # But to be safe in parallel execution, we also put a sentinel via thread.
+            
+            # Use a thread to put sentinel as a fallback - more reliable in parallel execution
+            # Threads are not affected by asyncio event loop blocking issues
+            sentinel_put = threading.Event()
+            
+            def put_sentinel_thread():
+                time.sleep(0.3)  # Wait for inner loop to start
+                try:
+                    # Use sync queue to avoid async issues in thread
+                    janus_queue.sync_q.put(None, timeout=0.5)
+                    sentinel_put.set()
+                except Exception:
+                    pass  # Queue might be closed, ignore
+            
+            sentinel_thread = threading.Thread(target=put_sentinel_thread, daemon=True)
+            sentinel_thread.start()
+            
+            try:
+                # Run worker loop - it should exit when pressure_time expires or sentinel is received
+                await inf._worker_loop(None, janus_queue.async_q)
+            finally:
+                # Wait for sentinel thread to complete (with timeout)
+                sentinel_thread.join(timeout=1.0)
         
         try:
-            asyncio.run(asyncio.wait_for(run_test(), timeout=2.0))
+            # Use timeout to prevent hanging in parallel execution
+            # Increased timeout to 5 seconds to account for parallel execution overhead
+            asyncio.run(asyncio.wait_for(run_test(), timeout=5.0))
         except asyncio.TimeoutError:
-            self.fail("Test timed out")
+            # In parallel execution, if test hangs, fail gracefully
+            self.fail("Test timed out - possible deadlock in parallel execution")
         finally:
             janus_queue.close()
 

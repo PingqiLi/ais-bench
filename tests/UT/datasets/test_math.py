@@ -1,10 +1,13 @@
 """Unit tests for math.py"""
+import importlib
 import json
 import unittest
 from unittest.mock import patch, mock_open, MagicMock
 
 from datasets import Dataset, DatasetDict
 
+# Import the math module explicitly using importlib to avoid conflict with built-in math module
+math_module = importlib.import_module('ais_bench.benchmark.datasets.math')
 from ais_bench.benchmark.datasets.math import (
     last_boxed_only_string,
     remove_boxed,
@@ -163,7 +166,7 @@ class TestExtractAnswer(unittest.TestCase):
 class TestMATHDataset(unittest.TestCase):
     """测试 MATHDataset"""
 
-    @patch('ais_bench.benchmark.datasets.math.get_data_path', return_value='/fake/path')
+    @patch.object(math_module, 'get_data_path', return_value='/fake/path')
     @patch('builtins.open', new_callable=mock_open)
     def test_load_basic(self, mock_file, mock_path):
         """测试基本加载"""

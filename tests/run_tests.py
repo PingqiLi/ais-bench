@@ -126,6 +126,59 @@ class TestRunner:
         print(f"📁 Found {len(test_files)} test files in {self.test_dir}")
         return test_files
     
+    def clean_cache(self) -> None:
+        """Clean Python cache files to avoid import conflicts"""
+        import shutil
+        
+        print("🧹 Cleaning Python cache files...")
+        
+        # Delete all __pycache__ directories in tests/UT
+        cache_dirs = list(self.test_dir.rglob("__pycache__"))
+        for cache_dir in cache_dirs:
+            try:
+                shutil.rmtree(cache_dir)
+            except Exception:
+                pass
+        
+        # Delete all .pyc files in tests/UT
+        pyc_files = list(self.test_dir.rglob("*.pyc"))
+        for pyc_file in pyc_files:
+            try:
+                pyc_file.unlink()
+            except Exception:
+                pass
+        
+        # Delete all .pyo files in tests/UT
+        pyo_files = list(self.test_dir.rglob("*.pyo"))
+        for pyo_file in pyo_files:
+            try:
+                pyo_file.unlink()
+            except Exception:
+                pass
+        
+        # Delete pytest cache in tests directory and project root
+        pytest_cache_paths = [
+            self.test_dir / ".pytest_cache",
+            self.project_root / ".pytest_cache",
+            self.project_root / "tests" / ".pytest_cache",
+        ]
+        for cache_path in pytest_cache_paths:
+            if cache_path.exists():
+                try:
+                    shutil.rmtree(cache_path)
+                except Exception:
+                    pass
+        
+        # Also clean __pycache__ in project root if it exists
+        root_cache = self.project_root / "__pycache__"
+        if root_cache.exists():
+            try:
+                shutil.rmtree(root_cache)
+            except Exception:
+                pass
+        
+        print("✅ Cache cleaned")
+    
     def run_tests(self, 
                   verbose: bool = False,
                   parallel: bool = False,
@@ -143,15 +196,22 @@ class TestRunner:
         Returns:
             Whether tests were successful
         """
+        # Clean cache before running tests to avoid import conflicts
+        self.clean_cache()
+        
         print(f"\n🚀 Starting test execution...")
         print(f"📂 Test directory: {self.test_dir}")
         print(f"📊 Report directory: {self.output_dir}")
         
         # Build pytest command
+        # Add --cache-clear to ensure pytest doesn't use stale cache
+        # Add --import-mode=importlib to avoid module import conflicts with same-named test files
         cmd = [
             sys.executable, '-m', 'pytest',
             str(self.test_dir),
             '--tb=short',  # Short error traceback
+            '--cache-clear',  # Clear pytest cache before running
+            '--import-mode=importlib',  # Use importlib to avoid conflicts with same-named modules
         ]
         
         # Add coverage configuration
