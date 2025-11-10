@@ -80,11 +80,12 @@ class TestTestDataclass(LiveCodeBenchTestBase):
 class TestLCBCodeGenerationDataset(LiveCodeBenchTestBase):
     """测试LCBCodeGenerationDataset类"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_dataset')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load_with_starter_code(self, mock_get_path, mock_load_dataset):
+    def test_load_with_starter_code(self):
         """测试加载包含starter_code的数据集"""
-        mock_get_path.return_value = '/fake/path'
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
+        
+        mock_get_path = MagicMock(return_value='/fake/path')
         
         # 模拟数据集
         mock_item = {
@@ -101,27 +102,29 @@ class TestLCBCodeGenerationDataset(LiveCodeBenchTestBase):
         
         mock_dataset = MagicMock()
         mock_dataset.map = MagicMock(side_effect=lambda func: mock_dataset)
-        mock_load_dataset.return_value = mock_dataset
+        mock_load_dataset = MagicMock(return_value=mock_dataset)
         
-        result = LCBCodeGenerationDataset.load(
-            path='/test/path',
-            local_mode=True,
-            release_version='release_v1'
-        )
-        
-        self.assertIn('test', result)
-        self.assertIn('train', result)
-        mock_get_path.assert_called_once_with('/test/path', local_mode=True)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_dataset', mock_load_dataset):
+            result = LCBCodeGenerationDataset.load(
+                path='/test/path',
+                local_mode=True,
+                release_version='release_v1'
+            )
+            
+            self.assertIn('test', result)
+            self.assertIn('train', result)
+            mock_get_path.assert_called_once_with('/test/path', local_mode=True)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_dataset')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load_with_compressed_private_test_cases(self, mock_get_path, mock_load_dataset):
+    def test_load_with_compressed_private_test_cases(self):
         """测试加载压缩的private_test_cases"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
         import base64
         import zlib
         import pickle
         
-        mock_get_path.return_value = '/fake/path'
+        mock_get_path = MagicMock(return_value='/fake/path')
         
         # 创建压缩的测试用例数据
         test_data = json.dumps([{'input': 'in2', 'output': 'out2'}])
@@ -142,23 +145,25 @@ class TestLCBCodeGenerationDataset(LiveCodeBenchTestBase):
         
         mock_dataset = MagicMock()
         mock_dataset.map = MagicMock(side_effect=lambda func: mock_dataset)
-        mock_load_dataset.return_value = mock_dataset
+        mock_load_dataset = MagicMock(return_value=mock_dataset)
         
-        result = LCBCodeGenerationDataset.load(
-            path='/test/path',
-            local_mode=True,
-            release_version='release_v1'
-        )
-        
-        self.assertIn('test', result)
-        self.assertIn('train', result)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_dataset', mock_load_dataset):
+            result = LCBCodeGenerationDataset.load(
+                path='/test/path',
+                local_mode=True,
+                release_version='release_v1'
+            )
+            
+            self.assertIn('test', result)
+            self.assertIn('train', result)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_dataset')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load_transform_with_starter_code(self, mock_get_path, mock_load_dataset):
+    def test_load_transform_with_starter_code(self):
         """测试transform函数处理有starter_code的情况"""
-        mock_get_path.return_value = '/fake/path'
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
         
+        mock_get_path = MagicMock(return_value='/fake/path')
         mock_dataset = MagicMock()
         
         # 模拟transform函数会被调用，并处理有starter_code的情况
@@ -174,20 +179,22 @@ class TestLCBCodeGenerationDataset(LiveCodeBenchTestBase):
             return mock_dataset
         
         mock_dataset.map = map_func
-        mock_load_dataset.return_value = mock_dataset
+        mock_load_dataset = MagicMock(return_value=mock_dataset)
         
-        result = LCBCodeGenerationDataset.load(path='/test/path')
-        self.assertIn('test', result)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_dataset', mock_load_dataset):
+            result = LCBCodeGenerationDataset.load(path='/test/path')
+            self.assertIn('test', result)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_dataset')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load_transform_with_compressed_private_cases(self, mock_get_path, mock_load_dataset):
+    def test_load_transform_with_compressed_private_cases(self):
         """测试transform函数处理压缩的private_test_cases"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
         import base64
         import zlib
         import pickle
         
-        mock_get_path.return_value = '/fake/path'
+        mock_get_path = MagicMock(return_value='/fake/path')
         
         # 创建压缩的测试用例数据
         test_data = json.dumps([{'input': 'in2', 'output': 'out2'}])
@@ -207,38 +214,43 @@ class TestLCBCodeGenerationDataset(LiveCodeBenchTestBase):
             return mock_dataset
         
         mock_dataset.map = map_func
-        mock_load_dataset.return_value = mock_dataset
+        mock_load_dataset = MagicMock(return_value=mock_dataset)
         
-        result = LCBCodeGenerationDataset.load(path='/test/path')
-        self.assertIn('test', result)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_dataset', mock_load_dataset):
+            result = LCBCodeGenerationDataset.load(path='/test/path')
+            self.assertIn('test', result)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_dataset')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load_without_starter_code(self, mock_get_path, mock_load_dataset):
+    def test_load_without_starter_code(self):
         """测试加载不包含starter_code的数据集"""
-        mock_get_path.return_value = '/fake/path'
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
         
+        mock_get_path = MagicMock(return_value='/fake/path')
         mock_dataset = MagicMock()
         mock_dataset.map = MagicMock(return_value=mock_dataset)
-        mock_load_dataset.return_value = mock_dataset
+        mock_load_dataset = MagicMock(return_value=mock_dataset)
         
-        result = LCBCodeGenerationDataset.load(
-            path='/test/path',
-            local_mode=False
-        )
-        
-        self.assertIn('test', result)
-        self.assertIn('train', result)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_dataset', mock_load_dataset):
+            result = LCBCodeGenerationDataset.load(
+                path='/test/path',
+                local_mode=False
+            )
+            
+            self.assertIn('test', result)
+            self.assertIn('train', result)
 
 
 class TestLCBCodeExecutionDataset(LiveCodeBenchTestBase):
     """测试LCBCodeExecutionDataset类"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_dataset')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load(self, mock_get_path, mock_load_dataset):
+    def test_load(self):
         """测试加载代码执行数据集"""
-        mock_get_path.return_value = '/fake/path'
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
+        
+        mock_get_path = MagicMock(return_value='/fake/path')
         
         # 模拟transform函数被调用
         def map_func(transform_func):
@@ -252,46 +264,51 @@ class TestLCBCodeExecutionDataset(LiveCodeBenchTestBase):
         
         mock_dataset = MagicMock()
         mock_dataset.map = map_func
-        mock_load_dataset.return_value = mock_dataset
+        mock_load_dataset = MagicMock(return_value=mock_dataset)
         
-        result = LCBCodeExecutionDataset.load(
-            path='/test/path',
-            local_mode=True,
-            cot=False
-        )
-        
-        self.assertIn('test', result)
-        self.assertIn('train', result)
-        mock_get_path.assert_called_once_with('/test/path', local_mode=True)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_dataset', mock_load_dataset):
+            result = LCBCodeExecutionDataset.load(
+                path='/test/path',
+                local_mode=True,
+                cot=False
+            )
+            
+            self.assertIn('test', result)
+            self.assertIn('train', result)
+            mock_get_path.assert_called_once_with('/test/path', local_mode=True)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_dataset')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load_with_cot(self, mock_get_path, mock_load_dataset):
+    def test_load_with_cot(self):
         """测试加载带COT的代码执行数据集"""
-        mock_get_path.return_value = '/fake/path'
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
         
+        mock_get_path = MagicMock(return_value='/fake/path')
         mock_dataset = MagicMock()
         mock_dataset.map = MagicMock(return_value=mock_dataset)
-        mock_load_dataset.return_value = mock_dataset
+        mock_load_dataset = MagicMock(return_value=mock_dataset)
         
-        result = LCBCodeExecutionDataset.load(
-            path='/test/path',
-            local_mode=False,
-            cot=True
-        )
-        
-        self.assertIn('test', result)
-        self.assertIn('train', result)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_dataset', mock_load_dataset):
+            result = LCBCodeExecutionDataset.load(
+                path='/test/path',
+                local_mode=False,
+                cot=True
+            )
+            
+            self.assertIn('test', result)
+            self.assertIn('train', result)
 
 
 class TestLCBTestOutputPredictionDataset(LiveCodeBenchTestBase):
     """测试LCBTestOutputPredictionDataset类"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_dataset')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load(self, mock_get_path, mock_load_dataset):
+    def test_load(self):
         """测试加载测试输出预测数据集"""
-        mock_get_path.return_value = '/fake/path'
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
+        
+        mock_get_path = MagicMock(return_value='/fake/path')
         
         # 模拟transform函数被调用
         def map_func(transform_func):
@@ -305,23 +322,27 @@ class TestLCBTestOutputPredictionDataset(LiveCodeBenchTestBase):
         
         mock_dataset = MagicMock()
         mock_dataset.map = map_func
-        mock_load_dataset.return_value = mock_dataset
+        mock_load_dataset = MagicMock(return_value=mock_dataset)
         
-        result = LCBTestOutputPredictionDataset.load(
-            path='/test/path',
-            local_mode=True
-        )
-        
-        self.assertIn('test', result)
-        self.assertIn('train', result)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_dataset', mock_load_dataset):
+            result = LCBTestOutputPredictionDataset.load(
+                path='/test/path',
+                local_mode=True
+            )
+            
+            self.assertIn('test', result)
+            self.assertIn('train', result)
 
 
 class TestLCBSelfRepairDataset(LiveCodeBenchTestBase):
     """测试LCBSelfRepairDataset类"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_dataset')
-    def test_load(self, mock_load_dataset):
+    def test_load(self):
         """测试加载自我修复数据集"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
+        
         mock_dataset = MagicMock()
         
         # 模拟transform函数被调用
@@ -335,26 +356,28 @@ class TestLCBSelfRepairDataset(LiveCodeBenchTestBase):
             return mock_dataset
         
         mock_dataset.map = map_func
-        mock_load_dataset.return_value = mock_dataset
+        mock_load_dataset = MagicMock(return_value=mock_dataset)
         
-        result = LCBSelfRepairDataset.load(
-            path='livecodebench/code_generation_lite',
-            local_mode=False,
-            release_version='release_v1'
-        )
-        
-        self.assertIn('test', result)
-        self.assertIn('train', result)
+        with patch.object(livecodebench, 'load_dataset', mock_load_dataset):
+            result = LCBSelfRepairDataset.load(
+                path='livecodebench/code_generation_lite',
+                local_mode=False,
+                release_version='release_v1'
+            )
+            
+            self.assertIn('test', result)
+            self.assertIn('train', result)
 
 
 class TestCompassBenchCodeExecutionDataset(LiveCodeBenchTestBase):
     """测试CompassBenchCodeExecutionDataset类"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_from_disk')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load(self, mock_get_path, mock_load_from_disk):
+    def test_load(self):
         """测试加载CompassBench代码执行数据集"""
-        mock_get_path.return_value = '/fake/path'
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
+        
+        mock_get_path = MagicMock(return_value='/fake/path')
         
         # 模拟transform函数被调用
         def map_func(transform_func):
@@ -368,36 +391,40 @@ class TestCompassBenchCodeExecutionDataset(LiveCodeBenchTestBase):
         
         mock_dataset = MagicMock()
         mock_dataset.map = map_func
-        mock_load_from_disk.return_value = {'test': mock_dataset}
+        mock_load_from_disk = MagicMock(return_value={'test': mock_dataset})
         
-        result = CompassBenchCodeExecutionDataset.load(
-            path='/test/path',
-            local_mode=True,
-            cot=False
-        )
-        
-        self.assertIn('test', result)
-        self.assertIn('train', result)
-        mock_get_path.assert_called_once_with('/test/path', local_mode=True)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_from_disk', mock_load_from_disk):
+            result = CompassBenchCodeExecutionDataset.load(
+                path='/test/path',
+                local_mode=True,
+                cot=False
+            )
+            
+            self.assertIn('test', result)
+            self.assertIn('train', result)
+            mock_get_path.assert_called_once_with('/test/path', local_mode=True)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.load_from_disk')
-    @patch('ais_bench.benchmark.datasets.livecodebench.livecodebench.get_data_path')
-    def test_load_with_cot(self, mock_get_path, mock_load_from_disk):
+    def test_load_with_cot(self):
         """测试加载带COT的CompassBench代码执行数据集"""
-        mock_get_path.return_value = '/fake/path'
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
         
+        mock_get_path = MagicMock(return_value='/fake/path')
         mock_dataset = MagicMock()
         mock_dataset.map = MagicMock(return_value=mock_dataset)
-        mock_load_from_disk.return_value = {'test': mock_dataset}
+        mock_load_from_disk = MagicMock(return_value={'test': mock_dataset})
         
-        result = CompassBenchCodeExecutionDataset.load(
-            path='/test/path',
-            local_mode=False,
-            cot=True
-        )
-        
-        self.assertIn('test', result)
-        self.assertIn('train', result)
+        with patch.object(livecodebench, 'get_data_path', mock_get_path), \
+             patch.object(livecodebench, 'load_from_disk', mock_load_from_disk):
+            result = CompassBenchCodeExecutionDataset.load(
+                path='/test/path',
+                local_mode=False,
+                cot=True
+            )
+            
+            self.assertIn('test', result)
+            self.assertIn('train', result)
 
 
 if __name__ == '__main__':

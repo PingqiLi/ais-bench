@@ -17,9 +17,9 @@ try:
         codegen_metrics,
         code_execution_metrics,
         parse_assert_statement,
-        check_testcase_output,
-        test_output_metrics
+        check_testcase_output,        
     )
+    from ais_bench.benchmark.datasets.livecodebench.evaluator import test_output_metrics as _test_output_metrics
     LCB_EVALUATOR_AVAILABLE = True
 except ImportError:
     LCB_EVALUATOR_AVAILABLE = False
@@ -36,82 +36,90 @@ class LiveCodeBenchEvaluatorTestBase(unittest.TestCase):
 class TestLCBCodeGenerationEvaluator(LiveCodeBenchEvaluatorTestBase):
     """测试LCBCodeGenerationEvaluator类"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.LCBCodeGenerationDataset')
-    def test_init(self, mock_dataset_class):
+    def test_init(self):
         """测试评估器初始化"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import livecodebench
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
+        
         mock_dataset = MagicMock()
         mock_dataset.__getitem__ = MagicMock(return_value={'question_id': 'q1', 'evaluation_sample': '{"test": "data"}'})
         mock_dataset.__len__ = MagicMock(return_value=1)
-        mock_dataset_class.load.return_value = {'test': mock_dataset}
         
-        evaluator = LCBCodeGenerationEvaluator(
-            num_process_evaluate=4,
-            timeout=6,
-            release_version='release_v1',
-            extractor_version='v1'
-        )
-        
-        self.assertEqual(evaluator.num_process_evaluate, 4)
-        self.assertEqual(evaluator.timeout, 6)
-        self.assertEqual(evaluator.extractor_version, 'v1')
+        # Patch LCBCodeGenerationDataset where it's used in evaluator module
+        with patch.object(evaluator_module, 'LCBCodeGenerationDataset') as mock_dataset_class:
+            mock_dataset_class.load.return_value = {'test': mock_dataset}
+            
+            evaluator = LCBCodeGenerationEvaluator(
+                num_process_evaluate=4,
+                timeout=6,
+                release_version='release_v1',
+                extractor_version='v1'
+            )
+            
+            self.assertEqual(evaluator.num_process_evaluate, 4)
+            self.assertEqual(evaluator.timeout, 6)
+            self.assertEqual(evaluator.extractor_version, 'v1')
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.extract_code_generation')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.codegen_metrics')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.LCBCodeGenerationDataset')
-    def test_score(self, mock_dataset_class, mock_codegen_metrics, mock_extract):
+    def test_score(self):
         """测试score方法"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
+        
         mock_dataset = MagicMock()
         mock_dataset.__getitem__ = MagicMock(return_value={'question_id': 'q1', 'evaluation_sample': '{"input_output": "test"}'})
         mock_dataset.__len__ = MagicMock(return_value=1)
-        mock_dataset_class.load.return_value = {'test': mock_dataset}
         
-        evaluator = LCBCodeGenerationEvaluator(num_process_evaluate=1, timeout=6)
-        
-        mock_extract.return_value = 'extracted_code'
-        mock_codegen_metrics.return_value = [
-            {'pass@1': 100.0, 'detail': {'pass@1': {'0': 100.0}}},
-            {0: [[True]]},
-            [['metadata']]
-        ]
-        
-        predictions = ['prediction1']
-        references = ['q1']
-        
-        result = evaluator.score(predictions, references)
-        
-        self.assertIn('pass@1', result)
-        self.assertIn('details', result)
+        with patch.object(evaluator_module, 'LCBCodeGenerationDataset') as mock_dataset_class, \
+             patch.object(evaluator_module, 'extract_code_generation', return_value='extracted_code') as mock_extract, \
+             patch.object(evaluator_module, 'codegen_metrics', return_value=[
+                 {'pass@1': 100.0, 'detail': {'pass@1': {'0': 100.0}}},
+                 {0: [[True]]},
+                 [['metadata']]
+             ]) as mock_codegen_metrics:
+            mock_dataset_class.load.return_value = {'test': mock_dataset}
+            
+            evaluator_instance = LCBCodeGenerationEvaluator(num_process_evaluate=1, timeout=6)
+            
+            predictions = ['prediction1']
+            references = ['q1']
+            
+            result = evaluator_instance.score(predictions, references)
+            
+            self.assertIn('pass@1', result)
+            self.assertIn('details', result)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.extract_code_generation_v2')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.codegen_metrics')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.LCBCodeGenerationDataset')
-    def test_score_v2_extractor(self, mock_dataset_class, mock_codegen_metrics, mock_extract):
+    def test_score_v2_extractor(self):
         """测试score方法使用v2提取器"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
+        
         mock_dataset = MagicMock()
         mock_dataset.__getitem__ = MagicMock(return_value={'question_id': 'q1', 'evaluation_sample': '{"input_output": "test"}'})
         mock_dataset.__len__ = MagicMock(return_value=1)
-        mock_dataset_class.load.return_value = {'test': mock_dataset}
         
-        evaluator = LCBCodeGenerationEvaluator(
-            num_process_evaluate=1, 
-            timeout=6,
-            extractor_version='v2'
-        )
-        
-        mock_extract.return_value = 'extracted_code_v2'
-        mock_codegen_metrics.return_value = [
-            {'pass@1': 50.0, 'detail': {'pass@1': {'0': 50.0}}},
-            {0: [[False]]},
-            [['metadata']]
-        ]
-        
-        predictions = ['prediction1']
-        references = ['q1']
-        
-        result = evaluator.score(predictions, references)
-        
-        self.assertIn('pass@1', result)
-        self.assertIn('details', result)
+        with patch.object(evaluator_module, 'LCBCodeGenerationDataset') as mock_dataset_class, \
+             patch.object(evaluator_module, 'extract_code_generation_v2', return_value='extracted_code_v2') as mock_extract, \
+             patch.object(evaluator_module, 'codegen_metrics', return_value=[
+                 {'pass@1': 50.0, 'detail': {'pass@1': {'0': 50.0}}},
+                 {0: [[False]]},
+                 [['metadata']]
+             ]) as mock_codegen_metrics:
+            mock_dataset_class.load.return_value = {'test': mock_dataset}
+            
+            evaluator = LCBCodeGenerationEvaluator(
+                num_process_evaluate=1, 
+                timeout=6,
+                extractor_version='v2'
+            )
+            
+            predictions = ['prediction1']
+            references = ['q1']
+            
+            result = evaluator.score(predictions, references)
+            
+            self.assertIn('pass@1', result)
+            self.assertIn('details', result)
         # 验证使用了v2提取器
         mock_extract.assert_called()
 
@@ -124,24 +132,24 @@ class TestLCBCodeExecutionEvaluator(LiveCodeBenchEvaluatorTestBase):
         evaluator = LCBCodeExecutionEvaluator()
         self.assertIsNotNone(evaluator)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.extract_code_execution')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.code_execution_metrics')
-    def test_score(self, mock_metrics, mock_extract):
+    def test_score(self):
         """测试score方法"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
+        
         evaluator = LCBCodeExecutionEvaluator()
         
-        mock_extract.return_value = 'extracted_code'
-        mock_metrics.return_value = [
-            {'pass@1': 100.0},
-            {0: [[True]]}
-        ]
-        
-        predictions = ['prediction1']
-        references = ['{"code": "def f(): pass", "input": "test", "output": "result"}']
-        
-        result = evaluator.score(predictions, references)
-        
-        self.assertIn('pass@1', result)
+        with patch.object(evaluator_module, 'extract_code_execution', return_value='extracted_code') as mock_extract, \
+             patch.object(evaluator_module, 'code_execution_metrics', return_value=[
+                 {'pass@1': 100.0},
+                 {0: [[True]]}
+             ]) as mock_metrics:
+            predictions = ['prediction1']
+            references = ['{"code": "def f(): pass", "input": "test", "output": "result"}']
+            
+            result = evaluator.score(predictions, references)
+            
+            self.assertIn('pass@1', result)
 
 
 class TestLCBTestOutputEvaluator(LiveCodeBenchEvaluatorTestBase):
@@ -152,24 +160,24 @@ class TestLCBTestOutputEvaluator(LiveCodeBenchEvaluatorTestBase):
         evaluator = LCBTestOutputEvaluator()
         self.assertIsNotNone(evaluator)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.extract_test_output_code')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.test_output_metrics')
-    def test_score(self, mock_metrics, mock_extract):
+    def test_score(self):
         """测试score方法"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
+        
         evaluator = LCBTestOutputEvaluator()
         
-        mock_extract.return_value = 'assert test() == "output"'
-        mock_metrics.return_value = [
-            {'pass@1': 100.0},
-            {0: [[True]]}
-        ]
-        
-        predictions = ['prediction1']
-        references = ['{"input": "test", "output": "result"}']
-        
-        result = evaluator.score(predictions, references)
-        
-        self.assertIn('pass@1', result)
+        with patch.object(evaluator_module, 'extract_test_output_code', return_value='assert test() == "output"') as mock_extract, \
+             patch.object(evaluator_module, 'test_output_metrics', return_value=[
+                 {'pass@1': 100.0},
+                 {0: [[True]]}
+             ]) as mock_metrics:
+            predictions = ['prediction1']
+            references = ['{"input": "test", "output": "result"}']
+            
+            result = evaluator.score(predictions, references)
+            
+            self.assertIn('pass@1', result)
 
 
 class TestParseAssertStatement(LiveCodeBenchEvaluatorTestBase):
@@ -215,251 +223,292 @@ class TestCheckTestcaseOutput(LiveCodeBenchEvaluatorTestBase):
 class TestCodeGenCheckCorrectness(LiveCodeBenchEvaluatorTestBase):
     """测试codegen_check_correctness函数"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.subprocess.run')
-    def test_check_correctness_success(self, mock_subprocess):
+    def test_check_correctness_success(self):
         """测试检查正确性成功"""
+        from unittest.mock import patch
+        import subprocess
+        
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.stdout = '{"res": [True], "meta": {}}'
         mock_proc.stderr = ''
-        mock_subprocess.return_value = mock_proc
+        mock_subprocess = MagicMock(return_value=mock_proc)
         
-        sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
-        generation = 'def test(): return "result"'
-        
-        result, meta = codegen_check_correctness(sample, generation, timeout=6)
-        
-        self.assertIsInstance(result, list)
-        self.assertIsInstance(meta, dict)
+        with patch.object(subprocess, 'run', mock_subprocess):
+            sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+            generation = 'def test(): return "result"'
+            
+            result, meta = codegen_check_correctness(sample, generation, timeout=6)
+            
+            self.assertIsInstance(result, list)
+            self.assertIsInstance(meta, dict)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.subprocess.run')
-    def test_check_correctness_timeout(self, mock_subprocess):
+    def test_check_correctness_timeout(self):
         """测试检查正确性超时"""
+        from unittest.mock import patch
         import subprocess
-        mock_subprocess.side_effect = subprocess.TimeoutExpired('test', 6)
         
-        sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
-        generation = 'def test(): return "result"'
+        mock_subprocess = MagicMock(side_effect=subprocess.TimeoutExpired('test', 6))
         
-        result, meta = codegen_check_correctness(sample, generation, timeout=6)
-        
-        self.assertIsInstance(result, list)
-        self.assertEqual(result[0], -1)
+        with patch.object(subprocess, 'run', mock_subprocess):
+            sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+            generation = 'def test(): return "result"'
+            
+            result, meta = codegen_check_correctness(sample, generation, timeout=6)
+            
+            self.assertIsInstance(result, list)
+            self.assertEqual(result[0], -1)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.subprocess.run')
-    def test_check_correctness_exception(self, mock_subprocess):
+    def test_check_correctness_exception(self):
         """测试检查正确性异常"""
-        mock_subprocess.side_effect = Exception('subprocess error')
+        from unittest.mock import patch
+        import subprocess
         
-        sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
-        generation = 'def test(): return "result"'
+        mock_subprocess = MagicMock(side_effect=Exception('subprocess error'))
         
-        result, meta = codegen_check_correctness(sample, generation, timeout=6)
-        
-        self.assertIsInstance(result, list)
-        self.assertEqual(result[0], -1)
+        with patch.object(subprocess, 'run', mock_subprocess):
+            sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+            generation = 'def test(): return "result"'
+            
+            result, meta = codegen_check_correctness(sample, generation, timeout=6)
+            
+            self.assertIsInstance(result, list)
+            self.assertEqual(result[0], -1)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.subprocess.run')
-    def test_check_correctness_nonzero_returncode(self, mock_subprocess):
+    def test_check_correctness_nonzero_returncode(self):
         """测试检查正确性非零返回码"""
+        from unittest.mock import patch
+        import subprocess
+        
         mock_proc = MagicMock()
         mock_proc.returncode = 1
         mock_proc.stdout = '{"res": [True], "meta": {}, "error": "test error"}'
         mock_proc.stderr = 'error output'
-        mock_subprocess.return_value = mock_proc
+        mock_subprocess = MagicMock(return_value=mock_proc)
         
-        sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
-        generation = 'def test(): return "result"'
-        
-        result, meta = codegen_check_correctness(sample, generation, timeout=6)
-        
-        self.assertIsInstance(result, list)
-        self.assertIsInstance(meta, dict)
+        with patch.object(subprocess, 'run', mock_subprocess):
+            sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+            generation = 'def test(): return "result"'
+            
+            result, meta = codegen_check_correctness(sample, generation, timeout=6)
+            
+            self.assertIsInstance(result, list)
+            self.assertIsInstance(meta, dict)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.subprocess.run')
-    def test_check_correctness_empty_stdout(self, mock_subprocess):
+    def test_check_correctness_empty_stdout(self):
         """测试检查正确性空标准输出"""
+        from unittest.mock import patch
+        import subprocess
+        
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.stdout = ''
         mock_proc.stderr = ''
-        mock_subprocess.return_value = mock_proc
+        mock_subprocess = MagicMock(return_value=mock_proc)
         
-        sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
-        generation = 'def test(): return "result"'
-        
-        result, meta = codegen_check_correctness(sample, generation, timeout=6)
-        
-        self.assertIsInstance(result, list)
-        self.assertEqual(result[0], -1)
+        with patch.object(subprocess, 'run', mock_subprocess):
+            sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+            generation = 'def test(): return "result"'
+            
+            result, meta = codegen_check_correctness(sample, generation, timeout=6)
+            
+            self.assertIsInstance(result, list)
+            self.assertEqual(result[0], -1)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.subprocess.run')
-    def test_check_correctness_invalid_json(self, mock_subprocess):
+    def test_check_correctness_invalid_json(self):
         """测试检查正确性无效JSON"""
+        from unittest.mock import patch
+        import subprocess
+        
         mock_proc = MagicMock()
         mock_proc.returncode = 0
         mock_proc.stdout = 'invalid json'
         mock_proc.stderr = ''
-        mock_subprocess.return_value = mock_proc
+        mock_subprocess = MagicMock(return_value=mock_proc)
         
-        sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
-        generation = 'def test(): return "result"'
-        
-        result, meta = codegen_check_correctness(sample, generation, timeout=6)
-        
-        self.assertIsInstance(result, list)
-        self.assertEqual(result[0], -1)
+        with patch.object(subprocess, 'run', mock_subprocess):
+            sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+            generation = 'def test(): return "result"'
+            
+            result, meta = codegen_check_correctness(sample, generation, timeout=6)
+            
+            self.assertIsInstance(result, list)
+            self.assertEqual(result[0], -1)
 
 
 class TestEvaluateGenerationsByProblem(LiveCodeBenchEvaluatorTestBase):
     """测试evaluate_generations_by_problem函数"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.codegen_check_correctness')
-    def test_evaluate_by_problem(self, mock_check):
+    def test_evaluate_by_problem(self):
         """测试按问题评估"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
         import numpy as np
-        mock_check.return_value = ([True], {})
         
-        problem_generations = ['code1', 'code2']
-        sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+        mock_check = MagicMock(return_value=([True], {}))
         
-        results, metadata = evaluate_generations_by_problem(
-            problem_generations, sample, debug=False, timeout=6
-        )
-        
-        self.assertEqual(len(results), 2)
-        self.assertEqual(len(metadata), 2)
+        with patch.object(evaluator_module, 'codegen_check_correctness', mock_check):
+            problem_generations = ['code1', 'code2']
+            sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+            
+            results, metadata = evaluate_generations_by_problem(
+                problem_generations, sample, debug=False, timeout=6
+            )
+            
+            self.assertEqual(len(results), 2)
+            self.assertEqual(len(metadata), 2)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.codegen_check_correctness')
-    def test_evaluate_by_problem_with_numpy_array(self, mock_check):
+    def test_evaluate_by_problem_with_numpy_array(self):
         """测试按问题评估包含numpy数组的情况"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
         import numpy as np
-        mock_check.return_value = ([np.array([True]), np.bool_(True)], {})
         
-        problem_generations = ['code1']
-        sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+        mock_check = MagicMock(return_value=([np.array([True]), np.bool_(True)], {}))
         
-        results, metadata = evaluate_generations_by_problem(
-            problem_generations, sample, debug=False, timeout=6
-        )
-        
-        self.assertEqual(len(results), 1)
-        self.assertEqual(len(metadata), 1)
+        with patch.object(evaluator_module, 'codegen_check_correctness', mock_check):
+            problem_generations = ['code1']
+            sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+            
+            results, metadata = evaluate_generations_by_problem(
+                problem_generations, sample, debug=False, timeout=6
+            )
+            
+            self.assertEqual(len(results), 1)
+            self.assertEqual(len(metadata), 1)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.codegen_check_correctness')
-    def test_evaluate_by_problem_with_exception(self, mock_check):
+    def test_evaluate_by_problem_with_exception(self):
         """测试按问题评估异常情况"""
-        mock_check.side_effect = Exception('test error')
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
         
-        problem_generations = ['code1']
-        sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+        mock_check = MagicMock(side_effect=Exception('test error'))
         
-        results, metadata = evaluate_generations_by_problem(
-            problem_generations, sample, debug=False, timeout=6
-        )
-        
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0], [-2])  # 编译错误
+        with patch.object(evaluator_module, 'codegen_check_correctness', mock_check):
+            problem_generations = ['code1']
+            sample = {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
+            
+            results, metadata = evaluate_generations_by_problem(
+                problem_generations, sample, debug=False, timeout=6
+            )
+            
+            self.assertEqual(len(results), 1)
+            self.assertEqual(results[0], [-2])  # 编译错误
 
 
 class TestCodeExecutionMetrics(LiveCodeBenchEvaluatorTestBase):
     """测试code_execution_metrics函数"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.ProcessPoolExecutor')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.evaluate_score')
-    def test_code_execution_metrics(self, mock_evaluate, mock_executor):
+    def test_code_execution_metrics(self):
         """测试代码执行指标计算"""
-        mock_evaluate.return_value = [True, False]
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
+        from concurrent.futures import ProcessPoolExecutor
+        
+        mock_evaluate = MagicMock(return_value=[True, False])
         
         # 模拟ProcessPoolExecutor
         mock_executor_instance = MagicMock()
-        mock_executor.return_value.__enter__.return_value = mock_executor_instance
         mock_executor_instance.map.return_value = [[True], [False]]
+        mock_executor = MagicMock()
+        mock_executor.return_value.__enter__ = MagicMock(return_value=mock_executor_instance)
+        mock_executor.return_value.__exit__ = MagicMock(return_value=None)
         
-        samples = [
-            {'code': 'def f(): return 1', 'input': 'test', 'output': '1'}
-        ]
-        generations = [['result1'], ['result2']]
-        
-        metrics, results = code_execution_metrics(samples, generations)
-        
-        self.assertIn('pass@1', metrics)
-        self.assertIsInstance(results, dict)
+        with patch.object(evaluator_module, 'evaluate_score', mock_evaluate), \
+             patch.object(evaluator_module, 'ProcessPoolExecutor', mock_executor):
+            samples = [
+                {'code': 'def f(): return 1', 'input': 'test', 'output': '1'}
+            ]
+            generations = [['result1'], ['result2']]
+            
+            metrics, results = code_execution_metrics(samples, generations)
+            
+            self.assertIn('pass@1', metrics)
+            self.assertIsInstance(results, dict)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.ProcessPoolExecutor')
-    def test_code_execution_metrics_with_multiple_samples(self, mock_executor):
+    def test_code_execution_metrics_with_multiple_samples(self):
         """测试多个样本的代码执行指标计算"""
-        mock_executor_instance = MagicMock()
-        mock_executor.return_value.__enter__.return_value = mock_executor_instance
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
         
         def evaluate_score_impl(args):
             gs, (c, i, o) = args
             return [True if i in g else False for g in gs]
         
+        mock_executor_instance = MagicMock()
         mock_executor_instance.map.side_effect = lambda func, args: [
             evaluate_score_impl(arg) for arg in args
         ]
+        mock_executor = MagicMock()
+        mock_executor.return_value.__enter__ = MagicMock(return_value=mock_executor_instance)
+        mock_executor.return_value.__exit__ = MagicMock(return_value=None)
         
-        samples = [
-            {'code': 'def f(x): return x', 'input': 'f(1)', 'output': '1'},
-            {'code': 'def g(y): return y+1', 'input': 'g(2)', 'output': '3'}
-        ]
-        generations = [['1'], ['3']]
-        
-        metrics, results = code_execution_metrics(samples, generations)
-        
-        self.assertIn('pass@1', metrics)
-        self.assertIsInstance(results, dict)
-        self.assertEqual(len(results), 2)
+        with patch.object(evaluator_module, 'ProcessPoolExecutor', mock_executor):
+            samples = [
+                {'code': 'def f(x): return x', 'input': 'f(1)', 'output': '1'},
+                {'code': 'def g(y): return y+1', 'input': 'g(2)', 'output': '3'}
+            ]
+            generations = [['1'], ['3']]
+            
+            metrics, results = code_execution_metrics(samples, generations)
+            
+            self.assertIn('pass@1', metrics)
+            self.assertIsInstance(results, dict)
+            self.assertEqual(len(results), 2)
 
 
 class TestCodegenMetrics(LiveCodeBenchEvaluatorTestBase):
     """测试codegen_metrics函数"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.evaluate_generations')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.compute_metrics_from_results')
-    def test_codegen_metrics(self, mock_compute_metrics, mock_evaluate):
+    def test_codegen_metrics(self):
         """测试代码生成指标计算"""
-        mock_evaluate.return_value = (
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
+        
+        mock_evaluate = MagicMock(return_value=(
             {0: [[True]], 1: [[False]]},
             {0: [{}], 1: [{}]}
-        )
-        mock_compute_metrics.return_value = {'pass@1': 50.0, 'detail': {'pass@1': {0: 100.0, 1: 0.0}}}
+        ))
+        mock_compute_metrics = MagicMock(return_value={'pass@1': 50.0, 'detail': {'pass@1': {0: 100.0, 1: 0.0}}})
         
-        samples_list = [
-            {'input_output': json.dumps({'inputs': ['test1'], 'outputs': ['result1']})},
-            {'input_output': json.dumps({'inputs': ['test2'], 'outputs': ['result2']})}
-        ]
-        generations_list = [['code1'], ['code2']]
-        
-        result = codegen_metrics(samples_list, generations_list, k_list=[1], num_process_evaluate=1, timeout=6)
-        
-        self.assertEqual(len(result), 3)  # [metrics, results, metadata]
-        self.assertIn('pass@1', result[0])
+        with patch.object(evaluator_module, 'evaluate_generations', mock_evaluate), \
+             patch.object(evaluator_module, 'compute_metrics_from_results', mock_compute_metrics):
+            samples_list = [
+                {'input_output': json.dumps({'inputs': ['test1'], 'outputs': ['result1']})},
+                {'input_output': json.dumps({'inputs': ['test2'], 'outputs': ['result2']})}
+            ]
+            generations_list = [['code1'], ['code2']]
+            
+            result = codegen_metrics(samples_list, generations_list, k_list=[1], num_process_evaluate=1, timeout=6)
+            
+            self.assertEqual(len(result), 3)  # [metrics, results, metadata]
+            self.assertIn('pass@1', result[0])
 
 
 class TestEvaluateGenerations(LiveCodeBenchEvaluatorTestBase):
     """测试evaluate_generations函数"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.ProcessPoolExecutor')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.evaluate_generations_by_problem')
-    def test_evaluate_generations(self, mock_evaluate_by_problem, mock_executor):
+    def test_evaluate_generations(self):
         """测试评估多个生成"""
-        mock_evaluate_by_problem.return_value = ([[True]], [{}])
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
+        from concurrent.futures import as_completed
+        
+        mock_evaluate_by_problem = MagicMock(return_value=([[True]], [{}]))
         
         mock_executor_instance = MagicMock()
-        mock_executor.return_value.__enter__.return_value = mock_executor_instance
-        
         mock_future = MagicMock()
         mock_future.result.return_value = ([[True]], [{}])
         mock_executor_instance.submit.return_value = mock_future
+        mock_executor = MagicMock()
+        mock_executor.return_value.__enter__ = MagicMock(return_value=mock_executor_instance)
+        mock_executor.return_value.__exit__ = MagicMock(return_value=None)
         
-        # 模拟as_completed
-        from concurrent.futures import Future
-        futures_dict = {mock_future: 0}
-        with patch('ais_bench.benchmark.datasets.livecodebench.evaluator.as_completed') as mock_as_completed:
-            mock_as_completed.return_value = [mock_future]
-            
+        mock_as_completed = MagicMock(return_value=[mock_future])
+        
+        with patch.object(evaluator_module, 'evaluate_generations_by_problem', mock_evaluate_by_problem), \
+             patch.object(evaluator_module, 'ProcessPoolExecutor', mock_executor), \
+             patch.object(evaluator_module, 'as_completed', mock_as_completed):
             samples_list = [
                 {'input_output': json.dumps({'inputs': ['test'], 'outputs': ['result']})}
             ]
@@ -490,41 +539,46 @@ class TestEvaluateScore(LiveCodeBenchEvaluatorTestBase):
         # 由于input在generation中，应该返回False列表
         self.assertIsInstance(result, list)
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.codeexecute_check_correctness')
-    def test_evaluate_score_with_execution(self, mock_check):
+    def test_evaluate_score_with_execution(self):
         """测试evaluate_score函数执行代码检查"""
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
         from ais_bench.benchmark.datasets.livecodebench.evaluator import evaluate_score
         
-        mock_check.return_value = True
+        mock_check = MagicMock(return_value=True)
         
-        generations = ['result1']
-        code = 'def f(x): return x'
-        input_str = 'f(1)'
-        output = '1'
-        
-        result = evaluate_score((generations, (code, input_str, output)))
-        self.assertIsInstance(result, list)
+        with patch.object(evaluator_module, 'codeexecute_check_correctness', mock_check):
+            generations = ['result1']
+            code = 'def f(x): return x'
+            input_str = 'f(1)'
+            output = '1'
+            
+            result = evaluate_score((generations, (code, input_str, output)))
+            self.assertIsInstance(result, list)
 
 
 class TestTestOutputMetrics(LiveCodeBenchEvaluatorTestBase):
     """测试test_output_metrics函数"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.check_testcase_output')
-    @patch('ais_bench.benchmark.datasets.livecodebench.evaluator.compute_metrics_from_results')
-    def test_test_output_metrics(self, mock_compute_metrics, mock_check):
+    def test_test_output_metrics(self):
         """测试测试输出指标计算"""
-        mock_check.return_value = True
-        mock_compute_metrics.return_value = {'pass@1': 100.0}
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import evaluator as evaluator_module
         
-        samples = [
-            {'input': 'test', 'output': '"result"'}
-        ]
-        generations = [['assert test() == "result"']]
+        mock_check = MagicMock(return_value=True)
+        mock_compute_metrics = MagicMock(return_value={'pass@1': 100.0})
         
-        metrics, results = test_output_metrics(samples, generations, k_list=[1])
-        
-        self.assertIn('pass@1', metrics)
-        self.assertIsInstance(results, dict)
+        with patch.object(evaluator_module, 'check_testcase_output', mock_check), \
+             patch.object(evaluator_module, 'compute_metrics_from_results', mock_compute_metrics):
+            samples = [
+                {'input': 'test', 'output': '"result"'}
+            ]
+            generations = [['assert test() == "result"']]
+            
+            metrics, results = _test_output_metrics(samples, generations, k_list=[1])
+            
+            self.assertIn('pass@1', metrics)
+            self.assertIsInstance(results, dict)
 
 
 if __name__ == '__main__':

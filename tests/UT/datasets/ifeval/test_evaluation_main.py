@@ -1,18 +1,61 @@
 """Unit tests for ifeval evaluation_main.py to increase coverage to 80%"""
 import unittest
+import sys
 from unittest.mock import patch, MagicMock
+
+# Mock absl.flags 以避免在导入时阻塞
+# absl.flags 在模块级别定义了 required=True 的标志，会导致导入时阻塞
+# 方法：在导入前 mock DEFINE_string，使其不检查必需参数
+_original_argv = sys.argv[:]
+sys.argv = ['test']  # 设置一个简单的命令行参数
+
+# 创建一个 mock 标志对象
+_mock_flag_obj = MagicMock()
+_mock_flag_obj.value = '/tmp/test'
+
+# Mock DEFINE_string 函数，使其返回 mock 对象而不检查必需参数
+_original_define_string = None
+try:
+    import absl.flags as absl_flags_module
+    _original_define_string = absl_flags_module.DEFINE_string
+    
+    def _mock_define_string(name, default=None, help=None, required=False, **kwargs):
+        """Mock DEFINE_string，忽略 required 参数"""
+        return _mock_flag_obj
+    
+    absl_flags_module.DEFINE_string = _mock_define_string
+except ImportError:
+    pass
+
+# Mock nltk.download 以避免在导入时阻塞
+# instructions_util.py 在模块级别调用了 nltk.download('punkt_tab')，会导致阻塞
+try:
+    import nltk
+    _original_download = nltk.download
+    nltk.download = MagicMock(return_value=True)
+except ImportError:
+    pass
 
 # 尝试导入评估模块
 try:
     from ais_bench.benchmark.datasets.ifeval.evaluation_main import (
         InputExample,
         OutputExample,
-        test_instruction_following_strict,
-        test_instruction_following_loose,
     )
+    from ais_bench.benchmark.datasets.ifeval.evaluation_main import test_instruction_following_strict as _test_instruction_following_strict_func
+    from ais_bench.benchmark.datasets.ifeval.evaluation_main import test_instruction_following_loose as _test_instruction_following_loose_func
     EVALUATION_AVAILABLE = True
-except ImportError:
+except (ImportError, SystemExit, Exception):
     EVALUATION_AVAILABLE = False
+finally:
+    # 恢复原始函数
+    if _original_define_string is not None:
+        try:
+            import absl.flags as absl_flags_module
+            absl_flags_module.DEFINE_string = _original_define_string
+        except:
+            pass
+    sys.argv = _original_argv
 
 
 class EvaluationTestBase(unittest.TestCase):
@@ -84,7 +127,7 @@ class TestInstructionFollowingStrict(EvaluationTestBase):
         response = 'Test response'
         
         # 调用函数
-        result = test_instruction_following_strict(inp, response)
+        result = _test_instruction_following_strict_func(inp, response)
         
         # 验证结果
         self.assertIsInstance(result, OutputExample)
@@ -115,7 +158,7 @@ class TestInstructionFollowingStrict(EvaluationTestBase):
         response = 'Test response'
         
         # 调用函数
-        result = test_instruction_following_strict(inp, response)
+        result = _test_instruction_following_strict_func(inp, response)
         
         # 验证结果
         self.assertFalse(result.follow_all_instructions)
@@ -143,7 +186,7 @@ class TestInstructionFollowingStrict(EvaluationTestBase):
         response = '   '  # 空白响应
         
         # 调用函数
-        result = test_instruction_following_strict(inp, response)
+        result = _test_instruction_following_strict_func(inp, response)
         
         # 空响应应该被视为未遵循指令
         self.assertFalse(result.follow_all_instructions)
@@ -171,7 +214,7 @@ class TestInstructionFollowingStrict(EvaluationTestBase):
         response = 'Test response'
         
         # 调用函数
-        result = test_instruction_following_strict(inp, response)
+        result = _test_instruction_following_strict_func(inp, response)
         
         # 验证 build_description 被调用两次（一次用 kwargs，一次用 prompt）
         self.assertEqual(mock_instruction.build_description.call_count, 2)
@@ -214,7 +257,7 @@ class TestInstructionFollowingStrict(EvaluationTestBase):
         response = 'Test response'
         
         # 调用函数
-        result = test_instruction_following_strict(inp, response)
+        result = _test_instruction_following_strict_func(inp, response)
         
         # 一个指令遵循，一个不遵循
         self.assertFalse(result.follow_all_instructions)
@@ -246,7 +289,7 @@ class TestInstructionFollowingLoose(EvaluationTestBase):
         response = 'Test response'
         
         # 调用函数
-        result = test_instruction_following_loose(inp, response)
+        result = _test_instruction_following_loose_func(inp, response)
         
         # 验证结果
         self.assertTrue(result.follow_all_instructions)
@@ -279,7 +322,7 @@ class TestInstructionFollowingLoose(EvaluationTestBase):
         response = '*Test* response'
         
         # 调用函数
-        result = test_instruction_following_loose(inp, response)
+        result = _test_instruction_following_loose_func(inp, response)
         
         # 宽松模式会尝试移除星号的版本，应该能通过
         self.assertTrue(result.follow_all_instructions)
@@ -311,7 +354,7 @@ class TestInstructionFollowingLoose(EvaluationTestBase):
         response = 'First line\nSecond line'
         
         # 调用函数
-        result = test_instruction_following_loose(inp, response)
+        result = _test_instruction_following_loose_func(inp, response)
         
         # 宽松模式会尝试移除第一行的版本，应该能通过
         self.assertTrue(result.follow_all_instructions)
@@ -338,7 +381,7 @@ class TestInstructionFollowingLoose(EvaluationTestBase):
         response = 'Test response'
         
         # 调用函数
-        result = test_instruction_following_loose(inp, response)
+        result = _test_instruction_following_loose_func(inp, response)
         
         # 验证 build_description 被调用两次
         self.assertEqual(mock_instruction.build_description.call_count, 2)
@@ -366,7 +409,7 @@ class TestInstructionFollowingLoose(EvaluationTestBase):
         response = 'Test response'
         
         # 调用函数
-        result = test_instruction_following_loose(inp, response)
+        result = _test_instruction_following_loose_func(inp, response)
         
         # 所有变体都失败
         self.assertFalse(result.follow_all_instructions)
@@ -401,7 +444,7 @@ class TestInstructionFollowingLoose(EvaluationTestBase):
         response = 'Test'
         
         # 调用函数
-        result = test_instruction_following_loose(inp, response)
+        result = _test_instruction_following_loose_func(inp, response)
         
         # 至少有一个非空变体应该通过
         self.assertTrue(result.follow_all_instructions)

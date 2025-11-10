@@ -186,11 +186,14 @@ class TestStrippedStringCompare(TestingUtilTestBase):
 class TestRunTest(TestingUtilTestBase):
     """测试run_test函数"""
     
-    @patch('ais_bench.benchmark.datasets.livecodebench.testing_util.reliability_guard')
-    def test_run_test_exists(self, mock_guard):
+    def test_run_test_exists(self):
         """测试run_test函数存在"""
-        # 只测试函数可以被导入和调用
-        self.assertTrue(callable(run_test))
+        from unittest.mock import patch
+        from ais_bench.benchmark.datasets.livecodebench import testing_util
+        
+        with patch.object(testing_util, 'reliability_guard'):
+            # 只测试函数可以被导入和调用
+            self.assertTrue(callable(run_test))
 
 
 class TestCallMethod(TestingUtilTestBase):

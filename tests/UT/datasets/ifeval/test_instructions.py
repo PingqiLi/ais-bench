@@ -3,6 +3,15 @@ import unittest
 import random
 from unittest.mock import patch, MagicMock
 
+# Mock nltk.download 以避免在导入时阻塞
+# instructions_util.py 在模块级别调用了 nltk.download('punkt_tab')，会导致阻塞
+try:
+    import nltk
+    _original_download = nltk.download
+    nltk.download = MagicMock(return_value=True)
+except ImportError:
+    pass
+
 # 尝试导入指令模块
 try:
     from ais_bench.benchmark.datasets.ifeval.instructions import (
@@ -165,15 +174,27 @@ class TestNumberOfSentences(InstructionsTestBase):
         self.assertEqual(args['num_sentences'], 10)
         self.assertEqual(args['relation'], 'at least')
     
-    def test_check_following_less_than(self):
+    @patch('ais_bench.benchmark.datasets.ifeval.instructions_util._get_sentence_tokenizer')
+    def test_check_following_less_than(self, mock_tokenizer):
         """测试少于阈值"""
+        # Mock tokenizer 返回一个简单的 tokenizer，将文本按句号分割
+        mock_tokenizer_instance = MagicMock()
+        mock_tokenizer_instance.tokenize = lambda text: [s for s in text.split('.') if s.strip()]
+        mock_tokenizer.return_value = mock_tokenizer_instance
+        
         checker = NumberOfSentences('num_sent')
         checker.build_description(num_sentences=3, relation='less than')
         result = checker.check_following('One. Two.')
         self.assertTrue(result)
     
-    def test_check_following_at_least(self):
+    @patch('ais_bench.benchmark.datasets.ifeval.instructions_util._get_sentence_tokenizer')
+    def test_check_following_at_least(self, mock_tokenizer):
         """测试至少阈值"""
+        # Mock tokenizer 返回一个简单的 tokenizer，将文本按句号分割
+        mock_tokenizer_instance = MagicMock()
+        mock_tokenizer_instance.tokenize = lambda text: [s for s in text.split('.') if s.strip()]
+        mock_tokenizer.return_value = mock_tokenizer_instance
+        
         checker = NumberOfSentences('num_sent')
         checker.build_description(num_sentences=2, relation='at least')
         result = checker.check_following('One. Two. Three.')
@@ -654,8 +675,12 @@ class TestCapitalLettersEnglishChecker(InstructionsTestBase):
         desc = checker.build_description()
         self.assertIn('capital', desc.lower())
     
-    def test_check_following_all_caps(self):
+    @patch('ais_bench.benchmark.datasets.ifeval.instructions.langdetect')
+    def test_check_following_all_caps(self, mock_langdetect):
         """测试全大写"""
+        mock_langdetect.detect.return_value = 'en'
+        mock_langdetect.LangDetectException = Exception
+        
         checker = CapitalLettersEnglishChecker('capital')
         checker.build_description()
         result = checker.check_following('THIS IS ALL CAPS')
@@ -678,8 +703,12 @@ class TestLowercaseLettersEnglishChecker(InstructionsTestBase):
         desc = checker.build_description()
         self.assertIn('lowercase', desc.lower())
     
-    def test_check_following_all_lower(self):
+    @patch('ais_bench.benchmark.datasets.ifeval.instructions.langdetect')
+    def test_check_following_all_lower(self, mock_langdetect):
         """测试全小写"""
+        mock_langdetect.detect.return_value = 'en'
+        mock_langdetect.LangDetectException = Exception
+        
         checker = LowercaseLettersEnglishChecker('lowercase')
         checker.build_description()
         result = checker.check_following('this is all lowercase')
@@ -719,8 +748,12 @@ class TestCapitalWordFrequencyChecker(InstructionsTestBase):
         desc = checker.build_description(capital_frequency=5, capital_relation='at least')
         self.assertIn('capital', desc.lower())
     
-    def test_check_following_success(self):
+    @patch('ais_bench.benchmark.datasets.ifeval.instructions.instructions_util.nltk.word_tokenize')
+    def test_check_following_success(self, mock_word_tokenize):
         """测试大写词频率检查成功"""
+        # Mock word_tokenize 返回简单的单词列表
+        mock_word_tokenize.return_value = ['WORD', 'ONE', 'and', 'WORD', 'TWO', 'here']
+        
         checker = CapitalWordFrequencyChecker('cap_word_freq')
         checker.build_description(capital_frequency=2, capital_relation='at least')
         result = checker.check_following('WORD ONE and WORD TWO here')
