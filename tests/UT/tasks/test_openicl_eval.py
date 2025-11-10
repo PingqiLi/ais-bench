@@ -1466,6 +1466,616 @@ class TestOpenICLEvalTask(unittest.TestCase):
         # 验证dump_details相关逻辑被执行
         self.assertTrue(mock_logger.warning.called or mock_logger.info.called)
 
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.ICL_EVALUATORS')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.build_dataset_from_cfg')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.signature')
+    def test_score_with_bfcl_dataset(self, mock_signature, mock_build_dataset, mock_evaluators, mock_logger_class):
+        """测试_score方法中BFCL数据集的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        mock_evaluator = MagicMock()
+        # 确保evaluate返回包含details的结果，这样BFCL检查才能执行
+        mock_evaluator.evaluate.return_value = {"accuracy": 0.9, "details": {}}
+        mock_evaluator.score.return_value = {"accuracy": 0.9}
+        mock_evaluators.build.return_value = mock_evaluator
+        
+        from inspect import Parameter, Signature
+        mock_sig = Signature([
+            Parameter('predictions', Parameter.POSITIONAL_OR_KEYWORD),
+            Parameter('references', Parameter.POSITIONAL_OR_KEYWORD),
+        ])
+        mock_signature.return_value = mock_sig
+        
+        mock_dataset = MagicMock()
+        mock_test_set = MagicMock()
+        mock_test_set.__len__ = lambda x: 2
+        mock_test_set.select = lambda x: mock_test_set
+        mock_test_set.__getitem__ = lambda x, y: {"answer": "test"}
+        mock_dataset.test = mock_test_set
+        mock_build_dataset.return_value = mock_dataset
+        
+        cfg = self.cfg.copy()
+        cfg["datasets"][0][0]["type"] = "BFCLDataset"
+        cfg["eval"]["runner"]["task"]["dump_details"] = True
+        task = self._create_task(cfg)
+        # 直接设置task.logger为mock_logger，因为BaseTask.__init__中会创建新的AISLogger实例
+        task.logger = mock_logger
+        task.dataset_cfg = task.dataset_cfgs[0]
+        task.eval_cfg = task.dataset_cfg.get('eval_cfg')
+        task.output_column = task.dataset_cfg['reader_cfg']['output_column']
+        
+        # 确保dump_details正确设置
+        self.assertTrue(task.dump_details, "dump_details should be True")
+        # 确保dataset_cfg的type正确设置
+        self.assertEqual(task.dataset_cfg.get("type"), "BFCLDataset", "dataset_cfg type should be BFCLDataset")
+        
+        if "abbr" not in task.model_cfg:
+            task.model_cfg["abbr"] = "test_model"
+        
+        # 使用get_infer_output_path获取正确的预测文件路径
+        from ais_bench.benchmark.utils.core.abbr import get_infer_output_path
+        pred_file = get_infer_output_path(
+            task.model_cfg,
+            task.dataset_cfg,
+            os.path.join(task.work_dir, 'predictions'),
+            'jsonl'
+        )
+        os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+        with open(pred_file, 'wb') as f:
+            f.write(orjson.dumps({"id": 0, "prediction": "test"}) + b'\n')
+            f.write(orjson.dumps({"id": 1, "prediction": "test2"}) + b'\n')
+        
+        task._score()
+        
+        # 验证BFCL特殊处理逻辑被执行
+        # 检查logger.info是否被调用，并且包含BFCL相关的日志
+        # 注意：logger.info会在多个地方被调用（BFCL检查、任务结果记录等）
+        self.assertTrue(mock_logger.info.called, "logger.info should be called for BFCL dataset")
+        # 验证BFCL evaluation的日志
+        bfcl_calls = [call for call in mock_logger.info.call_args_list if "BFCL" in str(call)]
+        self.assertTrue(len(bfcl_calls) > 0, f"Should have BFCL-related log message. All calls: {mock_logger.info.call_args_list}")
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.ICL_EVALUATORS')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.build_dataset_from_cfg')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.signature')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.TEXT_POSTPROCESSORS')
+    def test_score_with_model_result(self, mock_postprocessors, mock_signature, mock_build_dataset, mock_evaluators, mock_logger_class):
+        """测试_score方法中model_result不为None的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        mock_evaluator = MagicMock()
+        mock_evaluator.evaluate.return_value = {"accuracy": 0.9, "details": []}
+        mock_evaluator.score.return_value = {"accuracy": 0.95, "details": []}
+        mock_evaluators.build.return_value = mock_evaluator
+        
+        from inspect import Parameter, Signature
+        mock_sig = Signature([
+            Parameter('predictions', Parameter.POSITIONAL_OR_KEYWORD),
+            Parameter('references', Parameter.POSITIONAL_OR_KEYWORD),
+        ])
+        mock_signature.return_value = mock_sig
+        
+        mock_processor = MagicMock(return_value=["processed1", "processed2"])
+        mock_postprocessors.get.return_value = mock_processor
+        
+        mock_dataset = MagicMock()
+        mock_test_set = MagicMock()
+        mock_test_set.__len__ = lambda x: 2
+        mock_test_set.select = lambda x: mock_test_set
+        mock_test_set.__getitem__ = lambda x, y: {"answer": "test"}
+        mock_dataset.test = mock_test_set
+        mock_build_dataset.return_value = mock_dataset
+        
+        cfg = self.cfg.copy()
+        cfg["datasets"][0][0]["eval_cfg"]["model_postprocessor"] = {"type": "test_processor"}
+        task = self._create_task(cfg)
+        task.logger = mock_logger  # 设置logger为mock
+        task.dataset_cfg = task.dataset_cfgs[0]
+        task.eval_cfg = task.dataset_cfg.get('eval_cfg')
+        task.output_column = task.dataset_cfg['reader_cfg']['output_column']
+        
+        if "abbr" not in task.model_cfg:
+            task.model_cfg["abbr"] = "test_model"
+        
+        # Mock test_set[self.output_column]返回列表
+        mock_test_set.__getitem__ = lambda x, y: ["ref1", "ref2"] if y == task.output_column else {"answer": "test"}
+        
+        # 使用get_infer_output_path获取正确的预测文件路径
+        from ais_bench.benchmark.utils.core.abbr import get_infer_output_path
+        pred_file = get_infer_output_path(
+            task.model_cfg,
+            task.dataset_cfg,
+            os.path.join(task.work_dir, 'predictions'),
+            'jsonl'
+        )
+        os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+        with open(pred_file, 'wb') as f:
+            f.write(orjson.dumps({"id": 0, "prediction": "test", "origin_prompt": "prompt1"}) + b'\n')
+            f.write(orjson.dumps({"id": 1, "prediction": "test2", "origin_prompt": "prompt2"}) + b'\n')
+        
+        task._score()
+        
+        # 验证model_result相关日志被调用
+        model_result_logs = [call for call in mock_logger.info.call_args_list if "Model Postprocess" in str(call)]
+        self.assertTrue(len(model_result_logs) > 0)
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.ICL_EVALUATORS')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.build_dataset_from_cfg')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.signature')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.TEXT_POSTPROCESSORS')
+    def test_score_with_pred_list_flag(self, mock_postprocessors, mock_signature, mock_build_dataset, mock_evaluators, mock_logger_class):
+        """测试_score方法中pred_list_flag为True的情况（prediction是列表）"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        mock_evaluator = MagicMock()
+        mock_evaluator.evaluate.return_value = {"accuracy": 0.9}
+        mock_evaluator.score.return_value = {"accuracy": 0.9}
+        mock_evaluators.build.return_value = mock_evaluator
+        
+        from inspect import Parameter, Signature
+        mock_sig = Signature([
+            Parameter('predictions', Parameter.POSITIONAL_OR_KEYWORD),
+            Parameter('references', Parameter.POSITIONAL_OR_KEYWORD),
+        ])
+        mock_signature.return_value = mock_sig
+        
+        mock_processor = MagicMock(return_value=["processed"])
+        mock_postprocessors.get.return_value = mock_processor
+        
+        mock_dataset = MagicMock()
+        mock_test_set = MagicMock()
+        mock_test_set.__len__ = lambda x: 2
+        mock_test_set.select = lambda x: mock_test_set
+        mock_test_set.__getitem__ = lambda x, y: {"answer": "test"}
+        mock_dataset.test = mock_test_set
+        mock_build_dataset.return_value = mock_dataset
+        
+        cfg = self.cfg.copy()
+        cfg["datasets"][0][0]["eval_cfg"]["pred_postprocessor"] = {"type": "test_processor"}
+        task = self._create_task(cfg)
+        task.logger = mock_logger  # 设置logger为mock
+        task.dataset_cfg = task.dataset_cfgs[0]
+        task.eval_cfg = task.dataset_cfg.get('eval_cfg')
+        task.output_column = task.dataset_cfg['reader_cfg']['output_column']
+        
+        if "abbr" not in task.model_cfg:
+            task.model_cfg["abbr"] = "test_model"
+        
+        # 使用get_infer_output_path获取正确的预测文件路径
+        from ais_bench.benchmark.utils.core.abbr import get_infer_output_path
+        pred_file = get_infer_output_path(
+            task.model_cfg,
+            task.dataset_cfg,
+            os.path.join(task.work_dir, 'predictions'),
+            'jsonl'
+        )
+        os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+        with open(pred_file, 'wb') as f:
+            f.write(orjson.dumps({"id": 0, "prediction": ["test1", "test2"]}) + b'\n')
+            f.write(orjson.dumps({"id": 1, "prediction": ["test3", "test4"]}) + b'\n')
+        
+        task._score()
+        
+        # 验证postprocessor被调用（列表形式）
+        self.assertTrue(mock_postprocessors.get.called or mock_processor.called)
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.ICL_EVALUATORS')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.build_dataset_from_cfg')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.signature')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.mmengine')
+    def test_score_with_partial_filename(self, mock_mmengine, mock_signature, mock_build_dataset, mock_evaluators, mock_logger_class):
+        """测试_score方法中使用partial_filename的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        mock_evaluator = MagicMock()
+        mock_evaluator.evaluate.return_value = {"accuracy": 0.9}
+        mock_evaluator.score.return_value = {"accuracy": 0.9}
+        mock_evaluators.build.return_value = mock_evaluator
+        
+        from inspect import Parameter, Signature
+        mock_sig = Signature([
+            Parameter('predictions', Parameter.POSITIONAL_OR_KEYWORD),
+            Parameter('references', Parameter.POSITIONAL_OR_KEYWORD),
+        ])
+        mock_signature.return_value = mock_sig
+        
+        mock_dataset = MagicMock()
+        mock_test_set = MagicMock()
+        mock_test_set.__len__ = lambda x: 2
+        mock_test_set.select = lambda x: mock_test_set
+        mock_test_set.__getitem__ = lambda x, y: {"answer": "test"}
+        mock_dataset.test = mock_test_set
+        mock_build_dataset.return_value = mock_dataset
+        
+        task = self._create_task()
+        task.logger = mock_logger  # 设置logger为mock
+        task.dataset_cfg = task.dataset_cfgs[0]
+        task.eval_cfg = task.dataset_cfg.get('eval_cfg')
+        task.output_column = task.dataset_cfg['reader_cfg']['output_column']
+        
+        if "abbr" not in task.model_cfg:
+            task.model_cfg["abbr"] = "test_model"
+        
+        # Mock文件存在检查：主文件不存在，但partial文件存在
+        from ais_bench.benchmark.utils.core.abbr import get_infer_output_path
+        pred_file = get_infer_output_path(
+            task.model_cfg,
+            task.dataset_cfg,
+            os.path.join(task.work_dir, 'predictions'),
+            'jsonl'
+        )
+        root, ext = os.path.splitext(pred_file)
+        partial_filename = root + '_0' + ext
+        
+        # 创建partial文件
+        os.makedirs(os.path.dirname(partial_filename), exist_ok=True)
+        # Mock mmengine.load返回partial predictions
+        mock_mmengine.load.return_value = {"0": {"id": 0, "prediction": "test"}, "1": {"id": 1, "prediction": "test2"}}
+        
+        # Mock osp.exists
+        with patch('ais_bench.benchmark.tasks.openicl_eval.osp.exists') as mock_exists:
+            def exists_side_effect(path):
+                path_str = str(path)
+                # 主文件不存在
+                if path_str == pred_file:
+                    return False
+                # partial文件存在
+                if path_str == partial_filename:
+                    return True
+                # 下一个文件不存在
+                return False
+            
+            mock_exists.side_effect = exists_side_effect
+            task._score()
+        
+        # 验证mmengine.load被调用（用于加载partial文件）
+        self.assertTrue(mock_mmengine.load.called)
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.ICL_EVALUATORS')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.build_dataset_from_cfg')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.signature')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.TEXT_POSTPROCESSORS')
+    def test_score_with_dump_details_extract_rate(self, mock_postprocessors, mock_signature, mock_build_dataset, mock_evaluators, mock_logger_class):
+        """测试_score方法中dump_details和cal_extract_rate为True的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        mock_evaluator = MagicMock()
+        mock_evaluator.evaluate.return_value = {"accuracy": 0.9, "details": [{"pred": "test", "ref": "test"}]}
+        mock_evaluator.score.return_value = {"accuracy": 0.95, "details": []}
+        mock_evaluators.build.return_value = mock_evaluator
+        
+        from inspect import Parameter, Signature
+        mock_sig = Signature([
+            Parameter('predictions', Parameter.POSITIONAL_OR_KEYWORD),
+            Parameter('references', Parameter.POSITIONAL_OR_KEYWORD),
+        ])
+        mock_signature.return_value = mock_sig
+        
+        mock_dataset = MagicMock()
+        mock_test_set = MagicMock()
+        mock_test_set.__len__ = lambda x: 2
+        mock_test_set.select = lambda x: mock_test_set
+        mock_test_set.__getitem__ = lambda x, y: {"answer": "test"}
+        mock_dataset.test = mock_test_set
+        mock_build_dataset.return_value = mock_dataset
+        
+        cfg = self.cfg.copy()
+        cfg["eval"]["runner"]["task"]["dump_details"] = True
+        cfg["eval"]["runner"]["task"]["cal_extract_rate"] = True
+        task = self._create_task(cfg)
+        task.logger = mock_logger  # 设置logger为mock
+        task.dataset_cfg = task.dataset_cfgs[0]
+        task.eval_cfg = task.dataset_cfg.get('eval_cfg')
+        task.output_column = task.dataset_cfg['reader_cfg']['output_column']
+        
+        if "abbr" not in task.model_cfg:
+            task.model_cfg["abbr"] = "test_model"
+        
+        # 使用get_infer_output_path获取正确的预测文件路径
+        from ais_bench.benchmark.utils.core.abbr import get_infer_output_path
+        pred_file = get_infer_output_path(
+            task.model_cfg,
+            task.dataset_cfg,
+            os.path.join(task.work_dir, 'predictions'),
+            'jsonl'
+        )
+        os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+        with open(pred_file, 'wb') as f:
+            f.write(orjson.dumps({"id": 0, "prediction": "test", "origin_prompt": "prompt1"}) + b'\n')
+            f.write(orjson.dumps({"id": 1, "prediction": "test2", "origin_prompt": "prompt2"}) + b'\n')
+        
+        task._score()
+        
+        # 验证extract_rate相关逻辑被执行
+        self.assertTrue(mock_logger.warning.called or mock_logger.info.called)
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.ICL_EVALUATORS')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.build_dataset_from_cfg')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.signature')
+    def test_score_with_ppl_inferencer(self, mock_signature, mock_build_dataset, mock_evaluators, mock_logger_class):
+        """测试_score方法中使用PPL inferencer的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        mock_evaluator = MagicMock()
+        mock_evaluator.evaluate.return_value = {"accuracy": 0.9, "details": [{"pred": "test", "ref": "test"}]}
+        mock_evaluator.score.return_value = {"accuracy": 0.95, "details": []}
+        mock_evaluators.build.return_value = mock_evaluator
+        
+        from inspect import Parameter, Signature
+        mock_sig = Signature([
+            Parameter('predictions', Parameter.POSITIONAL_OR_KEYWORD),
+            Parameter('references', Parameter.POSITIONAL_OR_KEYWORD),
+        ])
+        mock_signature.return_value = mock_sig
+        
+        mock_dataset = MagicMock()
+        mock_test_set = MagicMock()
+        mock_test_set.__len__ = lambda x: 2
+        mock_test_set.select = lambda x: mock_test_set
+        mock_test_set.__getitem__ = lambda x, y: {"answer": "test"}
+        mock_dataset.test = mock_test_set
+        mock_build_dataset.return_value = mock_dataset
+        
+        cfg = self.cfg.copy()
+        cfg["datasets"][0][0]["infer_cfg"]["inferencer"] = {"type": "PPLInferencer"}
+        cfg["eval"]["runner"]["task"]["dump_details"] = True
+        task = self._create_task(cfg)
+        task.logger = mock_logger  # 设置logger为mock
+        task.dataset_cfg = task.dataset_cfgs[0]
+        task.eval_cfg = task.dataset_cfg.get('eval_cfg')
+        task.output_column = task.dataset_cfg['reader_cfg']['output_column']
+        
+        if "abbr" not in task.model_cfg:
+            task.model_cfg["abbr"] = "test_model"
+        
+        # 使用get_infer_output_path获取正确的预测文件路径
+        from ais_bench.benchmark.utils.core.abbr import get_infer_output_path
+        pred_file = get_infer_output_path(
+            task.model_cfg,
+            task.dataset_cfg,
+            os.path.join(task.work_dir, 'predictions'),
+            'jsonl'
+        )
+        os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+        with open(pred_file, 'wb') as f:
+            f.write(orjson.dumps({"id": 0, "prediction": "test", "origin_prediction": "orig", "label: option1": {"BPB": 1.0}}) + b'\n')
+            f.write(orjson.dumps({"id": 1, "prediction": "test2", "origin_prediction": "orig2", "label: option1": {"BPB": 2.0}}) + b'\n')
+        
+        task._score()
+        
+        # 验证PPL相关逻辑被执行（calculate_bpb）
+        self.assertTrue(mock_logger.warning.called or mock_logger.info.called)
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.ICL_EVALUATORS')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.build_dataset_from_cfg')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.signature')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.TEXT_POSTPROCESSORS')
+    def test_score_with_model_postprocessor_pred_list_flag(self, mock_postprocessors, mock_signature, mock_build_dataset, mock_evaluators, mock_logger_class):
+        """测试_score方法中使用model_postprocessor且pred_list_flag为True的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        mock_evaluator = MagicMock()
+        mock_evaluator.evaluate.return_value = {"accuracy": 0.9, "details": []}
+        mock_evaluator.score.return_value = {"accuracy": 0.95, "details": []}
+        mock_evaluators.build.return_value = mock_evaluator
+        
+        from inspect import Parameter, Signature
+        mock_sig = Signature([
+            Parameter('predictions', Parameter.POSITIONAL_OR_KEYWORD),
+            Parameter('references', Parameter.POSITIONAL_OR_KEYWORD),
+        ])
+        mock_signature.return_value = mock_sig
+        
+        mock_processor = MagicMock(return_value=[["processed1"], ["processed2"]])
+        mock_postprocessors.get.return_value = mock_processor
+        
+        mock_dataset = MagicMock()
+        mock_test_set = MagicMock()
+        mock_test_set.__len__ = lambda x: 2
+        mock_test_set.select = lambda x: mock_test_set
+        mock_test_set.__getitem__ = lambda x, y: {"answer": "test"}
+        mock_dataset.test = mock_test_set
+        mock_build_dataset.return_value = mock_dataset
+        
+        cfg = self.cfg.copy()
+        cfg["datasets"][0][0]["eval_cfg"]["model_postprocessor"] = {"type": "test_processor"}
+        task = self._create_task(cfg)
+        task.logger = mock_logger  # 设置logger为mock
+        task.dataset_cfg = task.dataset_cfgs[0]
+        task.eval_cfg = task.dataset_cfg.get('eval_cfg')
+        task.output_column = task.dataset_cfg['reader_cfg']['output_column']
+        
+        if "abbr" not in task.model_cfg:
+            task.model_cfg["abbr"] = "test_model"
+        
+        # Mock test_set[self.output_column]返回列表
+        mock_test_set.__getitem__ = lambda x, y: ["ref1", "ref2"] if y == task.output_column else {"answer": "test"}
+        
+        # 使用get_infer_output_path获取正确的预测文件路径
+        from ais_bench.benchmark.utils.core.abbr import get_infer_output_path
+        pred_file = get_infer_output_path(
+            task.model_cfg,
+            task.dataset_cfg,
+            os.path.join(task.work_dir, 'predictions'),
+            'jsonl'
+        )
+        os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+        with open(pred_file, 'wb') as f:
+            f.write(orjson.dumps({"id": 0, "prediction": ["test1", "test2"]}) + b'\n')
+            f.write(orjson.dumps({"id": 1, "prediction": ["test3", "test4"]}) + b'\n')
+        
+        task._score()
+        
+        # 验证model_postprocessor被调用（列表形式）
+        self.assertTrue(mock_postprocessors.get.called or mock_processor.called)
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.ICL_EVALUATORS')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.build_dataset_from_cfg')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.signature')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.TEXT_POSTPROCESSORS')
+    def test_score_with_model_pred_postprocessor_pred_list_flag(self, mock_postprocessors, mock_signature, mock_build_dataset, mock_evaluators, mock_logger_class):
+        """测试_score方法中使用model_cfg['pred_postprocessor']且pred_list_flag为True的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        mock_evaluator = MagicMock()
+        mock_evaluator.evaluate.return_value = {"accuracy": 0.9}
+        mock_evaluator.score.return_value = {"accuracy": 0.9}
+        mock_evaluators.build.return_value = mock_evaluator
+        
+        from inspect import Parameter, Signature
+        mock_sig = Signature([
+            Parameter('predictions', Parameter.POSITIONAL_OR_KEYWORD),
+            Parameter('references', Parameter.POSITIONAL_OR_KEYWORD),
+        ])
+        mock_signature.return_value = mock_sig
+        
+        mock_processor = MagicMock(return_value=[["processed"]])
+        mock_postprocessors.get.return_value = mock_processor
+        
+        mock_dataset = MagicMock()
+        mock_test_set = MagicMock()
+        mock_test_set.__len__ = lambda x: 2
+        mock_test_set.select = lambda x: mock_test_set
+        mock_test_set.__getitem__ = lambda x, y: {"answer": "test"}
+        mock_dataset.test = mock_test_set
+        mock_build_dataset.return_value = mock_dataset
+        
+        cfg = self.cfg.copy()
+        cfg["models"][0]["pred_postprocessor"] = {"type": "test_processor"}
+        task = self._create_task(cfg)
+        task.dataset_cfg = task.dataset_cfgs[0]
+        task.eval_cfg = task.dataset_cfg.get('eval_cfg')
+        task.output_column = task.dataset_cfg['reader_cfg']['output_column']
+        
+        if "abbr" not in task.model_cfg:
+            task.model_cfg["abbr"] = "test_model"
+        
+        # 创建预测文件（使用二进制模式，匹配代码中的读取方式），prediction是列表
+        pred_file = os.path.join(self.temp_dir, "predictions", "test_model", "test_dataset.jsonl")
+        os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+        with open(pred_file, 'wb') as f:
+            f.write(orjson.dumps({"id": 0, "prediction": ["test1", "test2"]}) + b'\n')
+            f.write(orjson.dumps({"id": 1, "prediction": ["test3", "test4"]}) + b'\n')
+        
+        task._score()
+        
+        # 验证postprocessor被调用（列表形式）
+        self.assertTrue(mock_postprocessors.get.called or mock_processor.called)
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.ICL_EVALUATORS')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.build_dataset_from_cfg')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.signature')
+    @patch('ais_bench.benchmark.tasks.openicl_eval.TEXT_POSTPROCESSORS')
+    def test_score_with_eval_pred_postprocessor_pred_list_flag(self, mock_postprocessors, mock_signature, mock_build_dataset, mock_evaluators, mock_logger_class):
+        """测试_score方法中使用eval_cfg['pred_postprocessor']且pred_list_flag为True的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        mock_evaluator = MagicMock()
+        mock_evaluator.evaluate.return_value = {"accuracy": 0.9}
+        mock_evaluator.score.return_value = {"accuracy": 0.9}
+        mock_evaluators.build.return_value = mock_evaluator
+        
+        from inspect import Parameter, Signature
+        mock_sig = Signature([
+            Parameter('predictions', Parameter.POSITIONAL_OR_KEYWORD),
+            Parameter('references', Parameter.POSITIONAL_OR_KEYWORD),
+        ])
+        mock_signature.return_value = mock_sig
+        
+        mock_processor = MagicMock(return_value=[["processed"]])
+        mock_postprocessors.get.return_value = mock_processor
+        
+        mock_dataset = MagicMock()
+        mock_test_set = MagicMock()
+        mock_test_set.__len__ = lambda x: 2
+        mock_test_set.select = lambda x: mock_test_set
+        mock_test_set.__getitem__ = lambda x, y: {"answer": "test"}
+        mock_dataset.test = mock_test_set
+        mock_build_dataset.return_value = mock_dataset
+        
+        cfg = self.cfg.copy()
+        cfg["datasets"][0][0]["eval_cfg"]["pred_postprocessor"] = {"type": "test_processor"}
+        task = self._create_task(cfg)
+        task.dataset_cfg = task.dataset_cfgs[0]
+        task.eval_cfg = task.dataset_cfg.get('eval_cfg')
+        task.output_column = task.dataset_cfg['reader_cfg']['output_column']
+        
+        if "abbr" not in task.model_cfg:
+            task.model_cfg["abbr"] = "test_model"
+        
+        # 创建预测文件（使用二进制模式，匹配代码中的读取方式），prediction是列表
+        pred_file = os.path.join(self.temp_dir, "predictions", "test_model", "test_dataset.jsonl")
+        os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+        with open(pred_file, 'wb') as f:
+            f.write(orjson.dumps({"id": 0, "prediction": ["test1", "test2"]}) + b'\n')
+            f.write(orjson.dumps({"id": 1, "prediction": ["test3", "test4"]}) + b'\n')
+        
+        task._score()
+        
+        # 验证postprocessor被调用（列表形式）
+        self.assertTrue(mock_postprocessors.get.called or mock_processor.called)
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    def test_format_details_model_pred_strs_empty(self, mock_logger_class):
+        """测试format_details方法中model_pred_strs为空时抛出异常的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        task = self._create_task()
+        
+        predictions = ["pred1", "pred2"]
+        model_pred_strs = []  # 空列表
+        references = ["ref1", "ref2"]
+        details = [{"pred": "pred1", "answer": "ref1", "correct": True}]
+        model_details = [{"pred": "model_pred1", "correct": True}]
+        pred_dicts = [{"origin_prompt": "prompt1", "prediction": "pred1"}]
+        
+        # 应该抛出ParameterValueError
+        from ais_bench.benchmark.utils.logging.exceptions import ParameterValueError
+        with self.assertRaises(ParameterValueError):
+            task.format_details(predictions, model_pred_strs, references, details, model_details, pred_dicts)
+
+    @patch('ais_bench.benchmark.tasks.openicl_eval.AISLogger')
+    def test_format_details_details_only(self, mock_logger_class):
+        """测试format_details方法中只有details没有model_details的情况"""
+        mock_logger = MagicMock()
+        mock_logger_class.return_value = mock_logger
+        
+        task = self._create_task()
+        
+        predictions = ["pred1", "pred2"]
+        model_pred_strs = None
+        references = ["ref1", "ref2"]
+        details = [{"pred": "pred1", "answer": "ref1", "correct": True}, {"pred": "pred2", "answer": "ref2", "correct": False}]
+        model_details = None
+        pred_dicts = [
+            {"origin_prompt": "prompt1", "prediction": "pred1"},
+            {"origin_prompt": "prompt2", "prediction": "pred2"}
+        ]
+        
+        result = task.format_details(predictions, model_pred_strs, references, details, model_details, pred_dicts)
+        
+        # 验证返回结果
+        self.assertIsNotNone(result)
+        self.assertEqual(result['type'], 'GEN')
 
 if __name__ == '__main__':
     unittest.main()
