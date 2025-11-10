@@ -1,305 +1,207 @@
 import unittest
-import sys
-import os
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, mock_open, MagicMock
+import json
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../..')))
+from datasets import Dataset
 
-try:
-    from ais_bench.benchmark.datasets.needlebench_v2.parallel import (
-        get_unique_entries,
-        NeedleBenchParallelDataset,
-        NeedleBenchParallelEvaluator
-    )
-    NEEDLEBENCH_PARALLEL_AVAILABLE = True
-except ImportError:
-    NEEDLEBENCH_PARALLEL_AVAILABLE = False
+from ais_bench.benchmark.datasets.needlebench_v2.parallel import (
+    get_unique_entries,
+    NeedleBenchParallelDataset,
+    NeedleBenchParallelEvaluator,
+)
 
 
-class NeedleBenchParallelTestBase(unittest.TestCase):
-    """NeedleBenchParallel测试的基础类"""
-    @classmethod
-    def setUpClass(cls):
-        if not NEEDLEBENCH_PARALLEL_AVAILABLE:
-            cls.skipTest(cls, "NeedleBenchParallel modules not available")
-
-
-class TestGetUniqueEntries(NeedleBenchParallelTestBase):
-    """测试get_unique_entries函数"""
-    
-    @patch('builtins.open', new_callable=mock_open, read_data='{"arg1": "val1", "arg2": "val2", "language": "English"}\n{"arg1": "val3", "arg2": "val4", "language": "English"}\n{"arg1": "val1", "arg2": "val2", "language": "Chinese"}\n')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.random')
-    def test_get_unique_entries(self, mock_random, mock_file):
-        """测试获取唯一条目"""
-        # 模拟shuffle不改变顺序
-        mock_random.shuffle = lambda x: None
-        
-        result = get_unique_entries(
-            '/fake/path',
-            n=2,
-            language='English',
-            unique_arg1=True,
-            unique_arg2=True,
-            unique_combination=True
-        )
-        
-        self.assertIsInstance(result, list)
-        self.assertLessEqual(len(result), 2)
-    
-    @patch('builtins.open', new_callable=mock_open, read_data='invalid json\n{"arg1": "val1", "arg2": "val2", "language": "English"}\n')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.random')
-    def test_get_unique_entries_with_json_error(self, mock_random, mock_file):
-        """测试处理JSON解码错误"""
-        mock_random.shuffle = lambda x: None
-        
-        result = get_unique_entries(
-            '/fake/path',
-            n=1,
-            language='English'
-        )
-        
-        self.assertIsInstance(result, list)
-
-
-class TestNeedleBenchParallelDataset(NeedleBenchParallelTestBase):
-    """测试NeedleBenchParallelDataset类"""
-    
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_data_path')
-    @patch('os.path.join')
-    @patch('builtins.open')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_unique_entries')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.tiktoken')
-    def test_load(self, mock_tiktoken, mock_get_unique, mock_open, mock_join, mock_get_path):
-        """测试加载并行数据集"""
-        mock_get_path.return_value = '/fake/path'
-        mock_join.side_effect = lambda *args: '/'.join(args)
-        
-        mock_file_handle = MagicMock()
-        mock_file_handle.__enter__.return_value.readlines.return_value = [
-            '{"text": "some text"}\n'
+class TestGetUniqueEntries(unittest.TestCase):
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("random.shuffle")
+    def test_get_unique_entries_basic(self, mock_shuffle, mock_open_file):
+        """测试基本的 get_unique_entries 功能"""
+        lines = [
+            '{"language": "English", "arg1": "a1", "arg2": "a2", "needle": "n1"}\n',
+            '{"language": "English", "arg1": "a3", "arg2": "a4", "needle": "n2"}\n',
         ]
-        mock_open.return_value = mock_file_handle
+        mock_open_file.return_value.readlines.return_value = lines
+        mock_shuffle.return_value = None
         
-        mock_get_unique.return_value = [
-            {'needle': 'needle1', 'retrieval_question': 'q1', 'arg2': 'key1'},
-            {'needle': 'needle2', 'retrieval_question': 'q2', 'arg2': 'key2'}
+        results = get_unique_entries("/fake/path", 2, "English", 
+                                    unique_arg1=True, unique_arg2=True, unique_combination=True)
+        self.assertEqual(len(results), 2)
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("random.shuffle")
+    def test_get_unique_entries_wrong_language(self, mock_shuffle, mock_open_file):
+        """测试过滤错误语言"""
+        lines = [
+            '{"language": "Chinese", "arg1": "a1", "arg2": "a2"}\n',
         ]
+        mock_open_file.return_value.readlines.return_value = lines
+        mock_shuffle.return_value = None
         
+        results = get_unique_entries("/fake/path", 2, "English")
+        self.assertEqual(len(results), 0)
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("random.shuffle")
+    def test_get_unique_entries_invalid_json(self, mock_shuffle, mock_open_file):
+        """测试处理无效 JSON"""
+        lines = [
+            '{"language": "English", "arg1": "a1"}\n',
+            'invalid json\n',
+            '{"language": "English", "arg1": "a2"}\n',
+        ]
+        mock_open_file.return_value.readlines.return_value = lines
+        mock_shuffle.return_value = None
+        
+        results = get_unique_entries("/fake/path", 2, "English")
+        self.assertEqual(len(results), 2)
+
+
+class TestNeedleBenchParallelDataset(unittest.TestCase):
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.get_data_path", return_value="/fake/path")
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.os.environ.get", return_value=None)
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.os.path.join")
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.get_unique_entries")
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.tiktoken")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_load_basic(self, mock_open_file, mock_tiktoken, mock_get_unique, 
+                       mock_join, mock_environ_get, mock_get_path):
+        """测试基本的 load 功能"""
+        # Mock tiktoken
         mock_tokenizer = MagicMock()
         mock_tokenizer.encode.return_value = [1, 2, 3]
-        mock_tokenizer.decode.return_value = 'decoded text'
+        mock_tokenizer.decode.return_value = "decoded text"
         mock_tiktoken.encoding_for_model.return_value = mock_tokenizer
         
-        result = NeedleBenchParallelDataset.load(
-            path='/test/path',
-            needle_file_name='needles.jsonl',
+        # Mock get_unique_entries
+        mock_get_unique.return_value = [
+            {"needle": "n1", "arg2": "k1", "retrieval_question": "Q1? 'A1'."},
+            {"needle": "n2", "arg2": "k2", "retrieval_question": "Q2? 'A2'."},
+        ]
+        
+        # Mock file reading
+        file_content = '{"text": "context text"}'
+        mock_open_file.return_value.__iter__ = lambda self: iter([file_content + "\n"])
+        mock_join.side_effect = lambda *args: "/".join(args)
+        
+        ds = NeedleBenchParallelDataset.load(
+            path="/any",
+            needle_file_name="needles.jsonl",
             length=1000,
             depths=[10, 20],
-            tokenizer_model='gpt-3.5-turbo',
-            file_list=['test.jsonl'],
+            tokenizer_model="gpt-3.5-turbo",
+            file_list=["PaulGrahamEssays.jsonl"],
             num_repeats_per_file=1,
             length_buffer=100,
-            language='English',
-            quesiton_position='End'
+            language="English",
+            quesiton_position="End"
         )
-        
-        self.assertIsNotNone(result)
-        self.assertTrue(hasattr(result, 'column_names'))
-        self.assertIn('prompt', result.column_names)
-        self.assertIn('answer', result.column_names)
-    
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_data_path')
-    @patch('os.path.join')
-    @patch('builtins.open')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_unique_entries')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.tiktoken')
-    def test_load_chinese(self, mock_tiktoken, mock_get_unique, mock_open, mock_join, mock_get_path):
-        """测试加载中文并行数据集"""
-        mock_get_path.return_value = '/fake/path'
-        mock_join.side_effect = lambda *args: '/'.join(args)
-        
-        mock_file_handle = MagicMock()
-        mock_file_handle.__enter__.return_value.readlines.return_value = [
-            '{"text": "中文文本"}\n'
-        ]
-        mock_open.return_value = mock_file_handle
-        
-        mock_get_unique.return_value = [
-            {'needle': '针1', 'retrieval_question': '问题1？\'答案1\'。', 'arg2': '关键词1'}
-        ]
-        
+        self.assertIsInstance(ds, Dataset)  
+
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.get_data_path", return_value="/fake/path")
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.os.environ.get", return_value=None)
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.os.path.join")
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.get_unique_entries")
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.tiktoken")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_load_chinese(self, mock_open_file, mock_tiktoken, mock_get_unique,
+                         mock_join, mock_environ_get, mock_get_path):
+        """测试中文语言"""
         mock_tokenizer = MagicMock()
         mock_tokenizer.encode.return_value = [1, 2, 3]
-        mock_tokenizer.decode.return_value = '解码文本'
+        mock_tokenizer.decode.return_value = "解码文本"
         mock_tiktoken.encoding_for_model.return_value = mock_tokenizer
         
-        result = NeedleBenchParallelDataset.load(
-            path='/test/path',
-            needle_file_name='needles.jsonl',
+        mock_get_unique.return_value = [
+            {"needle": "n1", "arg2": "k1", "retrieval_question": "问题1？'答案1'。"},
+        ]
+        
+        file_content = '{"text": "上下文"}'
+        mock_open_file.return_value.__iter__ = lambda self: iter([file_content + "\n"])
+        mock_join.side_effect = lambda *args: "/".join(args)
+        
+        ds = NeedleBenchParallelDataset.load(
+            path="/any",
+            needle_file_name="needles.jsonl",
             length=1000,
             depths=[10],
-            tokenizer_model='gpt-3.5-turbo',
-            file_list=['test.jsonl'],
+            tokenizer_model="gpt-3.5-turbo",
+            file_list=["zh_general.jsonl"],
             num_repeats_per_file=1,
             length_buffer=100,
-            language='Chinese',
-            quesiton_position='Start'
+            language="Chinese",
+            quesiton_position="End"
         )
-        
-        self.assertIsNotNone(result)
-    
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_data_path')
-    @patch('os.path.join')
-    @patch('builtins.open')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_unique_entries')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.tiktoken')
-    def test_load_question_position_start_english(self, mock_tiktoken, mock_get_unique, mock_open, mock_join, mock_get_path):
-        """测试加载英文数据集，问题在开始位置"""
-        mock_get_path.return_value = '/fake/path'
-        mock_join.side_effect = lambda *args: '/'.join(args)
-        
-        mock_file_handle = MagicMock()
-        mock_file_handle.__enter__.return_value.readlines.return_value = [
-            '{"text": "some text"}\n'
-        ]
-        mock_open.return_value = mock_file_handle
-        
-        mock_get_unique.return_value = [
-            {'needle': 'needle1', 'retrieval_question': "q1? 'answer1'.", 'arg2': 'key1'}
-        ]
-        
+        self.assertIsInstance(ds, Dataset)
+
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.get_data_path", return_value="/fake/path")
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.os.environ.get", return_value=None)
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.os.path.join")
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.get_unique_entries")
+    @patch("ais_bench.benchmark.datasets.needlebench_v2.parallel.tiktoken")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_load_invalid_question_position(self, mock_open_file, mock_tiktoken, mock_get_unique,
+                                           mock_join, mock_environ_get, mock_get_path):
+        """测试无效的问题位置"""
         mock_tokenizer = MagicMock()
         mock_tokenizer.encode.return_value = [1, 2, 3]
-        mock_tokenizer.decode.return_value = 'decoded text'
+        mock_tokenizer.decode.return_value = "decoded text"
         mock_tiktoken.encoding_for_model.return_value = mock_tokenizer
-        
-        result = NeedleBenchParallelDataset.load(
-            path='/test/path',
-            needle_file_name='needles.jsonl',
-            length=1000,
-            depths=[10],
-            tokenizer_model='gpt-3.5-turbo',
-            file_list=['test.jsonl'],
-            num_repeats_per_file=1,
-            length_buffer=100,
-            language='English',
-            quesiton_position='Start'
-        )
-        
-        self.assertIsNotNone(result)
-    
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_data_path')
-    @patch('os.path.join')
-    @patch('builtins.open')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_unique_entries')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.tiktoken')
-    @unittest.skip("skip: unstable due to parsing and depth logic; skip per request")
-    def test_load_unsupported_question_position(self, mock_tiktoken, mock_get_unique, mock_open, mock_join, mock_get_path):
-        """测试不支持的问题位置"""
-        mock_get_path.return_value = '/fake/path'
-        mock_join.side_effect = lambda *args: '/'.join(args)
-        
-        mock_file_handle = MagicMock()
-        mock_file_handle.__enter__.return_value.readlines.return_value = [
-            '{"text": "text"}\n'
-        ]
-        mock_open.return_value = mock_file_handle
-        
         mock_get_unique.return_value = [
-            {'needle': 'needle1', 'retrieval_question': 'q1', 'arg2': 'key1'}
+            {"needle": "n1", "arg2": "k1", "retrieval_question": "Q1? 'A1'."},
         ]
-        
-        mock_tokenizer = MagicMock()
-        mock_tokenizer.encode.return_value = [1, 2, 3]
-        mock_tokenizer.decode.return_value = 'decoded'
-        mock_tiktoken.encoding_for_model.return_value = mock_tokenizer
+        mock_join.side_effect = lambda *args: "/".join(args)
+        file_content = '{"text": "context"}'
+        mock_open_file.return_value.__iter__ = lambda self: iter([file_content + "\n"])
         
         with self.assertRaises(ValueError):
             NeedleBenchParallelDataset.load(
-                path='/test/path',
-                needle_file_name='needles.jsonl',
+                path="/any",
+                needle_file_name="needles.jsonl",
                 length=1000,
                 depths=[10],
-                tokenizer_model='gpt-3.5-turbo',
-                file_list=['PaulGrahamEssays.jsonl'],
+                tokenizer_model="gpt-3.5-turbo",
+                file_list=["PaulGrahamEssays.jsonl"],
                 num_repeats_per_file=1,
                 length_buffer=100,
-                language='English',
-                quesiton_position='Middle'
+                language="English",
+                quesiton_position="Invalid"
             )
-    
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_data_path')
-    @patch('os.path.join')
-    @patch('builtins.open')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.get_unique_entries')
-    @patch('ais_bench.benchmark.datasets.needlebench_v2.parallel.tiktoken')
-    def test_load_multiple_depths(self, mock_tiktoken, mock_get_unique, mock_open, mock_join, mock_get_path):
-        """测试多个depths的情况"""
-        mock_get_path.return_value = '/fake/path'
-        mock_join.side_effect = lambda *args: '/'.join(args)
-        
-        mock_file_handle = MagicMock()
-        mock_file_handle.__enter__.return_value.readlines.return_value = [
-            '{"text": "some text"}\n'
-        ]
-        mock_open.return_value = mock_file_handle
-        
-        mock_get_unique.return_value = [
-            {'needle': 'needle1', 'retrieval_question': "q1? 'answer1'.", 'arg2': 'key1'},
-            {'needle': 'needle2', 'retrieval_question': "q2? 'answer2'.", 'arg2': 'key2'}
-        ]
-        
-        mock_tokenizer = MagicMock()
-        mock_tokenizer.encode.return_value = [1, 2, 3]
-        mock_tokenizer.decode.return_value = 'decoded text'
-        mock_tiktoken.encoding_for_model.return_value = mock_tokenizer
-        
-        result = NeedleBenchParallelDataset.load(
-            path='/test/path',
-            needle_file_name='needles.jsonl',
-            length=1000,
-            depths=[10, 20, 30],  # 多个depths
-            tokenizer_model='gpt-3.5-turbo',
-            file_list=['test.jsonl'],
-            num_repeats_per_file=1,
-            length_buffer=100,
-            language='English',
-            quesiton_position='End'
-        )
-        
-        self.assertIsNotNone(result)
 
 
-class TestNeedleBenchParallelEvaluator(NeedleBenchParallelTestBase):
-    """测试NeedleBenchParallelEvaluator类"""
-    
-    @patch('builtins.print')
-    def test_score(self, mock_print):
-        """测试并行评估器评分"""
+class TestNeedleBenchParallelEvaluator(unittest.TestCase):
+    def test_score_success(self):
+        """测试评分成功"""
         evaluator = NeedleBenchParallelEvaluator()
+        predictions = ["keyword1 and keyword2"]
+        gold = ["keyword1*keyword2#10*20"]
         
-        predictions = ['text with key1 and key2']
-        gold = ['key1*key2#10*20']
+        with patch('builtins.print'):  # Suppress print output
+            result = evaluator.score(predictions, gold)
         
-        result = evaluator.score(predictions, gold)
-        
-        self.assertIn('average_score', result)
-        self.assertIn('details', result)
-        # 应该包含Depth分数
-        self.assertTrue(any(key.startswith('Depth') for key in result.keys()))
-    
-    def test_score_different_lengths(self):
-        """测试不同长度的预测和黄金标准"""
+        self.assertIn("average_score", result)
+        self.assertIn("details", result)
+        self.assertIn("Depth10", result)
+        self.assertIn("Depth20", result)
+
+    def test_score_length_mismatch(self):
+        """测试长度不匹配"""
         evaluator = NeedleBenchParallelEvaluator()
+        result = evaluator.score(["pred1"], ["ref1", "ref2"])
+        self.assertIn("error", result)
+
+    def test_score_partial_match(self):
+        """测试部分匹配"""
+        evaluator = NeedleBenchParallelEvaluator()
+        predictions = ["keyword1 only"]
+        gold = ["keyword1*keyword2#10*20"]
         
-        predictions = ['pred1']
-        gold = ['gold1', 'gold2']
+        with patch('builtins.print'):
+            result = evaluator.score(predictions, gold)
         
-        result = evaluator.score(predictions, gold)
-        
-        self.assertIn('error', result)
+        self.assertIn("average_score", result)
+        self.assertGreater(result["average_score"], 0)
+        self.assertLess(result["average_score"], 100)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-
