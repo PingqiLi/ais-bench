@@ -573,7 +573,7 @@ class TokenProducer:
             # NOTE: Accumulating random delta values from gamma distribution
             # would have 1-2% gap from target_total_delay_s. This logic
             # closes the gap to stabilize throughput data across different seeds
-            self.logger.info(
+            self.logger.debug(
                 f"Ramp-up strategy is not set, "
                 f"assume fixed request rate and scale delay to "
                 f"time to align with target request time: {request_num / self.request_rate} seconds"

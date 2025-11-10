@@ -341,7 +341,7 @@ class OpenICLApiInferTask(BaseTask):
 
         data_list, finish_data_count, global_indexes = self._get_data_list()
         if len(data_list) == 0:
-            self.logger.info(f"Get no data to infer, task finished")
+            self.logger.warning(f"Get no data to infer, task finished")
             return
 
         # warmup
