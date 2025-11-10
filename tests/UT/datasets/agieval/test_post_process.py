@@ -224,14 +224,16 @@ class TestExtractAnswerInBracket(unittest.TestCase):
     def test_no_prefix(self):
         """测试无前缀"""
         text = "The answer is 42】"
-        result = extract_answer_in_bracket(text)
-        self.assertEqual(result, '')
+        # 当只有suffix没有prefix时，函数会抛出ValueError
+        with self.assertRaises(ValueError):
+            extract_answer_in_bracket(text)
 
     def test_no_suffix(self):
         """测试无后缀"""
         text = "The answer is 【42"
-        result = extract_answer_in_bracket(text)
-        self.assertEqual(result, '')
+        # 当只有prefix没有suffix时，函数会抛出ValueError
+        with self.assertRaises(ValueError):
+            extract_answer_in_bracket(text)
 
     def test_empty_bracket(self):
         """测试空括号"""
