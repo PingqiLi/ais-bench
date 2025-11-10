@@ -27,6 +27,30 @@
 ### error description
 ### solution
 
+## UTILS-CFG-002
+### error description
+### solution
+
+## UTILS-CFG-003
+### error description
+### solution
+
+## UTILS-CFG-004
+### error description
+### solution
+
+## UTILS-CFG-005
+### error description
+### solution
+
+## UTILS-CFG-006
+### error description
+### solution
+
+## UTILS-CFG-007
+### error description
+### solution
+
 ## PARTI-FILE-001
 ### error description
 ### solution
@@ -59,6 +83,46 @@
 ### error description
 ### solution
 
+## RUNNER-TASK-001
+### error description
+### solution
+
+## TASK-PARAM-001
+### error description
+### solution
+
+## TINFER-PARAM-001
+### error description
+### solution
+
+## TINFER-PARAM-002
+### error description
+### solution
+
+## TINFER-PARAM-003
+### error description
+### solution
+
+## TINFER-PARAM-004
+### error description
+### solution
+
+## TINFER-PARAM-005
+### error description
+### solution
+
+## TINFER-IMPL-001
+### error description
+### solution
+
+## TEVAL-PARAM-001
+### error description
+### solution
+
+## TEVAL-PARAM-002
+### error description
+### solution
+
 ## ICLI-PARAM-001
 ### error description
 ### solution
@@ -76,6 +140,18 @@
 ### solution
 
 ## ICLI-PARAM-005
+### error description
+### solution
+
+## ICLI-RUNTIME-001
+### error description
+### solution
+
+## ICLI-RUNTIME-002
+### error description
+### solution
+
+## ICLI-RUNTIME-003
 ### error description
 ### solution
 

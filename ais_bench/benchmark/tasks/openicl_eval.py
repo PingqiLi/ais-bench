@@ -21,13 +21,14 @@ from mmengine.utils import mkdir_or_exist
 from ais_bench.benchmark.registry import (ICL_EVALUATORS, MODELS, TASKS,
                                   TEXT_POSTPROCESSORS)
 from ais_bench.benchmark.tasks.base import BaseTask, extract_role_pred
-from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, get_infer_output_path
-from ais_bench.benchmark.utils.config import build_dataset_from_cfg
-from ais_bench.benchmark.utils.logging import get_logger
-from ais_bench.benchmark.utils.core.abbr import task_abbr_from_cfg
-
+from ais_bench.benchmark.utils.core.abbr import dataset_abbr_from_cfg, get_infer_output_path, task_abbr_from_cfg
 from ais_bench.benchmark.utils.core.types import check_type
+from ais_bench.benchmark.utils.config import build_dataset_from_cfg
 from ais_bench.benchmark.tasks.base import TaskStateManager
+from ais_bench.benchmark.utils.logging import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import TEVAL_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ParameterValueError
+from ais_bench.benchmark.openicl.icl_evaluator.icl_base_evaluator import BaseEvaluator
 
 
 @TASKS.register_module()
@@ -44,7 +45,6 @@ class OpenICLEvalTask(BaseTask):
 
     def __init__(self, cfg: ConfigDict):
         super().__init__(cfg)
-        self.logger = get_logger()
         self.num_gpus = max(
             c.get('eval_cfg', {}).get('num_gpus', 0)
             for c in sum([self.dataset_cfgs], []))
@@ -52,6 +52,7 @@ class OpenICLEvalTask(BaseTask):
             'task', {}).get('dump_details', False)
         self.cal_extract_rate = cfg.get('eval', {}).get('runner', {}).get(
             'task', {}).get('cal_extract_rate', False)
+        self.logger.debug(f"Dump details: {self.dump_details}, calculate extract rate: {self.cal_extract_rate}")
 
     def get_command(self, cfg_path, template):
         sys.path.append(os.getcwd())
@@ -65,22 +66,23 @@ class OpenICLEvalTask(BaseTask):
             self.dataset_cfg = dataset_cfg
             # Load Dataset
             self.eval_cfg = self.dataset_cfg.get('eval_cfg')
+            self.logger.debug(f"Eval config: {self.eval_cfg}")
             self.output_column = dataset_cfg['reader_cfg']['output_column']
 
             # overwrite postprocessor if the model has specified one
             ds_abbr = dataset_abbr_from_cfg(self.dataset_cfg)
             model_postprocessors = self.model_cfg.get(
                 'pred_postprocessor', {})
+            self.logger.debug(f"Model postprocessors: {model_postprocessors}")
             for pattern in model_postprocessors.keys():
                 if fnmatch.fnmatch(ds_abbr, pattern):
-                    self.eval_cfg[
-                        'pred_postprocessor'] = model_postprocessors[
-                            pattern]  # noqa
+                    self.eval_cfg['pred_postprocessor'] = model_postprocessors[pattern]
                     break
 
             out_path = get_infer_output_path(
                 self.model_cfg, self.dataset_cfg,
                 osp.join(self.work_dir, 'results'))
+            self.logger.debug(f"Output path: {out_path}")
             if osp.exists(out_path):
                 self.logger.warning(f'Output file {out_path} already exists and will be overwritten.')
             self._score()
@@ -91,9 +93,9 @@ class OpenICLEvalTask(BaseTask):
         n = self.dataset_cfg.get('n', num_return_sequences)
 
         check_type(k, int)
-        assert k > 0, f"k expected a positive integer, but got {k}"
         check_type(n, int)
-        assert n > 0, f"n expected a positive integer, but got {n}"
+        if k <= 0 or n <= 0 or k>n:
+            raise ParameterValueError(TEVAL_CODES.N_K_ILLEGAL, f"k and n must be greater than 0 and k <= n, but got k: {k}, n: {n}")
 
         self.dataset_cfg.update({
             "k":k,
@@ -102,12 +104,14 @@ class OpenICLEvalTask(BaseTask):
 
         test_set = build_dataset_from_cfg(self.dataset_cfg).test
         test_size = len(test_set)
+        # merge-ds mode the final test set size should be subtracted by the number of data in other sub-datasets
         if isinstance(self.num_prompts, int) and self.num_prompts > 0:
             if test_size >= self.num_prompts:
                 test_set = test_set.select(range(self.num_prompts))
             self.num_prompts -= test_size
         # Postprocess dataset if necessary
         if 'dataset_postprocessor' in self.eval_cfg:
+            self.logger.debug(f"Dataset postprocessor: {self.eval_cfg['dataset_postprocessor']}")
             proc = self.eval_cfg['dataset_postprocessor']['type']
             if isinstance(proc, str):
                 proc = TEXT_POSTPROCESSORS.get(proc)
@@ -123,6 +127,8 @@ class OpenICLEvalTask(BaseTask):
         filename = get_infer_output_path(
             self.model_cfg, self.dataset_cfg,
             osp.join(self.work_dir, 'predictions'),'jsonl')
+        
+        self.logger.debug(f"Prediction filename: {filename}")
         # in case the prediction is partial
         root, ext = osp.splitext(filename)
         partial_filename = root + '_0' + ext
@@ -156,30 +162,9 @@ class OpenICLEvalTask(BaseTask):
             pred_strs = preds.pop('prediction', None)
             pred_list_flag = pred_strs is not None and isinstance(
                 pred_strs[0], list)
-            if ('pred_role' in self.eval_cfg
-                    and 'meta_template' in self.model_cfg
-                    and not MODELS.get(self.model_cfg['type']).is_api):
-                # Create a prompt template for role config parsing
-                from ais_bench.benchmark.models import LMTemplateParser
-                parser = LMTemplateParser(self.model_cfg['meta_template'])
-                role = parser.roles[self.eval_cfg['pred_role']]
-                if sc_size is not None:
-                    assert pred_list_flag, (
-                        'The prediction for Self-Consistency'
-                        'must be list.')
-                if pred_list_flag:
-                    pred_strs = [[
-                        extract_role_pred(_pred, role.get('begin', None),
-                                          role.get('end', None))
-                        for _pred in pred
-                    ] for pred in pred_strs]
-                else:
-                    pred_strs = [
-                        extract_role_pred(pred, role.get('begin', None),
-                                          role.get('end', None))
-                        for pred in pred_strs
-                    ]
+
             if 'pred_postprocessor' in self.model_cfg:
+                self.logger.debug(f"Model pred postprocessor: {self.model_cfg['pred_postprocessor']}")
                 kwargs = copy.deepcopy(self.model_cfg['pred_postprocessor'])
                 proc = kwargs.pop('type')
                 if isinstance(proc, str):
@@ -191,6 +176,7 @@ class OpenICLEvalTask(BaseTask):
                     pred_strs = [proc(s, **kwargs) for s in pred_strs]
             # Postprocess predictions if necessary
             if 'pred_postprocessor' in self.eval_cfg:
+                self.logger.debug(f"Eval pred postprocessor: {self.eval_cfg['pred_postprocessor']}")
                 kwargs = self.eval_cfg['pred_postprocessor']
                 proc = kwargs.pop('type')
                 if isinstance(proc, str):
@@ -203,12 +189,13 @@ class OpenICLEvalTask(BaseTask):
 
             model_pred_strs = []
             if 'model_postprocessor' in self.eval_cfg:
+                self.logger.debug(f"Model postprocessor: {self.eval_cfg['model_postprocessor']}")
                 references = (test_set[self.output_column]
                               if self.output_column else None)
                 model_pred_dicts = copy.deepcopy(pred_dicts)
                 for i, pred_dict in enumerate(model_pred_dicts):
                     pred_dict['reference'] = [references[i]]
-                self.logger.info('Postprocessing model predictions...')
+                self.logger.info('Start postprocessing model predictions...')
                 kwargs = self.eval_cfg['model_postprocessor']
                 proc = kwargs.pop('type')
                 if isinstance(proc, str):
@@ -230,7 +217,7 @@ class OpenICLEvalTask(BaseTask):
             #TODO Configure eval in a more elegant way
             if 'returns_tool_calls' in self.model_cfg.keys():
                 self.eval_cfg['evaluator'].update({'is_fc_model':self.model_cfg.get('returns_tool_calls')})
-            icl_evaluator = ICL_EVALUATORS.build(self.eval_cfg['evaluator'])
+            icl_evaluator: BaseEvaluator = ICL_EVALUATORS.build(self.eval_cfg['evaluator'])
             # need results dir to save other files
             out_path = get_infer_output_path(
                 self.model_cfg, self.dataset_cfg,
@@ -295,7 +282,7 @@ class OpenICLEvalTask(BaseTask):
                 result.pop('details', None)
 
         if 'error' in result:
-            self.logger.error(
+            self.logger.warning(
                 f'Task {task_abbr_from_cfg(self.cfg)}: {result["error"]}')
             return
         elif model_result is None:
@@ -324,6 +311,7 @@ class OpenICLEvalTask(BaseTask):
         out_path = get_infer_output_path(self.model_cfg, self.dataset_cfg,
                                          osp.join(self.work_dir, 'results'))
         mkdir_or_exist(osp.split(out_path)[0])
+        self.logger.debug(f"Save result to {out_path}")
         mmengine.dump(result, out_path, ensure_ascii=False, indent=4)
 
     def extract_rate(self, results):
@@ -378,16 +366,16 @@ class OpenICLEvalTask(BaseTask):
                     new_key = key.replace('label: ', '')
                     origin_prediction[new_key] = origin_prediction.pop(key)
             if ppl_flag:
+                self.logger.debug(f"PPL type prediction")
                 results['type'] = 'PPL'
                 result['origin_prediction'] = origin_prediction
                 result['predictions'] = str(predictions[i])
                 result['references'] = str(references[i])
                 result['correct'] = str(predictions[i]) == str(references[i])
             elif details is not None and model_details is not None:
-                assert model_pred_strs != [], \
-                    'Model details is not None, but model_pred_strs is empty'
-                self.logger.info(
-                    f"model_details[i]['pred']: {model_details[i]['pred']}")
+                if model_pred_strs == []:
+                    raise ParameterValueError(TEVAL_CODES.MODEL_PRED_STRS_EMPTY, f"Model details is not None, but model_pred_strs is empty")
+                self.logger.debug(f"GEN type prediction")
                 results['type'] = 'GEN'
                 result['prompt'] = origin_prediction['origin_prompt']
                 result['origin_prediction'] = pred_dicts[i]['prediction']
@@ -397,6 +385,7 @@ class OpenICLEvalTask(BaseTask):
                 result['correct'] = details[i]['correct']
                 result['model_extract_correct'] = model_details[i]['correct']
             elif details is not None:
+                self.logger.debug(f"GEN type prediction")
                 results['type'] = 'GEN'
                 result['prompt'] = origin_prediction['origin_prompt']
                 result['origin_prediction'] = pred_dicts[i]['prediction']
@@ -404,6 +393,7 @@ class OpenICLEvalTask(BaseTask):
                 result['references'] = details[i]['answer']
                 result['correct'] = details[i]['correct']
             else:
+                self.logger.debug(f"GEN type prediction")
                 results['type'] = 'GEN'
                 result['prompt'] = origin_prediction['origin_prompt']
                 result['origin_prediction'] = pred_dicts[i]['prediction']
@@ -463,6 +453,7 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    logger = AISLogger()
     args = parse_args()
     cfg = Config.fromfile(args.config)
     task_state_manager = TaskStateManager(
@@ -483,22 +474,14 @@ if __name__ == '__main__':
     )
     start_time = time.perf_counter()
     try:
-        evaluator = OpenICLEvalTask(cfg)
+        evaluator: OpenICLEvalTask = OpenICLEvalTask(cfg)
         evaluator.run()
     except Exception as e:
-        task_state_manager.update_task_state(
-            {
-                "status": "error",
-            }
-        )
+        task_state_manager.update_task_state({"status": "error"})
         raise e
 
     end_time = time.perf_counter()
-    get_logger().info(f'time elapsed: {end_time - start_time:.2f}s')
-    task_state_manager.update_task_state(
-        {
-            "status": "finish",
-        }
-    )
+    logger.info(f'Evaluation task time elapsed: {end_time - start_time:.2f}s')
+    task_state_manager.update_task_state({"status": "finish"})
     manager_t.join()
 

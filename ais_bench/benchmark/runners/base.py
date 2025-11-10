@@ -11,7 +11,7 @@ from tabulate import tabulate
 from datetime import datetime, timedelta
 from mmengine.config import Config, ConfigDict
 
-from ais_bench.benchmark.utils.logging import get_logger
+from ais_bench.benchmark.utils.logging.logger import AISLogger
 from ais_bench.benchmark.utils.file import read_and_clear_statuses
 
 
@@ -19,7 +19,13 @@ def create_progress_bar(finished_count=0, total_count=1000, description="", leng
     """create progress bar string"""
     if finished_count is None or not total_count:
         return "NA"
-    filled = int(float(finished_count) / total_count * length)
+    if finished_count < 0:
+        finished_count = 0
+    if total_count < 0:
+        total_count = 0
+    if finished_count > total_count:
+        finished_count = total_count
+    filled = int(float(finished_count) / total_count * length) if total_count > 0 else 0
     empty = length - filled
     return f"[{ '#' * filled }{ ' ' * empty }] {finished_count}/{total_count} {description}"
 
@@ -37,18 +43,25 @@ class TasksMonitor:
         refresh_interval:float = 0.3,
         run_in_background: bool = False,
     ):
+        self.logger = AISLogger()
         self.output_path = output_path
         self.tmp_file_path = os.path.join(self.output_path, "status_tmp")
         self.tmp_file_name_list = [f"tmp_{task_name.replace('/', '_')}.json" for task_name in task_names]
         if not os.path.exists(self.tmp_file_path):
             os.makedirs(self.tmp_file_path, mode=0o750)
+        self.logger.debug(f"TasksMonitor initialized, temporary file directory: {self.tmp_file_path}")
+
         self.tasks_state_map = {task_name: {"status": "not start"} for task_name in task_names}
         self.task_end_status_list = {task_name: [] for task_name in task_names}
         self.is_debug = is_debug
         self.refresh_interval = refresh_interval
         self.run_in_background = run_in_background
         self.last_table = None
-        get_logger().info(f"Launch TasksMonitor, PID: {os.getpid()}")
+        self.logger.info(f"Launch TasksMonitor, "
+                    f"PID: {os.getpid()}, "
+                    f"Refresh interval: {self.refresh_interval}, "
+                    f"Run in background: {self.run_in_background}"
+                    )
     
     @staticmethod
     def rm_tmp_files(work_dir: str):
@@ -60,31 +73,43 @@ class TasksMonitor:
 
     def launch_state_board(self):
         if self.is_debug:
-            get_logger().info("Debug mode, won't launch task state board")
+            self.logger.info("Debug mode, won't launch task state board")
             return
         if not self.run_in_background:
-            get_logger().info("Start launch task state board ...")
+            self.logger.info("Start launch task state board ...")
             curses.wrapper(self._display_task_state)
             print(self.last_table)
         else:
+            self.logger.debug("Running task progress monitor in background mode")
             self._update_tasks_progress()
 
     def _is_all_task_done(self):
-        for _, state in self.tasks_state_map.items():
-            if state.get("status") != "finish" and state.get("status") != "error" and state.get("status") != "killed":
-
-                return False
+        unfinished_tasks = []
+        for task_name, state in self.tasks_state_map.items():
+            status = state.get("status")
+            if status not in ("finish", "error", "killed"):
+                unfinished_tasks.append((task_name, status))
+        
+        if unfinished_tasks:
+            return False
+        
+        self.logger.debug("All tasks are finished")
         return True
 
     def _refresh_task_state(self):
         start_time = time.time()
         statuses = read_and_clear_statuses(self.tmp_file_path, self.tmp_file_name_list)
+        
         if len(statuses) == 0:
             # check whether process exist
             for task_name, state in self.tasks_state_map.items():
                 if not state.get("process_id"):
                     continue
-                if not psutil.pid_exists(state.get("process_id")) and state.get("status") != "finish" and state.get("status") != "error": # killed
+                if (
+                    not psutil.pid_exists(state.get("process_id"))
+                    and state.get("status") != "finish"
+                    and state.get("status") != "error"
+                ):  # killed
                     self.tasks_state_map[task_name]['status'] = "killed"
                 else:
                     continue
@@ -103,11 +128,12 @@ class TasksMonitor:
             self.tasks_state_map[task_name]['finish_count'] = status.get('finish_count')
             self.tasks_state_map[task_name]['total_count'] = status.get('total_count')
             self.tasks_state_map[task_name]['progress_description'] = status.get('progress_description')
+            
             if status.get('status'):
                 self.tasks_state_map[task_name]['status'] = status['status']
             self.tasks_state_map[task_name]['other_kwargs'] = status.get('other_kwargs')
             if time.time() - start_time > 100:
-                print("warning: refresh time out!")
+                self.logger.warning("Task monitor refresh time out!")
                 break
 
     def _get_task_states(self):
@@ -140,6 +166,7 @@ class TasksMonitor:
             for _, state in self.tasks_state_map.items():
                 if state.get("status") == "finish" or state.get("status") == "error":
                     cur_count += 1
+            
             if cur_count > pbar.n:
                 pbar.update(cur_count - pbar.n)
             # break when all the task finished
@@ -170,13 +197,11 @@ class TasksMonitor:
                             current_page -= 1
                         elif key == curses.KEY_DOWN:
                             current_page += 1
-                        # press 'r' or 'R' to refresh page
-                        elif key in (ord('r'), ord('R')):
-                            last_refresh_time = 0  # force refresh
                         # press 'p' or 'P' to pause/resume screen refresh
                         elif key in (ord('p'), ord('P')):
                             stop_screen_refresh = not stop_screen_refresh
                 except Exception:
+                    self.logger.debug("Error handling key input")
                     pass
 
                 # if screen refresh is paused, only check key input
@@ -221,16 +246,16 @@ class TasksMonitor:
                 stdscr.addstr(2, 0, f"Page: {current_page + 1}/{total_pages}  Total {(int((len(table_lines) - 1) / 2))} rows of data")
 
                 # add screen refresh status display and operation prompt
-                screen_status = "PAUSED" if stop_screen_refresh else "RUNNING"
-                stdscr.addstr(3, 0, f"Press Up/Down arrow to page, 'R' to refresh, 'P' to {screen_status} screen refresh, 'Ctrl + C' to exit")
+                stdscr.addstr(3, 0, f"Press Up/Down arrow to page, 'P' to PAUSE/RESUME screen refresh, 'Ctrl + C' to exit")
 
                 try:
                     # display current page table lines, start from line 5
                     for i, line in enumerate(current_table_lines):
                         if i + 5 < curses.LINES:  # make sure the line won't out of screen height
                             stdscr.addstr(i + 5, 0, line)
-                except curses.error:
+                except curses.error as e:
                     # handle curses error, prevent program crash
+                    self.logger.debug(f"Curses display error (screen may be too small): {e}")
                     pass
 
                 # refresh screen
@@ -238,8 +263,10 @@ class TasksMonitor:
 
                 if self._is_all_task_done():
                     self.last_table = full_table
+                    self.logger.debug("All tasks completed, exiting interactive display")
                     break
         except KeyboardInterrupt as e:
+            self.logger.debug("Received KeyboardInterrupt, saving current state and exiting")
             self._refresh_task_state()
             data = self._get_task_states()
             full_table = tabulate(data, headers=headers, tablefmt="grid")
@@ -259,6 +286,7 @@ class BaseRunner:
     def __init__(self,
                  task: ConfigDict,
                  debug: bool = False):
+        self.logger = AISLogger()
         self.task_cfg = Config(task)
         self.debug = debug
 
@@ -295,5 +323,4 @@ class BaseRunner:
         failed_logs = []
         for _task, code in status:
             if code != 0:
-                get_logger().error(f'{_task} failed with code {code}')
                 failed_logs.append(_task)
