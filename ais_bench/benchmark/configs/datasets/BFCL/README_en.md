@@ -19,7 +19,7 @@ The BFCL dataset is integrated as a Python dependency package. Data files are in
 
 ### Installation Steps
 ```bash
-pip3 install -r requirements/bfcl_dependencies.txt --no-deps
+pip3 install -r requirements/datasets/bfcl_dependencies.txt --no-deps
 ```
 
 ✅ **After installation, the BFCL dataset is installed locally along with the dependency package and can be used normally in an offline environment.**
