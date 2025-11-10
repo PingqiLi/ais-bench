@@ -181,7 +181,7 @@ class TestRunner:
     
     def run_tests(self, 
                   verbose: bool = False,
-                  parallel: bool = False,
+                  parallel: Optional[object] = None,  # Can be int, 'auto', or None
                   max_failures: Optional[int] = None,
                   specific_tests: Optional[List[str]] = None) -> bool:
         """
@@ -189,7 +189,7 @@ class TestRunner:
         
         Args:
             verbose: Whether to show detailed output
-            parallel: Whether to run tests in parallel
+            parallel: Number of parallel processes (None means no parallel, 'auto' means auto-detect, int means specific worker count)
             max_failures: Maximum number of failures
             specific_tests: Specific test files to run
             
@@ -247,8 +247,17 @@ class TestRunner:
         if verbose:
             cmd.append('-v')
         
-        if parallel:
-            cmd.extend(['-n', 'auto'])  # Use pytest-xdist for parallel testing
+        if parallel is not None:
+            if parallel == 'auto':
+                cmd.extend(['-n', 'auto'])  # Use pytest-xdist for parallel testing with auto-detect
+                print("⚡ Running tests in parallel mode (auto-detect workers)")
+            elif isinstance(parallel, int) and parallel > 0:
+                cmd.extend(['-n', str(parallel)])  # Use pytest-xdist for parallel testing with specified worker count
+                print(f"⚡ Running tests in parallel mode with {parallel} workers")
+            else:
+                # If parallel is 0 or negative, use auto
+                cmd.extend(['-n', 'auto'])
+                print("⚡ Running tests in parallel mode (auto-detect workers)")
         
         if max_failures:
             cmd.extend(['--maxfail', str(max_failures)])
@@ -333,7 +342,9 @@ def main():
         Example usage:
         python run_tests.py tests/UT                    # Run all tests in tests/UT directory
         python run_tests.py tests/UT/cli -v             # Run tests in cli directory with verbose output
-        python run_tests.py tests/UT --parallel         # Run tests in parallel
+        python run_tests.py tests/UT -p                 # Run tests in parallel (auto-detect workers)
+        python run_tests.py tests/UT -p 4               # Run tests in parallel with 4 workers
+        python run_tests.py tests/UT --parallel 8        # Run tests in parallel with 8 workers
         python run_tests.py tests/UT --max-failures 5   # Allow maximum 5 test failures
         python run_tests.py tests/UT --output reports   # Specify output directory
         python run_tests.py tests/UT/cli --source-dirs ais_bench/benchmark/cli  # Manually specify source directories
@@ -360,8 +371,12 @@ def main():
     
     parser.add_argument(
         '--parallel', '-p',
-        action='store_true',
-        help='Run tests in parallel (requires pytest-xdist)'
+        type=lambda x: int(x) if x and x.isdigit() else 'auto',
+        nargs='?',
+        const='auto',
+        metavar='WORK_NUM',
+        help='Run tests in parallel with specified number of workers (requires pytest-xdist). '
+             'If no number is specified, uses auto-detect. Example: -p 4 or --parallel 4'
     )
     
     parser.add_argument(
