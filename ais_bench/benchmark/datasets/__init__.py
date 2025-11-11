@@ -38,3 +38,4 @@ from ais_bench.benchmark.datasets.longbench import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.longbenchv2 import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.bfcl.bfcl import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.custom import *
+from ais_bench.benchmark.datasets.omnidocbench.omnidocbench import *

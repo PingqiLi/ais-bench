@@ -22,7 +22,7 @@ BFCL数据集通过Python依赖包的方式集成，数据文件包含在 `bfcl-
 
 ### 安装步骤
 ```bash
-pip3 install -r requirements/bfcl_dependencies.txt --no-deps
+pip3 install -r requirements/datasets/bfcl_dependencies.txt --no-deps
 ```
 
 ✅ **安装完成后，BFCL数据集已随依赖包一同安装到本地环境中，可在离线环境下正常使用。**

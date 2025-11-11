@@ -33,7 +33,7 @@ pip3 install -r requirements/extra.txt
 🔗 Berkeley Function Calling Leaderboard (BFCL) Evaluation Support
 
 ```shell
-pip3 install -r requirements/bfcl_dependencies.txt --no-deps
+pip3 install -r requirements/datasets/bfcl_dependencies.txt --no-deps
 ```
 
 **Important Note**: Since `bfcl_eval` will automatically install the `pathlib` library, and the Python 3.5+ environment already has this library built-in, be sure to use the `--no-deps` parameter to skip the automatic installation of additional dependencies and avoid version conflicts.

@@ -400,6 +400,14 @@ class HuggingFaceBaseModel(HuggingFacewithChatTemplate):
                  stop_words: Optional[str] = [],
                  drop_middle: bool = False,
                  **other_kwargs):
+        super().__init__(
+            path,
+            max_seq_len,
+            tokenizer_only,
+            None,
+            generation_kwargs,
+            False,
+        )
         self.path = path
         self.tokenizer_only = tokenizer_only
         self.template_parser = LMTemplateParser()

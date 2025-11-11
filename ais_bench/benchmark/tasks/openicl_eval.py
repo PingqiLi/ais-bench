@@ -222,8 +222,10 @@ class OpenICLEvalTask(BaseTask):
             out_path = get_infer_output_path(
                 self.model_cfg, self.dataset_cfg,
                 osp.join(self.work_dir, 'results'))
-            icl_evaluator._out_dir = osp.splitext(out_path)[
-                0]  # strip extension
+            results_dir = osp.dirname(out_path)
+            icl_evaluator._out_dir = results_dir
+            if not osp.exists(results_dir):
+                mmengine.mkdir_or_exist(results_dir)
 
             preds['predictions'] = pred_strs
             preds['references'] = (test_set[self.output_column]
