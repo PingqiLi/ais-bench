@@ -120,11 +120,9 @@ class TestHuggingFaceAboveV4_33(unittest.TestCase):
     @patch.object(HuggingFacewithChatTemplate, '_load_model')
     @patch('ais_bench.benchmark.models.local_models.huggingface_above_v4_33._get_possible_max_seq_len')
     @patch('ais_bench.benchmark.models.local_models.huggingface_above_v4_33.LMTemplateParser')
-    @patch('ais_bench.benchmark.models.local_models.base.BaseModel.__init__')
-    def test_huggingface_base_model_init(self, mock_base_init, mock_lm_template,
+    def test_huggingface_base_model_init(self, mock_lm_template,
                                         mock_get_max_len, mock_load_model, mock_load_tokenizer):
         # 配置mock
-        mock_base_init.return_value = None
         mock_lm_template.return_value = self.mock_template_parser
         mock_get_max_len.return_value = 2048
 
@@ -334,31 +332,30 @@ class TestHuggingFaceAboveV4_33(unittest.TestCase):
     @patch.object(HuggingFaceBaseModel, '_load_model')
     def test_huggingface_base_model_generate(self, mock_load_model, mock_load_tokenizer):
         # 测试HuggingFaceBaseModel的generate方法
-        with patch('ais_bench.benchmark.models.local_models.base.BaseModel.__init__', return_value=None):
-            model = HuggingFaceBaseModel(
-                path="dummy_path",
-                tokenizer_only=True,
-                max_seq_len=1024
-            )
+        model = HuggingFaceBaseModel(
+            path="dummy_path",
+            tokenizer_only=True,
+            max_seq_len=1024
+        )
 
-            # Mock必要的属性
-            model.tokenizer = MagicMock()
-            model.tokenizer.batch_encode_plus.return_value = {'input_ids': torch.tensor([[1, 2, 3]]), 'attention_mask': torch.tensor([[1, 1, 1]])}
-            model.tokenizer.batch_decode.return_value = ["generated text"]
-            model.model = MagicMock()
-            model.model.device = 'cpu'
-            model.model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
-            model.stop_words = []
-            model.generation_kwargs = {}
-            model.max_seq_len = 1024
-            model.do_performance = False
+        # Mock必要的属性
+        model.tokenizer = MagicMock()
+        model.tokenizer.batch_encode_plus.return_value = {'input_ids': torch.tensor([[1, 2, 3]]), 'attention_mask': torch.tensor([[1, 1, 1]])}
+        model.tokenizer.batch_decode.return_value = ["generated text"]
+        model.model = MagicMock()
+        model.model.device = 'cpu'
+        model.model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
+        model.stop_words = []
+        model.generation_kwargs = {}
+        model.max_seq_len = 1024
+        model.do_performance = False
 
-            # 测试generate方法
-            inputs = ["test input"]
-            with patch('ais_bench.benchmark.models.local_models.huggingface_above_v4_33._convert_base_messages', return_value=["converted input"]), \
-                 patch('ais_bench.benchmark.models.local_models.huggingface_above_v4_33.drop_error_generation_kwargs', return_value={}):
-                result = model.generate(inputs, max_out_len=100)
-                self.assertEqual(result, ["generated text"])
+        # 测试generate方法
+        inputs = ["test input"]
+        with patch('ais_bench.benchmark.models.local_models.huggingface_above_v4_33._convert_base_messages', return_value=["converted input"]), \
+                patch('ais_bench.benchmark.models.local_models.huggingface_above_v4_33.drop_error_generation_kwargs', return_value={}):
+            result = model.generate(inputs, max_out_len=100)
+            self.assertEqual(result, ["generated text"])
 
     @patch('ais_bench.benchmark.models.local_models.huggingface_above_v4_33._convert_chat_messages')
     def test_get_token_len(self, mock_convert_chat):
@@ -697,8 +694,7 @@ class TestHuggingFaceAboveV4_33(unittest.TestCase):
 
     def test_huggingface_base_model_init(self):
         # 测试HuggingFaceBaseModel的初始化
-        with patch('ais_bench.benchmark.models.local_models.base.BaseModel.__init__', return_value=None), \
-             patch.object(HuggingFaceBaseModel, '_load_tokenizer'), \
+        with patch.object(HuggingFaceBaseModel, '_load_tokenizer'), \
              patch.object(HuggingFaceBaseModel, '_load_model'):
 
             # 创建测试实例
@@ -785,10 +781,8 @@ class TestHuggingFaceAboveV4_33(unittest.TestCase):
             pass
 
     @patch('ais_bench.benchmark.models.local_models.huggingface_above_v4_33._get_possible_max_seq_len')
-    @patch('ais_bench.benchmark.models.local_models.base.BaseModel.__init__')
-    def test_huggingface_base_model_init(self, mock_base_init, mock_get_max_len):
+    def test_huggingface_base_model_init(self, mock_get_max_len):
         # 配置mock以避免实际的模型加载
-        mock_base_init.return_value = None
         mock_get_max_len.return_value = 2048
 
         # 测试基本初始化

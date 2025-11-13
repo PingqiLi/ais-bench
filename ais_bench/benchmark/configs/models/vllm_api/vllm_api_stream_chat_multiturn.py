@@ -1,10 +1,11 @@
-from ais_bench.benchmark.models import VLLMCustomAPI
+from ais_bench.benchmark.models import VLLMCustomAPIChat
+from ais_bench.benchmark.utils.postprocess.model_postprocessors import extract_non_reasoning_content
 
 models = [
     dict(
         attr="service",
-        type=VLLMCustomAPI,
-        abbr="vllm-api-general-stream",
+        type=VLLMCustomAPIChat,
+        abbr="vllm-multiturn-api-chat-stream",
         path="",
         model="",
         stream=True,
@@ -21,5 +22,6 @@ models = [
             temperature=0.01,
             ignore_eos=False,
         ),
+        pred_postprocessor=dict(type=extract_non_reasoning_content),
     )
 ]

@@ -42,6 +42,7 @@ class BaseAPIModel(BaseModel):
         stream (bool, optional): Whether to enable streaming output. Defaults to False.
         max_out_len (int, optional): Maximum output length, controlling the maximum number of tokens for generated text. Defaults to 2048.
         retry (int, optional): Number of retry attempts when request fails. Defaults to 2.
+        api_key (str, optional): API key for the API service. Defaults to empty string.
         host_ip (str, optional): Host IP address of the API service. Defaults to "localhost".
         host_port (int, optional): Port number of the API service. Defaults to 8080.
         url (str, optional): Complete URL address of the API service. Defaults to empty string.
@@ -59,7 +60,6 @@ class BaseAPIModel(BaseModel):
         stream: bool = False,
         max_out_len: int = 2048,
         retry: int = 2,
-        headers: Dict = {"Content-Type": "application/json"},
         host_ip: str = "localhost",
         host_port: int = 8080,
         url: str = "",
@@ -67,13 +67,14 @@ class BaseAPIModel(BaseModel):
         generation_kwargs: Dict = dict(),
         enable_ssl: bool = False,
         verbose: bool = False,
+        api_key: str = "",
     ):
         self.logger = AISLogger()
         self.path = path
         self.stream = stream
         self.max_out_len = max_out_len
         self.retry = retry
-        self.headers = headers
+        self.headers = {"Content-Type": "application/json"}
         self.meta_template = meta_template if meta_template else None
         self.host_ip = host_ip
         self.host_port = host_port
