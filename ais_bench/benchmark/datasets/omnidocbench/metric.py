@@ -28,7 +28,7 @@ from scipy.optimize import linear_sum_assignment
 from PIL import Image, ImageDraw
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from ais_bench.benchmark.datasets.omnidocbench.registory import METRIC_REGISTRY
+from ais_bench.benchmark.datasets.omnidocbench.registry import METRIC_REGISTRY
 
 
 SKIP_PATTERNS = [r'\{', r'\}', r'[\[\]]', r'\\begin\{.*?\}', r'\\end\{.*?\}', r'\^', r'\_', r'\\.*rule.*', r'\\.*line.*', r'\[[\-.0-9]+[epm][xtm]\]']

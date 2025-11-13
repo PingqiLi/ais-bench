@@ -51,6 +51,10 @@
 ### error description
 ### solution
 
+## UTILS-CFG-008
+### error description
+### solution
+
 ## PARTI-FILE-001
 ### error description
 ### solution

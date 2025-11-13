@@ -225,6 +225,7 @@ class UTILS_CODES:
     NON_BFCL_DATASET = BaseErrorCode("UTILS-CFG-006", ErrorModule.UTILS, ErrorType.CONFIG, 6, "non BFCL dataset found for VLLMFunctionCallAPIChat")
     INCOMPATIBLE_MERGE_DS = BaseErrorCode("UTILS-CFG-007", ErrorModule.UTILS, ErrorType.CONFIG, 7, "incompatible --merge-ds option for function call task")
     SYNTHETIC_DS_MISS_REQUIRED_PARAM = BaseErrorCode("UTILS-CFG-001", ErrorModule.UTILS, ErrorType.CONFIG, 1, "synthetic dataset miss required param")
+    MM_CUSTOM_DATASET_WRONG_FORMAT = BaseErrorCode("UTILS-CFG-008", ErrorModule.UTILS, ErrorType.CONFIG, 8, "invalid mm custom dataset")
 
 class CALC_CODES:
     UNKNOWN_ERROR = BaseErrorCode("CALC-UNK-001", ErrorModule.CALCULATOR, ErrorType.UNKNOWN, 1, "unknown error of calculator")
