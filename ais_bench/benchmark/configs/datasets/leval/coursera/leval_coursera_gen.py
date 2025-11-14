@@ -26,7 +26,7 @@ LEval_coursera_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 10}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_coursera_eval_cfg = {

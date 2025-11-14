@@ -3,6 +3,8 @@ from datasets import Dataset, load_dataset
 from ais_bench.benchmark.registry import LOAD_DATASET, TEXT_POSTPROCESSORS
 from ais_bench.benchmark.datasets.utils.datasets import get_data_path
 from ais_bench.benchmark.utils.logging import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import DATASETS_CODES
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 from ais_bench.benchmark.datasets.base import BaseDataset
 
@@ -21,7 +23,6 @@ def gsm100_dataset_postprocess(text: str) -> str:
 @TEXT_POSTPROCESSORS.register_module('gsm100')
 def gsm100_postprocess(text: str) -> str:
     logger.debug(f"Applying gsm100_postprocess: input='{text[:50]}...'")
-    # text = text.split('\n\n')[0]
     segs = text.split('The answer is')
     if len(segs) < 2:
         logger.warning(
@@ -63,8 +64,7 @@ class LEvalGSM100Dataset(BaseDataset):
     @staticmethod
     def load(**kwargs):
         if 'path' not in kwargs:
-            raise ValueError(
-                "The 'path' argument is required to load the dataset.")
+            raise ConfigError(DATASETS_CODES.INVALID_DATASET_CONFIG, "The 'path' argument is required to load the dataset.")
 
         path = kwargs['path']
         logger.info(f"Loading LEval GSM100 dataset from path: {path}")

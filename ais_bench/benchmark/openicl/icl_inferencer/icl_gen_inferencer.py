@@ -59,7 +59,7 @@ class GenInferencer(BaseApiInferencer, BaseLocalInferencer):
                                                         save_every=self.save_every)
 
     async def do_request(
-        self, data: dict, _token_bucket: BoundedSemaphore, session: aiohttp.ClientSession
+        self, data: dict, token_bucket: BoundedSemaphore, session: aiohttp.ClientSession
     ):
         """Execute a single inference request.
 

@@ -1,38 +1,36 @@
-"""Unit tests for LEval Quality dataset loader."""
+"""Unit tests for LEval Financial QA dataset loader."""
 
-import pytest
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
-from ais_bench.benchmark.datasets.leval.quality import LEvalQualityDataset
-from ais_bench.benchmark.utils.logging.exceptions import ConfigError
+from ais_bench.benchmark.datasets.leval.financial_qa import LEvalFinancialQADataset
 
 
-class TestLEvalQualityDataset:
-    @patch('ais_bench.benchmark.datasets.leval.quality.get_data_path')
-    @patch('ais_bench.benchmark.datasets.leval.quality.load_dataset')
-    def test_quality_load(self, mock_load_dataset, mock_get_data_path):
+class TestLEvalFinancialQADataset:
+    @patch('ais_bench.benchmark.datasets.leval.financial_qa.get_data_path')
+    @patch('ais_bench.benchmark.datasets.leval.financial_qa.load_dataset')
+    def test_financial_qa_load(self, mock_load_dataset, mock_get_data_path):
         # Mock the path resolution
         mock_get_data_path.return_value = "/mock/path"
 
-        # Mock the dataset with answer[1] extraction
+        # Mock the dataset
         mock_dataset = DatasetDict({
             'test': Dataset.from_list([
                 {
                     'instructions': ['Q1'],
-                    'outputs': [['option_text', 'A']],  # answer[1] = 'A'
+                    'outputs': ['This is a short answer'],
                     'input': 'Context1'
                 },
                 {
                     'instructions': ['Q2'],
-                    'outputs': [['option_text', 'B']],  # answer[1] = 'B'
+                    'outputs': ['This is another answer with more words'],
                     'input': 'Context2'
                 }
             ])})
         mock_load_dataset.return_value = mock_dataset
 
         # Call the load method
-        result = LEvalQualityDataset.load(path="dummy_path")
+        result = LEvalFinancialQADataset.load(path="dummy_path")
 
         # Verify get_data_path was called
         mock_get_data_path.assert_called_once_with(
@@ -51,20 +49,14 @@ class TestLEvalQualityDataset:
         data_list = test_data.to_list()
         assert len(data_list) == 2
 
-        # First item - verify answer[1] extraction
+        # First item - verify length calculation
         assert data_list[0]['question'] == 'Q1'
         assert data_list[0]['context'] == 'Context1'
-        assert data_list[0]['answer'] == 'A'
+        assert data_list[0]['answer'] == 'This is a short answer'
+        assert data_list[0]['length'] == 5  # 5 words
 
         # Second item
         assert data_list[1]['question'] == 'Q2'
         assert data_list[1]['context'] == 'Context2'
-        assert data_list[1]['answer'] == 'B'
-
-    def test_quality_load_missing_path(self):
-        """Test that ConfigError is raised when 'path' argument is missing."""
-        with pytest.raises(ConfigError) as exc_info:
-            LEvalQualityDataset.load()
-        
-        # Verify the error message contains helpful information
-        assert "path" in str(exc_info.value).lower()
+        assert data_list[1]['answer'] == 'This is another answer with more words'
+        assert data_list[1]['length'] == 7  # 7 words

@@ -17,6 +17,7 @@ class ErrorModule(Enum):
     ICL_RETRIEVER = "ICLR"                       # icl_retriever
     MODEL = "MODEL"                              # model
     CALCULATOR = "CALC"                          # calculator
+    DATASETS = "DATASETS"                        # datasets
     UTILS = "UTILS"                              # other utils func
     UNKNOWN = "UNK"                              # unknown module
 
@@ -238,6 +239,10 @@ class CALC_CODES:
     CAN_NOT_FIND_STABLE_STAGE = BaseErrorCode("CALC-DATA-002", ErrorModule.CALCULATOR, ErrorType.DATA, 2, "invalid response datas")
     OUTPUT_HANDLER_INVALID_OUTPUT = BaseErrorCode("CALC-DATA-003", ErrorModule.CALCULATOR, ErrorType.DATA, 3, "output handler invalid output")
 
+class DATASETS_CODES:
+    UNKNOWN_ERROR = BaseErrorCode("DATASETS-UNK-001", ErrorModule.DATASETS, ErrorType.UNKNOWN, 1, "unknown error of datasets")
+    INVALID_DATASET_CONFIG = BaseErrorCode("DATASETS-CFG-001", ErrorModule.DATASETS, ErrorType.CONFIG, 1, "invalid dataset config")
+
 
 ERROR_CODES_CLASSES = [
     TMAN_CODES,
@@ -255,6 +260,7 @@ ERROR_CODES_CLASSES = [
     UNK_CODES,
     UTILS_CODES,
     CALC_CODES,
+    DATASETS_CODES,
 ]
 
 # init error code manager

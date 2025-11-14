@@ -26,7 +26,7 @@ LEval_tr_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 30}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_tr_eval_cfg = {

@@ -1,11 +1,13 @@
 from unittest.mock import patch
 from datasets import DatasetDict, Dataset
+import pytest
 
 from ais_bench.benchmark.datasets.leval.gsm100 import (
     LEvalGSM100Dataset,
     gsm100_postprocess,
     gsm100_dataset_postprocess,
 )
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 
 def test_gsm100_dataset_postprocess():
@@ -131,3 +133,12 @@ def test_leval_gsm100_dataset_load_empty(
 
     data_list = result['test'].to_list()
     assert len(data_list) == 0
+
+
+def test_leval_gsm100_dataset_load_missing_path():
+    """Test that ConfigError is raised when 'path' argument is missing."""
+    with pytest.raises(ConfigError) as exc_info:
+        LEvalGSM100Dataset.load()
+    
+    # Verify the error message contains helpful information
+    assert "path" in str(exc_info.value).lower()

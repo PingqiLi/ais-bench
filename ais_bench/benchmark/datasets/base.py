@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import List, Dict, Optional, Union
 
-from datasets import Dataset, DatasetDict, concatenate_datasets
+from datasets import Dataset, DatasetDict
 from datasets.utils.logging import disable_progress_bar
 
 from ais_bench.benchmark.openicl.icl_dataset_reader import DatasetReader

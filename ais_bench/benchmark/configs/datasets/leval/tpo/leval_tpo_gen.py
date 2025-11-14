@@ -26,7 +26,7 @@ LEval_tpo_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 10}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_tpo_eval_cfg = {
