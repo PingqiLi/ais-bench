@@ -1,14 +1,29 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 import sqlite3
+from .base_handler import BaseInferencerOutputHandler
+from ais_bench.benchmark.models.output import Output
+from ais_bench.benchmark.utils.logging.logger import AISLogger
+from ais_bench.benchmark.utils.logging.error_codes import ICLE_CODES
+from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError
 import uuid
 
-from ais_bench.benchmark.openicl.icl_inferencer.output_handler.base_handler import BaseInferencerOutputHandler
-from ais_bench.benchmark.models.output import Output
-from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
-from ais_bench.benchmark.utils.logging.exceptions import AISBenchImplementationError
+logger = AISLogger()
 
-class GenInferencerOutputHandler(BaseInferencerOutputHandler):
+class PPLRequestOutput(Output):
+    def __init__(self, perf_mode: bool = False) -> None:
+        super().__init__(perf_mode)
+        self.ppl: float = 0
+        self.origin_prompt_logprobs: Dict[str, Dict[str, Union[str, int, float]]] = None
+
+class PPLResponseOutput(Output):
+    def __init__(self, perf_mode: bool = False) -> None:
+        super().__init__(perf_mode)
+        self.input = []
+        self.label_ppl_list: List[Dict[str, float]] = []
+        self.origin_prompt_logprobs: List[Dict[str, Dict[str, Union[str, int, float]]]] = []
+
+class PPLInferencerOutputHandler(BaseInferencerOutputHandler):
     """
     Output handler for generation-based inference tasks.
 
@@ -31,16 +46,19 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
                             (default: False for accuracy mode)
         """
         super().__init__(save_every)
-        self.all_success = True
         self.perf_mode = perf_mode
 
-    def get_prediction_result(self, output: Union[str, Output], gold: Optional[str] = None) -> dict:
+    def get_prediction_result(self, output: Union[str, PPLResponseOutput], gold: Optional[str] = None) -> dict:
+        if not isinstance(output, PPLResponseOutput):
+            raise AISBenchImplementationError(ICLE_CODES.OUTPUT_HANDLER_INVALID_OUTPUT, f"Output is not a PPLResponseOutput")
         result_data = {
             "success": (
-                output.success if isinstance(output, Output) else True
+                output.success
             ),
-            "uuid": output.uuid if isinstance(output, Output) else uuid.uuid4().hex[:8],
-            "origin_prompt": input,
+            "uuid": output.uuid,
+            "origin_prompt": output.input,
+            "ppl_list": output.label_ppl_list,
+            "origin_prompt_logprobs": output.origin_prompt_logprobs,
             "prediction": (
                 output.get_prediction()
                 if isinstance(output, Output)

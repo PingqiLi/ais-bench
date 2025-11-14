@@ -49,6 +49,12 @@ class BaseInferencerOutputHandler:
         self.save_every = save_every
 
     @abstractmethod
+    def get_prediction_result(self, output: Any) -> dict:
+        """
+        Get the prediction result from the output.
+        """
+        raise NotImplementedError("get_prediction_result is not implemented")
+        
     def get_result(
         self,
         conn: sqlite3.Connection,
@@ -57,10 +63,11 @@ class BaseInferencerOutputHandler:
         gold: Optional[str] = None,
     ) -> dict:
         """
-        Save the results to the results_dict.
+        Save inference results to the results dictionary.
 
-        This is an abstract method that must be implemented by subclasses
-        to define how results are stored and processed.
+        Handles both performance and accuracy modes with different data storage
+        strategies. In performance mode, only metrics are stored. In accuracy mode,
+        full input/output data is preserved for evaluation.
 
         Args:
             conn (sqlite3.Connection): Database connection to write results to
@@ -71,9 +78,38 @@ class BaseInferencerOutputHandler:
         Raises:
             AISBenchImplementationError: If not implemented by subclass
         """
+        # Performance mode: only store metrics
+        if self.perf_mode and isinstance(output, Output):
+            result_data = output.get_metrics()
+            result_data = self._extract_and_write_arrays(
+                result_data, conn
+            )
 
-        raise AISBenchImplementationError(ICLI_CODES.UNKNOWN_ERROR,
-                                           f"Method {self.__class__.__name__} hasn't been implemented yet")
+        elif isinstance(output, str):
+            # Accuracy mode: store full input/output data
+            result_data = {
+                "success": True,
+                "uuid": uuid.uuid4().hex[:8],
+                "origin_prompt": input,
+                "prediction": output,
+            }
+
+            if gold:
+                result_data["gold"] = gold
+        else:
+            result_data = self.get_prediction_result(output)
+
+        # Check for failures and update success status
+        if not result_data.get("success", False):
+            self.all_success = False
+            if isinstance(output, Output) and hasattr(output, "error_info"):
+                result_data["error_info"] = output.error_info
+                self.logger.debug(f"Failed operation at data id {output.uuid}, error info: {result_data['error_info']}")
+            else:
+                self.logger.warning(
+                    f"No error info available for failed operation at data id {output.uuid}"
+                )
+        return result_data
 
     def write_to_json(self, save_dir: str, perf_mode: bool) -> None:
         """
