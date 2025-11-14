@@ -6,7 +6,6 @@ from datasets import Dataset, DatasetDict
 from ais_bench.benchmark.datasets.leval.gov_report_summ import LEvalGovReportSummDataset
 from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
-
 class TestLEvalGovReportSummDataset:
     @patch('ais_bench.benchmark.datasets.leval.gov_report_summ.get_data_path')
     @patch('ais_bench.benchmark.datasets.leval.gov_report_summ.load_dataset')

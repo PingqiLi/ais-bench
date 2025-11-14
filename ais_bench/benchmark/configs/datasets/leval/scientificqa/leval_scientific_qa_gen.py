@@ -25,7 +25,7 @@ LEval_scientificqa_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 64}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_scientificqa_eval_cfg = {
@@ -37,7 +37,7 @@ LEval_scientificqa_datasets = [
     {
         'type': LEvalScientificQADataset,
         'abbr': 'LEval_scientificqa',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/scientific_qa.jsonl',
         'name': 'scientific_qa',
         'reader_cfg': LEval_scientificqa_reader_cfg,
         'infer_cfg': LEval_scientificqa_infer_cfg,

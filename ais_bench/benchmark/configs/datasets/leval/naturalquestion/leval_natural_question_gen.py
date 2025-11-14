@@ -37,7 +37,7 @@ LEval_nq_datasets = [
     {
         'type': LEvalNaturalQuestionDataset,
         'abbr': 'LEval_nq',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/natural_question.jsonl',
         'name': 'natural_question',
         'reader_cfg': LEval_nq_reader_cfg,
         'infer_cfg': LEval_nq_infer_cfg,

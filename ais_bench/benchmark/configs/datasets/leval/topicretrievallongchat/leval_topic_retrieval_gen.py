@@ -39,7 +39,7 @@ LEval_tr_datasets = [
     {
         'type': LEvalTopicRetrievalDataset,
         'abbr': 'LEval_topic_retrieval',
-        'path': 'ais_bench/datasets/leval/topic_retrieval_longchat.jsonl',
+        'path': 'ais_bench/datasets/LEval/LEval/Exam/topic_retrieval_longchat.jsonl',
         'name': 'topic_retrieval_longchat',
         'reader_cfg': LEval_tr_reader_cfg,
         'infer_cfg': LEval_tr_infer_cfg,

@@ -25,7 +25,7 @@ LEval_review_summ_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 512}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_review_summ_eval_cfg = {
@@ -37,7 +37,7 @@ LEval_review_summ_datasets = [
     {
         'type': LEvalReviewSummDataset,
         'abbr': 'LEval_review_summ',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/review_summ.jsonl',
         'name': 'review_summ',
         'reader_cfg': LEval_review_summ_reader_cfg,
         'infer_cfg': LEval_review_summ_infer_cfg,

@@ -10,15 +10,16 @@ from ..base import BaseDataset
 
 logger = AISLogger()
 
+
 @LOAD_DATASET.register_module()
-class LEvalCodeUDataset(BaseDataset):
+class LEvalSciFiDataset(BaseDataset):
     """
-    LEval Code U dataset loader.
+    LEval Sci-Fi dataset loader.
 
-    Loads and processes the L-Eval Code U benchmark dataset, which contains
-    code understanding tasks with associated questions and answers.
+    Loads and processes the L-Eval Sci-Fi benchmark dataset, which contains
+    science fiction texts with associated comprehension questions and answers.
 
-    The dataset is flattened from a nested structure where each code context
+    The dataset is flattened from a nested structure where each sci-fi context
     may have multiple question-answer pairs into individual samples with
     (question, context, answer).
     """
@@ -29,7 +30,7 @@ class LEvalCodeUDataset(BaseDataset):
             raise ConfigError(DATASETS_CODES.INVALID_DATASET_CONFIG, "The 'path' argument is required to load the dataset.")
 
         path = kwargs['path']
-        logger.info(f"Loading LEval Code U dataset from path: {path}")
+        logger.info(f"Loading LEval Sci-Fi dataset from path: {path}")
         full_path = get_data_path(path, local_mode=True)
         logger.debug(f"Resolved full path: {full_path}")
 

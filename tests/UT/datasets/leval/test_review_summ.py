@@ -1,9 +1,11 @@
 """Unit tests for LEval Review Summ dataset loader."""
 
+import pytest
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.review_summ import LEvalReviewSummDataset
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 
 class TestLEvalReviewSummDataset:
@@ -60,3 +62,11 @@ class TestLEvalReviewSummDataset:
         assert data_list[1]['context'] == 'Product review content...'
         assert data_list[1]['answer'] == 'The overall rating is four stars with mixed feedback'
         assert data_list[1]['length'] == 9  # 9 words
+
+    def test_review_summ_load_missing_path(self):
+        """Test that ConfigError is raised when 'path' argument is missing."""
+        with pytest.raises(ConfigError) as exc_info:
+            LEvalReviewSummDataset.load()
+        
+        # Verify the error message contains helpful information
+        assert "path" in str(exc_info.value).lower()

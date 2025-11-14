@@ -58,8 +58,6 @@ class CodeUEvaluator(BaseEvaluator):
             # Apply Code U specific extraction logic
             pred_extracted = self._extract_code_output(pred, ref)
             ref_processed = self._process_code(ref)
-            
-            # logger.info(f"Evaluating Prediction: '{pred_extracted}' | Reference: '{ref_processed}'")
 
             # Compare extracted prediction with processed reference
             if self._is_correct(pred_extracted, ref_processed):
@@ -113,3 +111,82 @@ class CodeUEvaluator(BaseEvaluator):
             return text.lower()
 
         return white_space_fix(remove_articles(remove_punc(lower(s))))
+
+
+@ICL_EVALUATORS.register_module("leval_sci_fi_evaluator")
+class SciFiEvaluator(BaseEvaluator):
+    """Evaluator for L-Eval Sci-Fi dataset (loyalty only).
+
+    The Sci-Fi task asks for True/False judgments. We only evaluate the
+    "loyalty" judgment based on the model response and the reference label,
+    ignoring any "fact" judgment that may also appear.
+    """
+
+    def score(self, predictions, references):
+        """Compute loyalty accuracy only.
+
+        Args:
+            predictions (List[str]): Model responses containing loyalty judgments.
+            references (List[str]): Ground-truth labels with loyalty info.
+
+        Returns:
+            Dict[str, float]: {'accuracy': loyalty_accuracy_percentage}
+        """
+
+        if len(predictions) != len(references):
+            return {'error': 'predictions and references have different length'}
+
+        total = len(predictions)
+        correct_loyalty = 0
+
+        for pred, ref in zip(predictions, references):
+            pred_loyalty = self._extract_loyalty_from_prediction(pred)
+            ref_loyalty = self._extract_loyalty_from_reference(ref)
+
+            if ref_loyalty in ("true", "false") and pred_loyalty == ref_loyalty:
+                correct_loyalty += 1
+
+        accuracy = (correct_loyalty / total) * 100 if total > 0 else 0.0
+        return {'accuracy': accuracy}
+
+    def _extract_loyalty_from_prediction(self, response: str) -> str:
+        """Extract 'true'/'false' from the loyalty segment of the response.
+
+        We treat everything before "[fact:" as the loyalty segment if present;
+        otherwise, the whole response is scanned. Returns 'true'/'false' or
+        '<error>' if not found.
+        """
+        text = (response or '').lower()
+        if "[fact:" in text:
+            loyalty = text.split("[fact:", 1)[0]
+        else:
+            loyalty = text
+
+        # Prefer exact 'true'/'false' first
+        for word in loyalty.split():
+            w = word.strip().lower().strip('.,;:!')
+            if w == 'true':
+                return 'true'
+            if w == 'false':
+                return 'false'
+        # Then fallback to substring contains (to allow TRUE/FALSE inside punctuation)
+        for word in loyalty.split():
+            w = word.lower()
+            if 'true' in w:
+                return 'true'
+            if 'false' in w:
+                return 'false'
+        return "<error>"
+
+    def _extract_loyalty_from_reference(self, reference: str) -> str:
+        """Extract 'true'/'false' from the reference text.
+
+        We scan the reference for the first occurrence of 'true' or 'false'.
+        """
+        text = (reference or '').lower()
+        for word in text.split():
+            if "true" in word:
+                return "true"
+            if "false" in word:
+                return "false"
+        return "<error>"

@@ -25,7 +25,7 @@ LEval_tvshow_summ_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 512}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_tvshow_summ_eval_cfg = {
@@ -37,7 +37,7 @@ LEval_tvshow_summ_datasets = [
     {
         'type': LEvalTVShowSummDataset,
         'abbr': 'LEval_tvshow_summ',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/tv_show_summ.jsonl',
         'name': 'tv_show_summ',
         'reader_cfg': LEval_tvshow_summ_reader_cfg,
         'infer_cfg': LEval_tvshow_summ_infer_cfg,

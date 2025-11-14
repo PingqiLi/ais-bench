@@ -39,7 +39,7 @@ LEval_coursera_datasets = [
     {
         'type': LEvalCourseraDataset,
         'abbr': 'LEval_coursera',
-        'path': 'ais_bench/datasets/leval/coursera.jsonl',
+        'path': 'ais_bench/datasets/LEval/LEval/Exam/coursera.jsonl',
         'name': 'coursera',
         'reader_cfg': LEval_coursera_reader_cfg,
         'infer_cfg': LEval_coursera_infer_cfg,

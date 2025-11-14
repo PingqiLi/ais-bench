@@ -45,7 +45,7 @@ LEval_gsm100_datasets = [
     {
         "type": LEvalGSM100Dataset,
         "abbr": "LEval_gsm100",
-        "path": "ais_bench/datasets/leval/gsm100.jsonl",   ## The datasets path
+        "path": "ais_bench/datasets/LEval/LEval/Exam/gsm100.jsonl",   ## The datasets path
         "name": "gsm100",
         "reader_cfg": LEval_gsm100_reader_cfg,
         "infer_cfg": LEval_gsm100_infer_cfg,

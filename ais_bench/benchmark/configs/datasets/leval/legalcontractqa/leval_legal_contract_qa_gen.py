@@ -37,7 +37,7 @@ LEval_legalqa_datasets = [
     {
         'type': LEvalLegalContractQADataset,
         'abbr': 'LEval_legal_contract_qa',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/legal_contract_qa.jsonl',
         'name': 'legal_contract_qa',
         'reader_cfg': LEval_legalqa_reader_cfg,
         'infer_cfg': LEval_legalqa_infer_cfg,

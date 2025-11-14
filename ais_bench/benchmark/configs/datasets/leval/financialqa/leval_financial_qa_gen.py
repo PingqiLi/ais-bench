@@ -37,7 +37,7 @@ LEval_financialqa_datasets = [
     {
         'type': LEvalFinancialQADataset,
         'abbr': 'LEval_financialqa',
-        'path': 'ais_bench/datasets/leval/financial_qa.jsonl',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/financial_qa.jsonl',
         'name': 'financial_qa',
         'reader_cfg': LEval_financialqa_reader_cfg,
         'infer_cfg': LEval_financialqa_infer_cfg,

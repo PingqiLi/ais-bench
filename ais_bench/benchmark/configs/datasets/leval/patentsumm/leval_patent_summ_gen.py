@@ -37,7 +37,7 @@ LEval_patent_summ_datasets = [
     {
         'type': LEvalPatentSummDataset,
         'abbr': 'LEval_patent_summ',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/patent_summ.jsonl',
         'name': 'patent_summ',
         'reader_cfg': LEval_patent_summ_reader_cfg,
         'infer_cfg': LEval_patent_summ_infer_cfg,

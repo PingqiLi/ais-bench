@@ -37,7 +37,7 @@ LEval_newssumm_datasets = [
     {
         'type': LEvalNewsSummDataset,
         'abbr': 'LEval_news_summ',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/news_summ.jsonl',
         'name': 'news_summ',
         'reader_cfg': LEval_newssumm_reader_cfg,
         'infer_cfg': LEval_newssumm_infer_cfg,

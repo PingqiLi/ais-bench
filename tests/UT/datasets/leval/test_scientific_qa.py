@@ -1,9 +1,11 @@
 """Unit tests for LEval Scientific QA dataset loader."""
 
+import pytest
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.scientific_qa import LEvalScientificQADataset
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 
 class TestLEvalScientificQADataset:
@@ -60,3 +62,11 @@ class TestLEvalScientificQADataset:
         assert data_list[1]['context'] == 'Scientific paper content...'
         assert data_list[1]['answer'] == 'The study employed experimental methods with statistical analysis techniques'
         assert data_list[1]['length'] == 9  # 9 words
+
+    def test_scientific_qa_load_missing_path(self):
+        """Test that ConfigError is raised when 'path' argument is missing."""
+        with pytest.raises(ConfigError) as exc_info:
+            LEvalScientificQADataset.load()
+        
+        # Verify the error message contains helpful information
+        assert "path" in str(exc_info.value).lower()

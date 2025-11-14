@@ -37,7 +37,7 @@ LEval_govreport_summ_datasets = [
     {
         'type': LEvalGovReportSummDataset,
         'abbr': 'LEval_gov_report_summ',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/gov_report_summ.jsonl',
         'name': 'gov_report_summ',
         'reader_cfg': LEval_govreport_summ_reader_cfg,
         'infer_cfg': LEval_govreport_summ_infer_cfg,

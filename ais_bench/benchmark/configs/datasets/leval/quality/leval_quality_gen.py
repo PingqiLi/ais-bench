@@ -39,7 +39,7 @@ LEval_quality_datasets = [
     {
         'type': LEvalQualityDataset,
         'abbr': 'LEval_quality',
-        'path': 'ais_bench/datasets/leval/quality.jsonl',
+        'path': 'ais_bench/datasets/LEval/LEval/Exam/quality.jsonl',
         'name': 'quality',
         'reader_cfg': LEval_quality_reader_cfg,
         'infer_cfg': LEval_quality_infer_cfg,

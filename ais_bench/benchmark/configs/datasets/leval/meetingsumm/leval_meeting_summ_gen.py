@@ -37,7 +37,7 @@ LEval_meetingsumm_datasets = [
     {
         'type': LEvalMeetingSummDataset,
         'abbr': 'LEval_meeting_summ',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/meeting_summ.jsonl',
         'name': 'meeting_summ',
         'reader_cfg': LEval_meetingsumm_reader_cfg,
         'infer_cfg': LEval_meetingsumm_infer_cfg,

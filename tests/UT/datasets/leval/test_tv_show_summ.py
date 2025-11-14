@@ -1,9 +1,11 @@
 """Unit tests for LEval TV Show Summ dataset loader."""
 
+import pytest
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.tv_show_summ import LEvalTVShowSummDataset
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 
 class TestLEvalTVShowSummDataset:
@@ -60,3 +62,11 @@ class TestLEvalTVShowSummDataset:
         assert data_list[1]['context'] == 'TV show transcript content...'
         assert data_list[1]['answer'] == 'The climax features intense confrontation and unexpected plot twists'
         assert data_list[1]['length'] == 9  # 9 words
+
+    def test_tv_show_summ_load_missing_path(self):
+        """Test that ConfigError is raised when 'path' argument is missing."""
+        with pytest.raises(ConfigError) as exc_info:
+            LEvalTVShowSummDataset.load()
+        
+        # Verify the error message contains helpful information
+        assert "path" in str(exc_info.value).lower()

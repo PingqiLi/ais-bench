@@ -39,7 +39,7 @@ LEval_tpo_datasets = [
     {
         'type': LEvalTPODataset,
         'abbr': 'LEval_tpo',
-        'path': 'ais_bench/datasets/leval/tpo.jsonl',
+        'path': 'ais_bench/datasets/LEval/LEval/Exam/tpo.jsonl',
         'name': 'tpo',
         'reader_cfg': LEval_tpo_reader_cfg,
         'infer_cfg': LEval_tpo_infer_cfg,

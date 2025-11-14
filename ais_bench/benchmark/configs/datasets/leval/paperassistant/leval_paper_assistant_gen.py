@@ -37,7 +37,7 @@ LEval_ps_summ_datasets = [
     {
         'type': LEvalPaperAssistantDataset,
         'abbr': 'LEval_paper_assistant',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/paper_assistant.jsonl',
         'name': 'paper_assistant',
         'reader_cfg': LEval_ps_summ_reader_cfg,
         'infer_cfg': LEval_ps_summ_infer_cfg,

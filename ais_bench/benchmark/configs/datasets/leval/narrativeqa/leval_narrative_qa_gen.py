@@ -37,7 +37,7 @@ LEval_narrativeqa_datasets = [
     {
         'type': LEvalNarrativeQADataset,
         'abbr': 'LEval_narrativeqa',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/narrative_qa.jsonl',
         'name': 'narrative_qa',
         'reader_cfg': LEval_narrativeqa_reader_cfg,
         'infer_cfg': LEval_narrativeqa_infer_cfg,

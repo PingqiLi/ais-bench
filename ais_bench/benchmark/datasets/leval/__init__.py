@@ -13,7 +13,8 @@ from ais_bench.benchmark.datasets.leval.natural_requestion import *
 from ais_bench.benchmark.datasets.leval.news_summ import *
 from ais_bench.benchmark.datasets.leval.paper_assistant import *
 from ais_bench.benchmark.datasets.leval.patent_summ import *
-from .review_summ import *
-from .scientific_qa import *
-from .tv_show_summ import *
-from .code_u import *
+from ais_bench.benchmark.datasets.leval.review_summ import *
+from ais_bench.benchmark.datasets.leval.scientific_qa import *
+from ais_bench.benchmark.datasets.leval.tv_show_summ import *
+from ais_bench.benchmark.datasets.leval.code_u import *
+from ais_bench.benchmark.datasets.leval.sci_fi import *

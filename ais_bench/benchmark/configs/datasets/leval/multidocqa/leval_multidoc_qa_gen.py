@@ -37,7 +37,7 @@ LEval_multidocqa_datasets = [
     {
         'type': LEvalMultidocQADataset,
         'abbr': 'LEval_multidocqa',
-        'path': 'L4NLP/LEval',
+        'path': 'ais_bench/datasets/LEval/LEval/Generation/multidoc_qa.jsonl',
         'name': 'multidoc_qa',
         'reader_cfg': LEval_multidocqa_reader_cfg,
         'infer_cfg': LEval_multidocqa_infer_cfg,

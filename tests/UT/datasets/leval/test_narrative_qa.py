@@ -1,17 +1,11 @@
 """Unit tests for LEval Narrative QA dataset loader."""
 
-<<<<<<< HEAD
 import pytest
-=======
->>>>>>> 6ef64f3 (feat: add narrative qa support)
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.narrative_qa import LEvalNarrativeQADataset
-<<<<<<< HEAD
 from ais_bench.benchmark.utils.logging.exceptions import ConfigError
-=======
->>>>>>> 6ef64f3 (feat: add narrative qa support)
 
 
 class TestLEvalNarrativeQADataset:

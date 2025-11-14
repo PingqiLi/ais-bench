@@ -1,7 +1,7 @@
 """Unit tests for L-Eval custom evaluators: CodeUEvaluator and SciFiEvaluator."""
 
 from ais_bench.benchmark.openicl.icl_evaluator.icl_leval_evaluator import (
-    CodeUEvaluator
+    CodeUEvaluator, SciFiEvaluator
 )
 
 
@@ -44,3 +44,34 @@ class TestCodeUEvaluator:
         result = evaluator.score(predictions, references)
         assert 'error' in result
 
+
+class TestSciFiEvaluator:
+    def test_scifi_loyalty_accuracy(self):
+        evaluator = SciFiEvaluator()
+        predictions = [
+            "The crew remains loyal throughout the mission [fact: true]",
+            "Mutiny emerges among the crew false [fact: true]",
+            "TRUE heroism is shown",
+            "FALSE reports are spread"
+        ]
+        references = [
+            "True",     
+            "False",    
+            "true",     
+            "false"
+        ]
+        result = evaluator.score(predictions, references)
+        # pred loyalty extraction:
+        # 1 -> <error>
+        # 2 -> false
+        # 3 -> true
+        # 4 -> false
+        # correct: 2,3,4 => 3/4
+        assert result['accuracy'] == (3 / 4) * 100
+
+    def test_scifi_length_mismatch(self):
+        evaluator = SciFiEvaluator()
+        predictions = ["True"]
+        references = ["True", "False"]
+        result = evaluator.score(predictions, references)
+        assert 'error' in result
