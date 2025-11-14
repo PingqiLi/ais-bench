@@ -25,7 +25,7 @@ LEval_govreport_summ_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 512}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_govreport_summ_eval_cfg = {

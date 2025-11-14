@@ -25,7 +25,7 @@ LEval_financialqa_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 512}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_financialqa_eval_cfg = {

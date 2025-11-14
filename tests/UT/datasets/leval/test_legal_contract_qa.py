@@ -1,9 +1,11 @@
 """Unit tests for LEval Legal Contract QA dataset loader."""
 
+import pytest
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.legal_contract_qa import LEvalLegalContractQADataset
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 
 class TestLEvalLegalContractQADataset:
@@ -60,3 +62,11 @@ class TestLEvalLegalContractQADataset:
         assert data_list[1]['context'] == 'Contract text content...'
         assert data_list[1]['answer'] == 'Party A and Party B are the contracting parties'
         assert data_list[1]['length'] == 9  # 9 words
+
+    def test_legal_contract_qa_load_missing_path(self):
+        """Test that ConfigError is raised when 'path' argument is missing."""
+        with pytest.raises(ConfigError) as exc_info:
+            LEvalLegalContractQADataset.load()
+        
+        # Verify the error message contains helpful information
+        assert "path" in str(exc_info.value).lower()

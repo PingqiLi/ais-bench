@@ -25,7 +25,7 @@ LEval_multidocqa_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 64}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_multidocqa_eval_cfg = {

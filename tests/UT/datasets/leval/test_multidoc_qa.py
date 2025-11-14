@@ -1,9 +1,11 @@
 """Unit tests for LEval Multidoc QA dataset loader."""
 
+import pytest
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.multidoc_qa import LEvalMultidocQADataset
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 
 class TestLEvalMultidocQADataset:
@@ -60,3 +62,11 @@ class TestLEvalMultidocQADataset:
         assert data_list[1]['context'] == 'Multiple document contents combined...'
         assert data_list[1]['answer'] == 'Key findings include trends in data and common themes'
         assert data_list[1]['length'] == 9  # 9 words
+
+    def test_multidoc_qa_load_missing_path(self):
+        """Test that ConfigError is raised when 'path' argument is missing."""
+        with pytest.raises(ConfigError) as exc_info:
+            LEvalMultidocQADataset.load()
+        
+        # Verify the error message contains helpful information
+        assert "path" in str(exc_info.value).lower()

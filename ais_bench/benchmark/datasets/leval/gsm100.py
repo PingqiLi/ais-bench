@@ -24,7 +24,8 @@ def gsm100_dataset_postprocess(text: str) -> str:
 def gsm100_postprocess(text: str) -> str:
     logger.debug(f"Applying gsm100_postprocess: input='{text[:50]}...'")
     segs = text.split('The answer is')
-    if len(segs) < 2:
+    EXPECT_GSM100_ANSWER_SEPARATE_LEN = 2
+    if len(segs) < EXPECT_GSM100_ANSWER_SEPARATE_LEN:
         logger.warning(
             "gsm100_postprocess: 'The answer is' not found in text, returning empty string")
         return ''

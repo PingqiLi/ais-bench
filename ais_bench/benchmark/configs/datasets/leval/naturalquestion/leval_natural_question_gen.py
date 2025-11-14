@@ -2,16 +2,16 @@ from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import RougeEvaluator
-from ais_bench.benchmark.datasets.leval import LEvalLegalContractQADataset
+from ais_bench.benchmark.datasets.leval import LEvalNaturalQuestionDataset
 
-LEval_legalqa_reader_cfg = {
+LEval_nq_reader_cfg = {
     'input_columns': ['context', 'question', 'length'],
     'output_column': 'answer',
     'train_split': 'test',
     'test_split': 'test'
 }
 
-LEval_legalqa_infer_cfg = {
+LEval_nq_infer_cfg = {
     'prompt_template': {
         'type': PromptTemplate,
         'template': {
@@ -19,28 +19,28 @@ LEval_legalqa_infer_cfg = {
                 {'role': 'SYSTEM', 'fallback_role': 'HUMAN', 'prompt': 'Now you are given a very long document. Please follow the instruction after this document. These instructions may include summarizing a document, answering questions based on the document, or writing a required paragraph.'},
             ],
             'round': [
-                {'role': 'HUMAN', 'prompt': 'Document is as follows. {context}\nInstruction: {question}\nAnswer this question with {length} words.'},
+                {'role': 'HUMAN', 'prompt': 'Document is as follows. {context}\nInstruction: {question}?\nAnswer this question with {length} words.'},
                 {'role': 'BOT', 'prompt': ''},
             ],
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer}
+    'inferencer': {'type': GenInferencer, 'max_out_len': 50}
 }
 
-LEval_legalqa_eval_cfg = {
+LEval_nq_eval_cfg = {
     'evaluator': {'type': RougeEvaluator},
     'pred_role': 'BOT'
 }
 
-LEval_legalqa_datasets = [
+LEval_nq_datasets = [
     {
-        'type': LEvalLegalContractQADataset,
-        'abbr': 'LEval_legal_contract_qa',
+        'type': LEvalNaturalQuestionDataset,
+        'abbr': 'LEval_nq',
         'path': 'L4NLP/LEval',
-        'name': 'legal_contract_qa',
-        'reader_cfg': LEval_legalqa_reader_cfg,
-        'infer_cfg': LEval_legalqa_infer_cfg,
-        'eval_cfg': LEval_legalqa_eval_cfg
+        'name': 'natural_question',
+        'reader_cfg': LEval_nq_reader_cfg,
+        'infer_cfg': LEval_nq_infer_cfg,
+        'eval_cfg': LEval_nq_eval_cfg
     }
 ]
