@@ -48,7 +48,7 @@ class PPLInferencerOutputHandler(BaseInferencerOutputHandler):
         super().__init__(save_every)
         self.perf_mode = perf_mode
 
-    def get_prediction_result(self, output: Union[str, PPLResponseOutput], gold: Optional[str] = None) -> dict:
+    def get_prediction_result(self, input: Union[str, List[str]], output: Union[str, PPLResponseOutput], gold: Optional[str] = None) -> dict:
         if not isinstance(output, PPLResponseOutput):
             raise AISBenchImplementationError(ICLE_CODES.OUTPUT_HANDLER_INVALID_OUTPUT, f"Output is not a PPLResponseOutput")
         result_data = {

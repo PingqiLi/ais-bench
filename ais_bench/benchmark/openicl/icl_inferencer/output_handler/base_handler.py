@@ -97,7 +97,7 @@ class BaseInferencerOutputHandler:
             if gold:
                 result_data["gold"] = gold
         else:
-            result_data = self.get_prediction_result(output)
+            result_data = self.get_prediction_result(input, output, gold)
 
         # Check for failures and update success status
         if not result_data.get("success", False):

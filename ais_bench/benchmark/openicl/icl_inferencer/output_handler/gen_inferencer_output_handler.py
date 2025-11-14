@@ -34,7 +34,7 @@ class GenInferencerOutputHandler(BaseInferencerOutputHandler):
         self.all_success = True
         self.perf_mode = perf_mode
 
-    def get_prediction_result(self, output: Union[str, Output], gold: Optional[str] = None) -> dict:
+    def get_prediction_result(self, input: Union[str, List[str]], output: Union[str, Output], gold: Optional[str] = None) -> dict:
         result_data = {
             "success": (
                 output.success if isinstance(output, Output) else True
