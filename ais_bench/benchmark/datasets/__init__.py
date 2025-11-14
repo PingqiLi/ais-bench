@@ -17,7 +17,6 @@ from ais_bench.benchmark.datasets.agieval import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.arc import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.winogrande import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.mbpp import * # noqa: F401，F403
-from ais_bench.benchmark.datasets.agieval import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.hellaswag import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.triviaqa import * # noqa: F401, F403
 from ais_bench.benchmark.datasets.cmmlu import * # noqa: F401, F403
