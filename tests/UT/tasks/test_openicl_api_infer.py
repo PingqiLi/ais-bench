@@ -445,8 +445,10 @@ class TestOpenICLApiInferTask(unittest.TestCase):
         
         # Mock inferencer
         mock_inferencer = MagicMock()
+        # get_finish_data_list returns Dict[str, Dict[str, Dict]], not Dict[str, List]
+        # Format: {"data_abbr": {"uuid1": {"id": 0, ...}, "uuid2": {...}}}
         mock_inferencer.get_finish_data_list.return_value = {
-            "test_dataset": [{"id": 0}]
+            "test_dataset": {"uuid1": {"id": 0}}
         }
         mock_inferencer.get_data_list.return_value = [
             {"data_abbr": "test_dataset", "index": 0, "prompt": "test"},

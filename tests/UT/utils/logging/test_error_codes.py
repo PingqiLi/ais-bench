@@ -79,7 +79,7 @@ class TestBaseErrorCode(unittest.TestCase):
 
     def test_faq_url(self):
         """测试faq_url是否正确生成"""
-        expected_url = "https://ais-bench-benchmark.readthedocs.io/zh-cn/latest/faqs/error_codes.html#utils-cfg-001"
+        expected_url = "https://ais-bench-benchmark-rf.readthedocs.io/zh-cn/latest/faqs/error_codes.html#utils-cfg-001"
         self.assertEqual(self.error_code.faq_url, expected_url)
 
     def test_full_code_formatting(self):
