@@ -3,7 +3,7 @@ import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typing import Dict
 
-from ais_bench.benchmark.models.api_models.vllm_custom_api import VLLMCustomAPI
+from ais_bench.benchmark.models import VLLMCustomAPI
 from ais_bench.benchmark.models.output import Output
 from ais_bench.benchmark.utils.prompt import PromptList
 

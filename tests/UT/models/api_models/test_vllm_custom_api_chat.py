@@ -5,7 +5,7 @@ import uuid
 from unittest.mock import patch, MagicMock, AsyncMock
 from typing import Dict, List
 
-from ais_bench.benchmark.models.api_models.vllm_custom_api_chat import VLLMCustomAPIChat
+from ais_bench.benchmark.models import VLLMCustomAPIChat
 from ais_bench.benchmark.models.output import RequestOutput
 from ais_bench.benchmark.utils.prompt import PromptList
 
