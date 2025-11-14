@@ -1,14 +1,20 @@
 import os
 from typing import Dict, Optional, Union
+import aiohttp
+import json
+
+from transformers.pipelines.image_text_to_text import ReturnType
 
 from ais_bench.benchmark.registry import MODELS
 from ais_bench.benchmark.utils.prompt import PromptList
 
 from ais_bench.benchmark.models import BaseAPIModel, LMTemplateParser
 from ais_bench.benchmark.models.output import Output
+from ais_bench.benchmark.openicl.icl_inferencer.output_handler.ppl_inferencer_output_handler import PPLRequestOutput
 
 PromptType = Union[PromptList, str]
 
+AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=20 * 60 * 60)
 
 @MODELS.register_module()
 class VLLMCustomAPI(BaseAPIModel):
@@ -99,3 +105,41 @@ class VLLMCustomAPI(BaseAPIModel):
             generated_text = api_response["choices"][0]["text"]
         if generated_text:
             output.content += generated_text
+
+    async def get_ppl(self, input_data:PromptType, max_out_len: int, output: PPLRequestOutput, session: aiohttp.ClientSession = None, **args):
+        if session is None:
+            self.session = aiohttp.ClientSession(trust_env=True, timeout=AIOHTTP_TIMEOUT)
+            close_session = True
+        else:
+            self.session = session
+            close_session = False
+        request_body = await self.get_request_body(input_data, max_out_len, output, **args)
+        request_body.update({"prompt_logprobs": 0})
+        async with self.session.post(
+            url=self.url, json=request_body, headers=self.headers
+        ) as response:
+            if response.status == 200:
+                raw_data = await response.text()
+                try:
+                    data = json.loads(raw_data)
+                except json.JSONDecodeError as e:
+                    output.success = False
+                    output.error_info = f"Unexpected response format: {raw_data}. Please check if server is working correctly."
+                    return
+                choices = data.get("choices", [])
+                prompt_logprobs = [item.get("prompt_logprobs", {}) for item in choices if item is not None][0]
+                output.origin_prompt_logprobs = prompt_logprobs
+                loss = self._calc_ppl(prompt_logprobs)
+                output.ppl = loss
+                output.success = True
+            else:
+                output.error_info = response.reason
+                output.success = False
+        if close_session:
+            await self.session.close()
+
+    def _calc_ppl(self, prompt_logprobs: list):
+        logprobs = [list(item.values())[0]['logprob'] for item in prompt_logprobs if item is not None]
+        tokenids = [list(item.keys())[0] for item in prompt_logprobs if item is not None]
+        loss = -sum(logprobs) / len(tokenids)
+        return loss

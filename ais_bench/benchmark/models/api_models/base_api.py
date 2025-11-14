@@ -20,6 +20,8 @@ from ais_bench.benchmark.utils.logging.exceptions import (
 from ais_bench.benchmark.utils.prompt import PromptList
 from ais_bench.benchmark.models import BaseModel
 from ais_bench.benchmark.models.output import Output
+from ais_bench.benchmark.openicl.icl_inferencer.output_handler.ppl_inferencer_output_handler import PPLRequestOutput
+from ais_bench.benchmark.utils.logging.error_codes import ICLI_CODES
 
 
 def handle_synthetic_input(func):
@@ -284,6 +286,27 @@ class BaseAPIModel(BaseModel):
                 output.error_info = response.reason
                 output.success = False
 
+    async def get_ppl(self,
+        input_data: PromptType,
+        max_out_len: int,
+        output: PPLRequestOutput,
+        session: aiohttp.ClientSession = None,
+        **args
+        ):
+        """Compute perplexity for a given prompt via the remote API.
+        Args:
+            input_data: Prompt text or list structure the backend expects.
+            max_out_len: Maximum completion tokens; forwarded to the API.
+            output: PPLRequestOutput to fill with upstream results (ppl, logprobs, etc.).
+            session: Optional aiohttp session to reuse across calls.
+            **args: Subclass-specific extra parameters.
+        Subclasses must:
+            • Compose the request and call the API.
+            • Parse returned prompt_logprobs, compute negative average logprob as PPL.
+            • Store results in `output` (ppl value, raw logprobs, success flag, error info).
+            • Respect session lifecycle: only close if they created it.
+        """
+        raise AISBenchNotImplementedError(ICLI_CODES.IMPLEMENTATION_ERROR_PPL_METHOD_NOT_IMPLEMENTED, f"PPL is not supported for this model.")
 
 class APITemplateParser:
     """Intermidate prompt template parser, specifically for API models.
