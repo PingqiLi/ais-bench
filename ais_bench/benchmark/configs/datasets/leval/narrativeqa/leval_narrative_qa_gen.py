@@ -25,7 +25,7 @@ LEval_narrativeqa_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer, 'max_out_len': 50}
+    'inferencer': {'type': GenInferencer}
 }
 
 LEval_narrativeqa_eval_cfg = {

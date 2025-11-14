@@ -1,9 +1,11 @@
 """Unit tests for LEval News Summ dataset loader."""
 
+import pytest
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.news_summ import LEvalNewsSummDataset
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 
 class TestLEvalNewsSummDataset:
@@ -60,3 +62,11 @@ class TestLEvalNewsSummDataset:
         assert data_list[1]['context'] == 'News article content...'
         assert data_list[1]['answer'] == 'The main topic is advancements in artificial intelligence research'
         assert data_list[1]['length'] == 9  # 9 words
+
+    def test_news_summ_load_missing_path(self):
+        """Test that ConfigError is raised when 'path' argument is missing."""
+        with pytest.raises(ConfigError) as exc_info:
+            LEvalNewsSummDataset.load()
+        
+        # Verify the error message contains helpful information
+        assert "path" in str(exc_info.value).lower()

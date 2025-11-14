@@ -1,9 +1,11 @@
 """Unit tests for LEval Patent Summ dataset loader."""
 
+import pytest
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.patent_summ import LEvalPatentSummDataset
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 
 class TestLEvalPatentSummDataset:
@@ -60,3 +62,11 @@ class TestLEvalPatentSummDataset:
         assert data_list[1]['context'] == 'Patent document content...'
         assert data_list[1]['answer'] == 'The patent claims a new method and system for data processing'
         assert data_list[1]['length'] == 11  # 11 words
+
+    def test_patent_summ_load_missing_path(self):
+        """Test that ConfigError is raised when 'path' argument is missing."""
+        with pytest.raises(ConfigError) as exc_info:
+            LEvalPatentSummDataset.load()
+        
+        # Verify the error message contains helpful information
+        assert "path" in str(exc_info.value).lower()

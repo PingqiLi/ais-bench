@@ -69,4 +69,3 @@ class TestLEvalGovReportSummDataset:
         
         # Verify the error message contains helpful information
         assert "path" in str(exc_info.value).lower()
-

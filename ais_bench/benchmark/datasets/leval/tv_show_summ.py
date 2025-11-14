@@ -3,8 +3,6 @@ from datasets import Dataset, load_dataset
 from ais_bench.benchmark.registry import LOAD_DATASET
 from ais_bench.benchmark.datasets.utils.datasets import get_data_path
 from ais_bench.benchmark.utils.logging import AISLogger
-from ais_bench.benchmark.utils.logging.error_codes import DATASETS_CODES
-from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 from ..base import BaseDataset
 
@@ -12,13 +10,13 @@ logger = AISLogger()
 
 
 @LOAD_DATASET.register_module()
-class LEvalNewsSummDataset(BaseDataset):
+class LEvalTVShowSummDataset(BaseDataset):
     """
-    LEval News Summarization dataset loader.
-    Loads and processes the L-Eval News Summarization benchmark dataset, which contains
-    news articles with associated question-answer pairs for summarization tasks.
+    LEval TV Show Summarization dataset loader.
+    Loads and processes the L-Eval TV Show Summarization benchmark dataset, which contains
+    TV show transcripts with associated question-answer pairs for summarization tasks.
 
-    The dataset is flattened from a nested structure where each document context
+    The dataset is flattened from a nested structure where each transcript context
     may have multiple question-answer pairs into individual samples with
     (question, context, answer). Additionally, the length of each answer is
     computed and included in the sample.
@@ -27,10 +25,11 @@ class LEvalNewsSummDataset(BaseDataset):
     @staticmethod
     def load(**kwargs):
         if 'path' not in kwargs:
-            raise ConfigError(DATASETS_CODES.INVALID_DATASET_CONFIG, "The 'path' argument is required to load the dataset.")
+            raise ValueError(
+                "The 'path' argument is required to load the dataset.")
 
         path = kwargs['path']
-        logger.info(f"Loading LEval News Summarization dataset from path: {path}")
+        logger.info(f"Loading LEval TV Show Summarization dataset from path: {path}")
         full_path = get_data_path(path, local_mode=True)
         logger.debug(f"Resolved full path: {full_path}")
 

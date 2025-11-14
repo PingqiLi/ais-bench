@@ -8,8 +8,12 @@ from ais_bench.benchmark.datasets.leval.meeting_summ import *
 from ais_bench.benchmark.datasets.leval.gov_report_summ import *
 from ais_bench.benchmark.datasets.leval.legal_contract_qa import *
 from ais_bench.benchmark.datasets.leval.multidoc_qa import *
-from .narrative_qa import *
-from .natural_requestion import *
-from .news_summ import *
-from .paper_assistant import *
-from .patent_summ import *
+from ais_bench.benchmark.datasets.leval.narrative_qa import *
+from ais_bench.benchmark.datasets.leval.natural_requestion import *
+from ais_bench.benchmark.datasets.leval.news_summ import *
+from ais_bench.benchmark.datasets.leval.paper_assistant import *
+from ais_bench.benchmark.datasets.leval.patent_summ import *
+from .review_summ import *
+from .scientific_qa import *
+from .tv_show_summ import *
+from .code_u import *

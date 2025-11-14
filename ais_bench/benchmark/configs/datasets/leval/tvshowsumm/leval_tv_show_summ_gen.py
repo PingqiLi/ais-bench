@@ -2,16 +2,16 @@ from ais_bench.benchmark.openicl.icl_prompt_template import PromptTemplate
 from ais_bench.benchmark.openicl.icl_retriever import ZeroRetriever
 from ais_bench.benchmark.openicl.icl_inferencer import GenInferencer
 from ais_bench.benchmark.openicl.icl_evaluator import RougeEvaluator
-from ais_bench.benchmark.datasets.leval import LEvalPaperAssistantDataset
+from ais_bench.benchmark.datasets.leval import LEvalTVShowSummDataset
 
-LEval_ps_summ_reader_cfg = {
+LEval_tvshow_summ_reader_cfg = {
     'input_columns': ['context', 'question', 'length'],
     'output_column': 'answer',
     'train_split': 'test',
     'test_split': 'test'
 }
 
-LEval_ps_summ_infer_cfg = {
+LEval_tvshow_summ_infer_cfg = {
     'prompt_template': {
         'type': PromptTemplate,
         'template': {
@@ -25,22 +25,22 @@ LEval_ps_summ_infer_cfg = {
         }
     },
     'retriever': {'type': ZeroRetriever},
-    'inferencer': {'type': GenInferencer}
+    'inferencer': {'type': GenInferencer, 'max_out_len': 512}
 }
 
-LEval_ps_summ_eval_cfg = {
+LEval_tvshow_summ_eval_cfg = {
     'evaluator': {'type': RougeEvaluator},
     'pred_role': 'BOT'
 }
 
-LEval_ps_summ_datasets = [
+LEval_tvshow_summ_datasets = [
     {
-        'type': LEvalPaperAssistantDataset,
-        'abbr': 'LEval_paper_assistant',
+        'type': LEvalTVShowSummDataset,
+        'abbr': 'LEval_tvshow_summ',
         'path': 'L4NLP/LEval',
-        'name': 'paper_assistant',
-        'reader_cfg': LEval_ps_summ_reader_cfg,
-        'infer_cfg': LEval_ps_summ_infer_cfg,
-        'eval_cfg': LEval_ps_summ_eval_cfg
+        'name': 'tv_show_summ',
+        'reader_cfg': LEval_tvshow_summ_reader_cfg,
+        'infer_cfg': LEval_tvshow_summ_infer_cfg,
+        'eval_cfg': LEval_tvshow_summ_eval_cfg
     }
 ]

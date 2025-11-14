@@ -1,9 +1,11 @@
 """Unit tests for LEval Paper Assistant dataset loader."""
 
+import pytest
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.paper_assistant import LEvalPaperAssistantDataset
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
 
 
 class TestLEvalPaperAssistantDataset:
@@ -60,3 +62,11 @@ class TestLEvalPaperAssistantDataset:
         assert data_list[1]['context'] == 'Research paper content...'
         assert data_list[1]['answer'] == 'Key contributions include new algorithms and experimental validation'
         assert data_list[1]['length'] == 8  # 8 words
+
+    def test_paper_assistant_load_missing_path(self):
+        """Test that ConfigError is raised when 'path' argument is missing."""
+        with pytest.raises(ConfigError) as exc_info:
+            LEvalPaperAssistantDataset.load()
+        
+        # Verify the error message contains helpful information
+        assert "path" in str(exc_info.value).lower()

@@ -1,9 +1,17 @@
 """Unit tests for LEval Narrative QA dataset loader."""
 
+<<<<<<< HEAD
+import pytest
+=======
+>>>>>>> 6ef64f3 (feat: add narrative qa support)
 from unittest.mock import patch
 from datasets import Dataset, DatasetDict
 
 from ais_bench.benchmark.datasets.leval.narrative_qa import LEvalNarrativeQADataset
+<<<<<<< HEAD
+from ais_bench.benchmark.utils.logging.exceptions import ConfigError
+=======
+>>>>>>> 6ef64f3 (feat: add narrative qa support)
 
 
 class TestLEvalNarrativeQADataset:
@@ -60,3 +68,11 @@ class TestLEvalNarrativeQADataset:
         assert data_list[1]['context'] == 'Narrative story content...'
         assert data_list[1]['answer'] == 'The main character is a young explorer named Alex'
         assert data_list[1]['length'] == 9  # 9 words
+
+    def test_narrative_qa_load_missing_path(self):
+        """Test that ConfigError is raised when 'path' argument is missing."""
+        with pytest.raises(ConfigError) as exc_info:
+            LEvalNarrativeQADataset.load()
+        
+        # Verify the error message contains helpful information
+        assert "path" in str(exc_info.value).lower()

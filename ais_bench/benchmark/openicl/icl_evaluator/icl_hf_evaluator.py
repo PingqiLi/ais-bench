@@ -403,4 +403,4 @@ class LEvalEMEvaluator(BaseEvaluator):
 
         score = cnt / len(predictions) * 100
 
-        return {'score': score}
+        return {'accuracy': score}
