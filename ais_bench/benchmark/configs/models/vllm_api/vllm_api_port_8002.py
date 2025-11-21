@@ -2,7 +2,7 @@
 vLLM API model config for parallel evaluation - Port 8002 (Instance 2)
 
 This config is designed for parallel evaluation across multiple vLLM instances.
-Instance 2 connects to vLLM server on port 8000.
+Instance 2 connects to vLLM server on port 8002.
 """
 
 from ais_bench.benchmark.models import VLLMCustomAPIChat
@@ -19,15 +19,13 @@ models = [
         retry = 2,
         host_ip = "localhost",
         host_port = 8002,  # Instance 2 port
-        max_out_len = 512,
-        batch_size=1,
+        max_out_len = 32000,
+        batch_size=16,
         trust_remote_code=False,
         generation_kwargs = dict(
-            temperature = 0.5,
-            top_k = 10,
-            top_p = 0.95,
-            seed = None,
-            repetition_penalty = 1.03,
+            temperature = 1,
+            top_k = 1,
+            top_p = 1
         ),
         pred_postprocessor=dict(type=extract_non_reasoning_content)
     )

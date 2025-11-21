@@ -19,15 +19,13 @@ models = [
         retry = 2,
         host_ip = "localhost",
         host_port = 8000,  # Instance 0 port
-        max_out_len = 512,
-        batch_size=1,
+        max_out_len = 32000,
+        batch_size=16,
         trust_remote_code=False,
         generation_kwargs = dict(
-            temperature = 0.5,
-            top_k = 10,
-            top_p = 0.95,
-            seed = None,
-            repetition_penalty = 1.03,
+            temperature = 1,
+            top_k = 1,
+            top_p = 1
         ),
         pred_postprocessor=dict(type=extract_non_reasoning_content)
     )
