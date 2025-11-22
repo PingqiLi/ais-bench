@@ -183,3 +183,77 @@ ais_bench/
 - Can easily extend to more/fewer instances by creating more configs
 - Pre-splitting datasets avoids runtime overhead
 - Each instance's results can be analyzed independently before aggregation
+
+---
+
+## Custom Sampled Datasets
+
+### Creating a Custom Evaluation Dataset
+
+For quick validation and testing, you can create a custom dataset by sampling from multiple existing datasets.
+
+#### Available Tool: `tools/create_sampled_dataset.py`
+
+**Features:**
+- Sample from AIME2024, MATH500, CEval, MMLU, LiveCodeBench
+- Customize sample count for each dataset
+- Random sampling with optional seed for reproducibility
+- Automatically standardizes field names
+- Adds `source_dataset` tag to each sample
+
+**Usage Example:**
+```bash
+# Create a custom dataset with 30 samples from each source
+python3 tools/create_sampled_dataset.py \
+  --aime-count 30 \
+  --math-count 40 \
+  --ceval-count 50 \
+  --mmlu-count 50 \
+  --livecodebench-count 30 \
+  --output datasets/my_custom_eval.jsonl \
+  --seed 42
+```
+
+**Output:**
+```
+datasets/my_custom_eval.jsonl  # Combined dataset (200 samples total)
+```
+
+#### Running Evaluation
+
+**Single instance:**
+```bash
+ais_bench \
+  --models vllm_api_general_chat \
+  --datasets custom_sampled_eval_gen_0_shot_cot_chat_prompt \
+  --mode all \
+  --work-dir outputs/custom_eval
+```
+
+**Parallel evaluation:**
+```bash
+# 1. Split the custom dataset
+python3 tools/prepare_parallel_custom.py \
+  --input datasets/my_custom_eval.jsonl \
+  --num-splits 4
+
+# 2. Run in parallel (4 terminals)
+ais_bench --models vllm_api_port_8000 --custom-dataset-path datasets/my_custom_eval_parallel_0.jsonl --work-dir outputs/instance_0 --mode all
+ais_bench --models vllm_api_port_8001 --custom-dataset-path datasets/my_custom_eval_parallel_1.jsonl --work-dir outputs/instance_1 --mode all
+ais_bench --models vllm_api_port_8002 --custom-dataset-path datasets/my_custom_eval_parallel_2.jsonl --work-dir outputs/instance_2 --mode all
+ais_bench --models vllm_api_port_8003 --custom-dataset-path datasets/my_custom_eval_parallel_3.jsonl --work-dir outputs/instance_3 --mode all
+```
+
+### Dataset Config
+
+**Location**: `benchmark/configs/datasets/custom/custom_sampled_eval_gen_0_shot_cot_chat_prompt.py`
+
+This config can load any JSONL file created by the sampling tool.
+
+### Use Cases
+
+✅ **Quick validation** - Test W4A4 vs BF16 with small dataset (< 200 samples)
+✅ **Framework debugging** - Test parallel evaluation with minimal data
+✅ **Parameter tuning** - Quickly iterate on generation parameters
+✅ **Benchmark comparison** - Create consistent test set across runs
+
