@@ -5,15 +5,26 @@ Create a custom sampled dataset from multiple existing datasets.
 This script samples data from aime2024, math500, ceval, mmlu, and livecodebench
 to create a unified evaluation dataset for quick testing and validation.
 
+The output JSONL file can be used directly with AISBench's --custom-dataset-path
+argument, which automatically detects whether the dataset is MCQ or QA format.
+
 Usage:
+    # 1. Create the custom dataset
     python3 tools/create_sampled_dataset.py \
         --aime-count 30 \
         --math-count 40 \
         --ceval-count 50 \
         --mmlu-count 50 \
         --livecodebench-count 30 \
-        --output datasets/my_custom_eval.jsonl \
+        --output datasets/custom_sampled_eval.jsonl \
         --seed 42
+
+    # 2. Run evaluation (AISBench auto-detects dataset type)
+    ais_bench \
+        --models vllm_api_general_chat \
+        --custom-dataset-path datasets/custom_sampled_eval.jsonl \
+        --mode all \
+        --work-dir outputs/custom_eval
 """
 
 import argparse

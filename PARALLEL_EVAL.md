@@ -198,62 +198,83 @@ For quick validation and testing, you can create a custom dataset by sampling fr
 - Sample from AIME2024, MATH500, CEval, MMLU, LiveCodeBench
 - Customize sample count for each dataset
 - Random sampling with optional seed for reproducibility
-- Automatically standardizes field names
+- Automatically standardizes field names (`question`, `answer`)
 - Adds `source_dataset` tag to each sample
+- Outputs JSONL format compatible with AISBench
 
 **Usage Example:**
 ```bash
-# Create a custom dataset with 30 samples from each source
+cd /path/to/ais_bench
+
+# Create a custom dataset with samples from multiple sources
 python3 tools/create_sampled_dataset.py \
   --aime-count 30 \
   --math-count 40 \
   --ceval-count 50 \
   --mmlu-count 50 \
   --livecodebench-count 30 \
-  --output datasets/my_custom_eval.jsonl \
+  --output datasets/custom_sampled_eval.jsonl \
   --seed 42
 ```
 
 **Output:**
 ```
-datasets/my_custom_eval.jsonl  # Combined dataset (200 samples total)
+datasets/custom_sampled_eval.jsonl  # Combined dataset (200 samples total)
 ```
 
-#### Running Evaluation
+### Running Evaluation with Custom Dataset
 
-**Single instance:**
+AISBench automatically detects dataset format (MCQ/QA) based on the presence of A, B, C, D fields.
+
+**Single instance evaluation:**
 ```bash
+# AISBench will auto-detect the dataset type (MCQ or QA)
 ais_bench \
   --models vllm_api_general_chat \
-  --datasets custom_sampled_eval_gen_0_shot_cot_chat_prompt \
+  --custom-dataset-path datasets/custom_sampled_eval.jsonl \
   --mode all \
   --work-dir outputs/custom_eval
 ```
 
-**Parallel evaluation:**
-```bash
-# 1. Split the custom dataset
-python3 tools/prepare_parallel_custom.py \
-  --input datasets/my_custom_eval.jsonl \
-  --num-splits 4
+**Optional: Use .meta.json for advanced config**
 
-# 2. Run in parallel (4 terminals)
-ais_bench --models vllm_api_port_8000 --custom-dataset-path datasets/my_custom_eval_parallel_0.jsonl --work-dir outputs/instance_0 --mode all
-ais_bench --models vllm_api_port_8001 --custom-dataset-path datasets/my_custom_eval_parallel_1.jsonl --work-dir outputs/instance_1 --mode all
-ais_bench --models vllm_api_port_8002 --custom-dataset-path datasets/my_custom_eval_parallel_2.jsonl --work-dir outputs/instance_2 --mode all
-ais_bench --models vllm_api_port_8003 --custom-dataset-path datasets/my_custom_eval_parallel_3.jsonl --work-dir outputs/instance_3 --mode all
+Create `datasets/custom_sampled_eval.jsonl.meta.json`:
+```json
+{
+  "request_count": 100,
+  "sampling_mode": "random"
+}
 ```
 
-### Dataset Config
+Then run:
+```bash
+ais_bench \
+  --models vllm_api_general_chat \
+  --custom-dataset-path datasets/custom_sampled_eval.jsonl \
+  --custom-dataset-meta-path datasets/custom_sampled_eval.jsonl.meta.json \
+  --mode all \
+  --work-dir outputs/custom_eval
+```
 
-**Location**: `benchmark/configs/datasets/custom/custom_sampled_eval_gen_0_shot_cot_chat_prompt.py`
+### Dataset Format
 
-This config can load any JSONL file created by the sampling tool.
+The JSONL file should contain one JSON object per line with at least these fields:
+
+**For QA (Question-Answer) tasks:**
+```json
+{"question": "What is 2+2?", "answer": "4", "source_dataset": "math500"}
+```
+
+**For MCQ (Multiple Choice) tasks:**
+```json
+{"question": "What is the capital of France?", "A": "London", "B": "Paris", "C": "Berlin", "D": "Madrid", "answer": "B", "source_dataset": "mmlu"}
+```
 
 ### Use Cases
 
 ✅ **Quick validation** - Test W4A4 vs BF16 with small dataset (< 200 samples)
-✅ **Framework debugging** - Test parallel evaluation with minimal data
+✅ **Framework debugging** - Test evaluation framework with minimal data
 ✅ **Parameter tuning** - Quickly iterate on generation parameters
 ✅ **Benchmark comparison** - Create consistent test set across runs
+✅ **No config files needed** - Just use command-line arguments
 
