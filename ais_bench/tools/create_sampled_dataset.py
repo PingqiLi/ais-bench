@@ -244,32 +244,47 @@ class DatasetSampler:
         return samples
 
     def sample_livecodebench(self, count: int) -> List[Dict[str, Any]]:
-        """Sample from LiveCodeBench dataset."""
+        """Sample from LiveCodeBench dataset.
+
+        LiveCodeBench dataset should be downloaded from HuggingFace:
+        https://huggingface.co/datasets/livecodebench/code_generation_lite
+
+        Deploy to: ais_bench/datasets/code_generation_lite/
+        """
         print(f"Sampling {count} from LiveCodeBench...")
 
-        possible_paths = [
-            'datasets/livecodebench/code_generation_lite.jsonl',
-            'datasets/livecodebench/test.jsonl',
-        ]
+        # LiveCodeBench is in code_generation_lite directory with multiple JSONL files
+        lcb_dir = self.ais_bench_root / 'datasets' / 'code_generation_lite'
 
-        data = []
-        for path in possible_paths:
-            data = self.load_jsonl(path)
-            if data:
-                break
+        if not lcb_dir.exists():
+            print(f"  ⚠ LiveCodeBench dataset not found at {lcb_dir}")
+            print(f"  ℹ Please download from: https://huggingface.co/datasets/livecodebench/code_generation_lite")
+            print(f"  ℹ Deploy to: ais_bench/datasets/code_generation_lite/")
+            return []
+
+        # Try to load from test.jsonl (main test file)
+        test_file = lcb_dir / 'test.jsonl'
+        if not test_file.exists():
+            print(f"  ⚠ LiveCodeBench test.jsonl not found in {lcb_dir}")
+            return []
+
+        data = self.load_jsonl(str(test_file))
 
         if not data:
-            print(f"  ⚠ LiveCodeBench dataset not found, skipping")
+            print(f"  ⚠ No LiveCodeBench data loaded, skipping")
             return []
 
         samples = random.sample(data, min(count, len(data)))
 
-        # Standardize fields
+        # Standardize fields for custom dataset format
         for item in samples:
             item['source_dataset'] = 'livecodebench'
-            # LiveCodeBench might use 'prompt' instead of 'question'
-            if 'prompt' in item and 'question' not in item:
-                item['question'] = item['prompt']
+            # LiveCodeBench uses 'question_content' as the main question field
+            if 'question_content' in item and 'question' not in item:
+                item['question'] = item['question_content']
+            # Keep question_id as answer for evaluation tracking
+            if 'question_id' in item and 'answer' not in item:
+                item['answer'] = item['question_id']
 
         print(f"  ✓ Sampled {len(samples)} / {len(data)} items")
         return samples

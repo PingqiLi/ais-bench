@@ -16,6 +16,23 @@
 - **MATH500**: 数学问题求解 (数学解答)
 - **LiveCodeBench**: 代码生成任务 (Python代码)
 
+### 数据集准备说明
+
+大部分数据集位于 `ais_bench/datasets/` 目录下。**LiveCodeBench** 需要单独下载：
+
+```bash
+# 进入数据集目录
+cd ais_bench/datasets
+
+# 下载LiveCodeBench (需要git-lfs)
+git lfs install
+git clone https://huggingface.co/datasets/livecodebench/code_generation_lite
+
+# 验证下载成功
+tree code_generation_lite/
+# 应该看到: test.jsonl, test1.jsonl, test2.jsonl, etc.
+```
+
 ## 重要限制
 
 ⚠️ **AISBench不支持在单个文件中混合MCQ和QA类型的数据**
