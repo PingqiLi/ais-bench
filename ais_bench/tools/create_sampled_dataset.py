@@ -81,14 +81,19 @@ class DatasetSampler:
         data = self.load_jsonl('datasets/aime/aime.jsonl')
 
         if not data:
+            print(f"  ⚠ AIME2024 dataset not found, skipping")
             return []
 
         samples = random.sample(data, min(count, len(data)))
 
-        # Standardize fields
+        # Standardize fields - AIME uses origin_prompt and gold_answer
         for item in samples:
             item['source_dataset'] = 'aime2024'
-            # AIME uses 'question' and 'answer' - already standard
+            # Map AIME fields to standard names
+            if 'origin_prompt' in item and 'question' not in item:
+                item['question'] = item['origin_prompt']
+            if 'gold_answer' in item and 'answer' not in item:
+                item['answer'] = item['gold_answer']
 
         print(f"  ✓ Sampled {len(samples)} / {len(data)} items")
         return samples
@@ -187,14 +192,14 @@ class DatasetSampler:
                 with open(csv_file, 'r', encoding='utf-8') as f:
                     reader = csv.reader(f)
                     for row in reader:
-                        if len(row) >= 6:  # question, A, B, C, D, answer
+                        if len(row) >= 6:  # input, A, B, C, D, target
                             item = {
-                                'question': row[0],
+                                'input': row[0],  # MMLU uses 'input' not 'question'
                                 'A': row[1],
                                 'B': row[2],
                                 'C': row[3],
                                 'D': row[4],
-                                'answer': row[5],
+                                'target': row[5],  # MMLU uses 'target' not 'answer'
                                 'subject': csv_file.stem.replace('_test', '').replace('_val', '')
                             }
                             all_data.append(item)
@@ -205,9 +210,11 @@ class DatasetSampler:
 
         samples = random.sample(all_data, min(count, len(all_data)))
 
-        # Add source tag
+        # Standardize fields - map MMLU's input/target to question/answer
         for item in samples:
             item['source_dataset'] = 'mmlu'
+            item['question'] = item['input']  # Add standard question field
+            item['answer'] = item['target']    # Add standard answer field
 
         print(f"  ✓ Sampled {len(samples)} / {len(all_data)} items")
         return samples
@@ -225,9 +232,35 @@ class DatasetSampler:
         import csv
         all_data = []
         with open(gpqa_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                all_data.append(row)
+            reader = csv.reader(f)
+            for row_idx, row in enumerate(reader):
+                # Skip header row
+                if row_idx == 0 or (len(row) > 7 and row[7] == 'Question'):
+                    continue
+
+                if len(row) >= 12:  # Need at least 12 columns for question + 4 options
+                    # GPQA format: row[7]=question, row[8-11]=options (first is correct)
+                    question = row[7]
+                    options = [row[8], row[9], row[10], row[11]]
+
+                    # Create shuffled options like the official loader does
+                    shuffle_patterns = ['ABCD', 'BCDA', 'CDAB', 'DABC']
+                    pattern = shuffle_patterns[row_idx % 4]
+
+                    item = {'question': question}
+                    ground_truth = options[0]  # First option is always correct
+
+                    # Shuffle options
+                    for i in range(4):
+                        item['ABCD'[i]] = options[ord(pattern[i]) - ord('A')]
+
+                    # Find which letter corresponds to correct answer
+                    for i in range(4):
+                        if item['ABCD'[i]] == ground_truth:
+                            item['answer'] = 'ABCD'[i]
+                            break
+
+                    all_data.append(item)
 
         if not all_data:
             print(f"  ⚠ No GPQA data loaded, skipping")
@@ -235,10 +268,9 @@ class DatasetSampler:
 
         samples = random.sample(all_data, min(count, len(all_data)))
 
-        # Standardize fields
+        # Add source tag
         for item in samples:
             item['source_dataset'] = 'gpqa'
-            # GPQA already has question, A, B, C, D, answer fields
 
         print(f"  ✓ Sampled {len(samples)} / {len(all_data)} items")
         return samples
@@ -282,9 +314,11 @@ class DatasetSampler:
             # LiveCodeBench uses 'question_content' as the main question field
             if 'question_content' in item and 'question' not in item:
                 item['question'] = item['question_content']
-            # Keep question_id as answer for evaluation tracking
-            if 'question_id' in item and 'answer' not in item:
-                item['answer'] = item['question_id']
+            # LiveCodeBench doesn't have a simple 'answer' field
+            # It's evaluated by code execution, so we keep question_id for tracking
+            # Add answer field as empty string to maintain consistency
+            if 'answer' not in item:
+                item['answer'] = ''  # Empty for code generation tasks
 
         print(f"  ✓ Sampled {len(samples)} / {len(data)} items")
         return samples
