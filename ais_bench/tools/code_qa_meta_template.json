@@ -1,0 +1,10 @@
+{
+  "evaluator": "ais_bench.benchmark.datasets.livecodebench.LCBCodeGenerationEvaluator",
+  "evaluator_kwargs": {
+    "num_process_evaluate": 4,
+    "timeout": 500,
+    "release_version": "v4_v5",
+    "extractor_version": "v2"
+  },
+  "template": "### Question:\n{question}\n\n### Answer: (use the provided format with backticks)\n\n{answer}"
+}

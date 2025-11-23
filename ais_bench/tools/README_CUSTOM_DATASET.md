@@ -77,19 +77,21 @@ datasets/custom_eval_math_qa.jsonl   # 70个数学题
 datasets/custom_eval_code_qa.jsonl   # 0个代码题（设为0可跳过）
 ```
 
-### 步骤2: 为MATH-QA创建.meta.json（关键！）
+### 步骤2: 为QA数据集创建.meta.json（关键！）
 
-MATH-QA数据集需要使用MATHEvaluator，必须创建meta文件：
+⚠️ **两种QA数据集都需要meta.json，否则会使用AccEvaluator导致准确率接近0%！**
+
+#### 2.1 MATH-QA数据集（AIME + MATH）
 
 ```bash
 # 从ais_bench根目录执行
 cd /path/to/ais_bench
 
-# 复制模板
+# 复制MATH-QA模板
 cp tools/math_qa_meta_template.json datasets/custom_eval_math_qa.jsonl.meta.json
 ```
 
-**meta.json内容**：
+**math_qa meta.json内容**：
 ```json
 {
   "evaluator": "ais_bench.benchmark.datasets.math.MATHEvaluator",
@@ -98,32 +100,100 @@ cp tools/math_qa_meta_template.json datasets/custom_eval_math_qa.jsonl.meta.json
 }
 ```
 
-⚠️ **注意**：meta.json文件名必须是 `<dataset-file-name>.meta.json` 格式！
+#### 2.2 Code-QA数据集（LiveCodeBench）
+
+```bash
+# 复制Code-QA模板
+cp tools/code_qa_meta_template.json datasets/custom_eval_code_qa.jsonl.meta.json
+```
+
+**code_qa meta.json内容**：
+```json
+{
+  "evaluator": "ais_bench.benchmark.datasets.livecodebench.LCBCodeGenerationEvaluator",
+  "evaluator_kwargs": {
+    "num_process_evaluate": 4,
+    "timeout": 500,
+    "release_version": "v4_v5",
+    "extractor_version": "v2"
+  },
+  "template": "### Question:\n{question}\n\n### Answer: (use the provided format with backticks)\n\n{answer}"
+}
+```
+
+⚠️ **注意**：
+- meta.json文件名必须是 `<dataset-file-name>.meta.json` 格式！
+- **必须使用 `--custom-dataset-meta-path` 参数**，否则会使用默认的AccEvaluator导致几乎全错！
 
 ### 步骤3: 运行评测
 
+⚠️ **重要**：QA数据集必须使用 `--custom-dataset-meta-path` 参数！
+
 ```bash
-# 1. 评测MCQ数据集（选择题）
+# 1. 评测MCQ数据集（选择题 - 不需要meta.json）
 ais_bench \
   --models vllm_api_general_chat \
   --custom-dataset-path datasets/custom_eval_mcq.jsonl \
   --mode all \
   --work-dir outputs/custom_eval_mcq
 
-# 2. 评测MATH-QA数据集（数学题 - 使用meta.json）
+# 2. 评测MATH-QA数据集（数学题 - 必须使用meta.json指定MATHEvaluator）
 ais_bench \
   --models vllm_api_general_chat \
   --custom-dataset-path datasets/custom_eval_math_qa.jsonl \
   --custom-dataset-meta-path datasets/custom_eval_math_qa.jsonl.meta.json \
   --mode all \
   --work-dir outputs/custom_eval_math_qa
+
+# 3. 评测Code-QA数据集（代码题 - 必须使用meta.json指定LCBCodeGenerationEvaluator）
+ais_bench \
+  --models vllm_api_general_chat \
+  --custom-dataset-path datasets/custom_eval_code_qa.jsonl \
+  --custom-dataset-meta-path datasets/custom_eval_code_qa.jsonl.meta.json \
+  --mode all \
+  --work-dir outputs/custom_eval_code_qa
 ```
 
 ### 步骤4: 查看结果
 
 ```
 outputs/custom_eval_mcq/results/       # MCQ评测结果
-outputs/custom_eval_math_qa/results/   # MATH-QA评测结果（应该有正常准确率）
+outputs/custom_eval_math_qa/results/   # MATH-QA评测结果（应该有正常准确率，不再是0%）
+outputs/custom_eval_code_qa/results/   # Code-QA评测结果（应该有正常准确率，不再是2%）
+```
+
+### 常见错误
+
+#### ❌ 错误1: 忘记使用 --custom-dataset-meta-path
+
+```bash
+# 错误示例 - 会导致MATH-QA准确率为0%
+ais_bench --models vllm_api_general_chat \
+  --custom-dataset-path datasets/custom_eval_math_qa.jsonl \
+  --mode all --work-dir outputs/test
+```
+
+**原因**：没有指定evaluator，默认使用AccEvaluator进行精确字符串匹配，导致所有答案都被判错。
+
+**正确做法**：
+```bash
+# ✓ 必须指定meta.json
+ais_bench --models vllm_api_general_chat \
+  --custom-dataset-path datasets/custom_eval_math_qa.jsonl \
+  --custom-dataset-meta-path datasets/custom_eval_math_qa.jsonl.meta.json \
+  --mode all --work-dir outputs/test
+```
+
+#### ❌ 错误2: meta.json文件名不正确
+
+```bash
+# 错误：meta.json文件名不匹配数据集文件名
+datasets/custom_eval_math_qa.jsonl
+datasets/math_qa.meta.json  # ❌ 错误
+
+# 正确：meta.json必须以数据集文件名开头
+datasets/custom_eval_math_qa.jsonl
+datasets/custom_eval_math_qa.jsonl.meta.json  # ✓ 正确
 ```
 
 ## 参数说明
