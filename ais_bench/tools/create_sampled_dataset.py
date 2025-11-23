@@ -86,17 +86,18 @@ class DatasetSampler:
 
         samples = random.sample(data, min(count, len(data)))
 
-        # Standardize fields - AIME uses origin_prompt and gold_answer
+        # Convert to standardized format - keep ONLY standard fields
+        standardized = []
         for item in samples:
-            item['source_dataset'] = 'aime2024'
-            # Map AIME fields to standard names
-            if 'origin_prompt' in item and 'question' not in item:
-                item['question'] = item['origin_prompt']
-            if 'gold_answer' in item and 'answer' not in item:
-                item['answer'] = item['gold_answer']
+            std_item = {
+                'question': item.get('origin_prompt', item.get('question', '')),
+                'answer': item.get('gold_answer', item.get('answer', '')),
+                'source_dataset': 'aime2024'
+            }
+            standardized.append(std_item)
 
-        print(f"  ✓ Sampled {len(samples)} / {len(data)} items")
-        return samples
+        print(f"  ✓ Sampled {len(standardized)} / {len(data)} items")
+        return standardized
 
     def sample_math500(self, count: int) -> List[Dict[str, Any]]:
         """Sample from MATH500 dataset."""
@@ -120,17 +121,18 @@ class DatasetSampler:
 
         samples = random.sample(data, min(count, len(data)))
 
-        # Standardize fields
+        # Convert to standardized format - keep ONLY standard fields
+        standardized = []
         for item in samples:
-            item['source_dataset'] = 'math500'
-            # MATH uses 'problem' and 'solution', map to standard names
-            if 'problem' in item and 'question' not in item:
-                item['question'] = item['problem']
-            if 'solution' in item and 'answer' not in item:
-                item['answer'] = item['solution']
+            std_item = {
+                'question': item.get('problem', item.get('question', '')),
+                'answer': item.get('solution', item.get('answer', '')),
+                'source_dataset': 'math500'
+            }
+            standardized.append(std_item)
 
-        print(f"  ✓ Sampled {len(samples)} / {len(data)} items")
-        return samples
+        print(f"  ✓ Sampled {len(standardized)} / {len(data)} items")
+        return standardized
 
     def sample_ceval(self, count: int) -> List[Dict[str, Any]]:
         """Sample from CEval dataset."""
@@ -160,13 +162,22 @@ class DatasetSampler:
 
         samples = random.sample(all_data, min(count, len(all_data)))
 
-        # Standardize fields
+        # Convert to standardized MCQ format - keep ONLY standard fields
+        standardized = []
         for item in samples:
-            item['source_dataset'] = 'ceval'
-            # CEval already has question, A, B, C, D, answer
+            std_item = {
+                'question': item.get('question', ''),
+                'A': item.get('A', ''),
+                'B': item.get('B', ''),
+                'C': item.get('C', ''),
+                'D': item.get('D', ''),
+                'answer': item.get('answer', ''),
+                'source_dataset': 'ceval'
+            }
+            standardized.append(std_item)
 
-        print(f"  ✓ Sampled {len(samples)} / {len(all_data)} items")
-        return samples
+        print(f"  ✓ Sampled {len(standardized)} / {len(all_data)} items")
+        return standardized
 
     def sample_mmlu(self, count: int) -> List[Dict[str, Any]]:
         """Sample from MMLU dataset."""
@@ -210,14 +221,22 @@ class DatasetSampler:
 
         samples = random.sample(all_data, min(count, len(all_data)))
 
-        # Standardize fields - map MMLU's input/target to question/answer
+        # Convert to standardized MCQ format - keep ONLY standard fields
+        standardized = []
         for item in samples:
-            item['source_dataset'] = 'mmlu'
-            item['question'] = item['input']  # Add standard question field
-            item['answer'] = item['target']    # Add standard answer field
+            std_item = {
+                'question': item.get('input', item.get('question', '')),
+                'A': item.get('A', ''),
+                'B': item.get('B', ''),
+                'C': item.get('C', ''),
+                'D': item.get('D', ''),
+                'answer': item.get('target', item.get('answer', '')),
+                'source_dataset': 'mmlu'
+            }
+            standardized.append(std_item)
 
-        print(f"  ✓ Sampled {len(samples)} / {len(all_data)} items")
-        return samples
+        print(f"  ✓ Sampled {len(standardized)} / {len(all_data)} items")
+        return standardized
 
     def sample_gpqa(self, count: int) -> List[Dict[str, Any]]:
         """Sample from GPQA dataset."""
@@ -268,12 +287,22 @@ class DatasetSampler:
 
         samples = random.sample(all_data, min(count, len(all_data)))
 
-        # Add source tag
+        # Convert to standardized MCQ format - keep ONLY standard fields
+        standardized = []
         for item in samples:
-            item['source_dataset'] = 'gpqa'
+            std_item = {
+                'question': item.get('question', ''),
+                'A': item.get('A', ''),
+                'B': item.get('B', ''),
+                'C': item.get('C', ''),
+                'D': item.get('D', ''),
+                'answer': item.get('answer', ''),
+                'source_dataset': 'gpqa'
+            }
+            standardized.append(std_item)
 
-        print(f"  ✓ Sampled {len(samples)} / {len(all_data)} items")
-        return samples
+        print(f"  ✓ Sampled {len(standardized)} / {len(all_data)} items")
+        return standardized
 
     def sample_livecodebench(self, count: int) -> List[Dict[str, Any]]:
         """Sample from LiveCodeBench dataset.
@@ -308,20 +337,18 @@ class DatasetSampler:
 
         samples = random.sample(data, min(count, len(data)))
 
-        # Standardize fields for custom dataset format
+        # Convert to standardized QA format - keep ONLY standard fields
+        standardized = []
         for item in samples:
-            item['source_dataset'] = 'livecodebench'
-            # LiveCodeBench uses 'question_content' as the main question field
-            if 'question_content' in item and 'question' not in item:
-                item['question'] = item['question_content']
-            # LiveCodeBench doesn't have a simple 'answer' field
-            # It's evaluated by code execution, so we keep question_id for tracking
-            # Add answer field as empty string to maintain consistency
-            if 'answer' not in item:
-                item['answer'] = ''  # Empty for code generation tasks
+            std_item = {
+                'question': item.get('question_content', item.get('question', '')),
+                'answer': '',  # Empty for code generation tasks (evaluated by execution)
+                'source_dataset': 'livecodebench'
+            }
+            standardized.append(std_item)
 
-        print(f"  ✓ Sampled {len(samples)} / {len(data)} items")
-        return samples
+        print(f"  ✓ Sampled {len(standardized)} / {len(data)} items")
+        return standardized
 
     def create_dataset(self,
                       aime_count: int = 20,
