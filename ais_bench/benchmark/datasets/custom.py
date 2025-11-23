@@ -212,25 +212,28 @@ def parse_example_dataset(config):
     # config -> .meta.jsonl -> parsed_results
     path = config['path']
 
+    # Convert relative path to absolute path (same logic as CustomDataset.load)
+    abs_path = get_data_path(path, local_mode=True)
+
     # load sample and get parsed_meta
     parsed_meta = {}
-    if path.endswith('.jsonl'):
-        with open(path, 'r', encoding='utf-8') as f:
+    if abs_path.endswith('.jsonl'):
+        with open(abs_path, 'r', encoding='utf-8') as f:
             data_item = json.loads(f.readline())
-    elif path.endswith('.csv'):
-        with open(path, 'r', encoding='utf-8') as f:
+    elif abs_path.endswith('.csv'):
+        with open(abs_path, 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
             header = next(reader)
             row = next(reader)
             data_item = dict(zip(header, row))
     else:
-        raise ValueError(f'Unsupported ext: {path}, .jsonl or .csv required')
+        raise ValueError(f'Unsupported ext: {abs_path}, .jsonl or .csv required')
 
-    parsed_meta['path'] = path
+    parsed_meta['path'] = abs_path
 
     input_columns = [i for i in data_item.keys() if i == 'question']
     if not input_columns:
-        raise ValueError(f'Unsupported dataset format: NOT contain "question" in {path}')
+        raise ValueError(f'Unsupported dataset format: NOT contain "question" in {abs_path}')
     parsed_meta['input_columns'] = input_columns
     output_column = 'answer' if 'answer' in data_item else None
     parsed_meta['output_column'] = output_column
@@ -245,18 +248,29 @@ def parse_example_dataset(config):
         else:
             break
     parsed_meta['options'] = options
-    abbr = os.path.basename(path).split('.')[0]
+    abbr = os.path.basename(abs_path).split('.')[0]
     parsed_meta['abbr'] = abbr
     parsed_meta['data_type'] = 'mcq' if len(options) > 1 else 'qa'
     parsed_meta['infer_method'] = 'gen'
 
-    # try to read meta json
-    meta_path = config.get('meta_path', path + '.meta.json')
+    # try to read meta json - also convert relative path to absolute
+    if 'meta_path' in config:
+        # User explicitly specified meta_path via --custom-dataset-meta-path
+        meta_path_input = config['meta_path']
+        # Convert relative path to absolute if needed
+        if not meta_path_input.startswith('/'):
+            meta_path = get_data_path(meta_path_input, local_mode=True)
+        else:
+            meta_path = meta_path_input
+    else:
+        # Default: look for <dataset_path>.meta.json
+        meta_path = abs_path + '.meta.json'
+
     if os.path.exists(meta_path):
         with open(meta_path, 'r', encoding='utf-8') as f:
             read_from_file_meta = json.load(f)
     else:
-        if "meta_path" in config: 
+        if "meta_path" in config:
             # user set custom-dataset-meta-path does not exists
             raise ValueError(f'The file path specified by parameter "custom-dataset-meta-path" does not exist: {meta_path}')
         read_from_file_meta = {}

@@ -31,35 +31,37 @@ datasets/custom_eval_code_qa.jsonl   # LiveCodeBench (代码题)
 
 ```bash
 # MATH-QA
-cp tools/math_qa_meta_template.json datasets/custom_eval_math_qa.jsonl.meta.json
+cp tools/math_qa_meta_template.json ais_bench/datasets/custom_eval_math_qa.jsonl.meta.json
 
 # Code-QA
-cp tools/code_qa_meta_template.json datasets/custom_eval_code_qa.jsonl.meta.json
+cp tools/code_qa_meta_template.json ais_bench/datasets/custom_eval_code_qa.jsonl.meta.json
 ```
 
 ### 步骤3: 运行评测
+
+⚠️ **路径说明**：可以使用相对路径（相对于项目根目录）或绝对路径
 
 ```bash
 # MCQ (不需要meta.json)
 ais_bench \
   --models vllm_api_general_chat \
-  --custom-dataset-path datasets/custom_eval_mcq.jsonl \
+  --custom-dataset-path ais_bench/datasets/custom_eval_mcq.jsonl \
   --mode all \
   --work-dir outputs/custom_eval_mcq
 
 # MATH-QA (必须指定meta.json)
 ais_bench \
   --models vllm_api_general_chat \
-  --custom-dataset-path datasets/custom_eval_math_qa.jsonl \
-  --custom-dataset-meta-path datasets/custom_eval_math_qa.jsonl.meta.json \
+  --custom-dataset-path ais_bench/datasets/custom_eval_math_qa.jsonl \
+  --custom-dataset-meta-path ais_bench/datasets/custom_eval_math_qa.jsonl.meta.json \
   --mode all \
   --work-dir outputs/custom_eval_math_qa
 
 # Code-QA (必须指定meta.json)
 ais_bench \
   --models vllm_api_general_chat \
-  --custom-dataset-path datasets/custom_eval_code_qa.jsonl \
-  --custom-dataset-meta-path datasets/custom_eval_code_qa.jsonl.meta.json \
+  --custom-dataset-path ais_bench/datasets/custom_eval_code_qa.jsonl \
+  --custom-dataset-meta-path ais_bench/datasets/custom_eval_code_qa.jsonl.meta.json \
   --mode all \
   --work-dir outputs/custom_eval_code_qa
 ```
