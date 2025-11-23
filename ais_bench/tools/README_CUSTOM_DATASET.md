@@ -35,19 +35,25 @@ tree code_generation_lite/
 
 ## 重要限制
 
-⚠️ **AISBench不支持在单个文件中混合MCQ和QA类型的数据**
+⚠️ **不同数据集需要不同的evaluator，必须分文件！**
 
-原因：AISBench通过读取JSONL文件的第一行来判断整个数据集的类型。
+### 原因1: MCQ和QA不能混合
+AISBench读取第一行判断数据集类型（有A/B/C/D就是MCQ，否则是QA）
 
-**解决方案**：将MCQ和QA数据集分别生成为两个独立的文件。
+### 原因2: QA数据集的evaluator不同
+- **AIME/MATH** → 需要 `MATHEvaluator` 提取 `\boxed{}` 答案
+- **LiveCodeBench** → 需要代码执行evaluator
+- 简单的 `AccEvaluator` 只能精确匹配，会导致数学题全错！
+
+### 解决方案
+工具自动生成**3个独立文件**：
+- `*_mcq.jsonl` - CEval, MMLU, GPQA（选择题）
+- `*_math_qa.jsonl` - AIME, MATH（数学题，需要MATHEvaluator）
+- `*_code_qa.jsonl` - LiveCodeBench（代码题，需要代码执行）
 
 ## 使用方法
 
 ### 步骤1: 生成采样数据集
-
-工具会自动将数据集分成两个文件：
-- `*_mcq.jsonl` - 包含CEval、MMLU、GPQA的选择题
-- `*_qa.jsonl` - 包含AIME、MATH、LiveCodeBench的问答题
 
 ```bash
 cd /path/to/ais_bench
@@ -59,48 +65,65 @@ python3 tools/create_sampled_dataset.py \
   --ceval-count 50 \
   --mmlu-count 50 \
   --gpqa-count 30 \
-  --livecodebench-count 30 \
+  --livecodebench-count 0 \
   --output datasets/custom_eval \
   --seed 42
 ```
 
-**输出**：
+**输出（3个文件）**：
 ```
-datasets/custom_eval_mcq.jsonl   # 130个选择题 (CEval + MMLU + GPQA)
-datasets/custom_eval_qa.jsonl    # 100个问答题 (AIME + MATH + LiveCodeBench)
+datasets/custom_eval_mcq.jsonl       # 130个选择题
+datasets/custom_eval_math_qa.jsonl   # 70个数学题
+datasets/custom_eval_code_qa.jsonl   # 0个代码题（设为0可跳过）
 ```
 
-### 步骤2: 运行评测
+### 步骤2: 为MATH-QA创建.meta.json（关键！）
 
-需要分别评测MCQ和QA数据集：
+MATH-QA数据集需要使用MATHEvaluator，必须创建meta文件：
 
 ```bash
-# 评测MCQ数据集 (选择题)
+# 从ais_bench根目录执行
+cd /path/to/ais_bench
+
+# 复制模板
+cp tools/math_qa_meta_template.json datasets/custom_eval_math_qa.jsonl.meta.json
+```
+
+**meta.json内容**：
+```json
+{
+  "evaluator": "ais_bench.benchmark.datasets.math.MATHEvaluator",
+  "evaluator_kwargs": {"version": "v2"},
+  "template": "Question: {question}\nPlease reason step by step, and put your final answer within \\boxed{}.\nAnswer: {answer}"
+}
+```
+
+⚠️ **注意**：meta.json文件名必须是 `<dataset-file-name>.meta.json` 格式！
+
+### 步骤3: 运行评测
+
+```bash
+# 1. 评测MCQ数据集（选择题）
 ais_bench \
   --models vllm_api_general_chat \
   --custom-dataset-path datasets/custom_eval_mcq.jsonl \
   --mode all \
   --work-dir outputs/custom_eval_mcq
 
-# 评测QA数据集 (问答题)
+# 2. 评测MATH-QA数据集（数学题 - 使用meta.json）
 ais_bench \
   --models vllm_api_general_chat \
-  --custom-dataset-path datasets/custom_eval_qa.jsonl \
+  --custom-dataset-path datasets/custom_eval_math_qa.jsonl \
+  --custom-dataset-meta-path datasets/custom_eval_math_qa.jsonl.meta.json \
   --mode all \
-  --work-dir outputs/custom_eval_qa
+  --work-dir outputs/custom_eval_math_qa
 ```
 
-### 步骤3: 查看结果
+### 步骤4: 查看结果
 
-评测完成后，结果保存在：
 ```
-outputs/custom_eval_mcq/
-├── predictions/          # MCQ预测结果
-└── results/             # MCQ评测结果
-
-outputs/custom_eval_qa/
-├── predictions/          # QA预测结果
-└── results/             # QA评测结果
+outputs/custom_eval_mcq/results/       # MCQ评测结果
+outputs/custom_eval_math_qa/results/   # MATH-QA评测结果（应该有正常准确率）
 ```
 
 ## 参数说明

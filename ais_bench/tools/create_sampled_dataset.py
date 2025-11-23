@@ -5,13 +5,14 @@ Create custom sampled datasets from multiple existing datasets.
 This script samples data from aime2024, math500, ceval, mmlu, gpqa, and livecodebench
 to create evaluation datasets for quick testing and validation.
 
-Since AISBench doesn't support mixing MCQ and QA in one file, this tool automatically
-separates the samples into two files:
-  - *_mcq.jsonl: CEval, MMLU, GPQA (Multiple Choice Questions)
-  - *_qa.jsonl:  AIME, MATH, LiveCodeBench (Question-Answer)
+Since different QA datasets require different evaluators, this tool separates samples
+into THREE files based on evaluation requirements:
+  - *_mcq.jsonl:      CEval, MMLU, GPQA (Multiple Choice, use AccEvaluator)
+  - *_math_qa.jsonl:  AIME, MATH (Math problems, use MATHEvaluator)
+  - *_code_qa.jsonl:  LiveCodeBench (Code generation, use code execution)
 
 Usage:
-    # 1. Create the custom datasets (generates MCQ and QA files)
+    # 1. Create the custom datasets (generates 3 files)
     python3 tools/create_sampled_dataset.py \
         --aime-count 30 \
         --math-count 40 \
@@ -29,12 +30,13 @@ Usage:
         --mode all \
         --work-dir outputs/custom_eval_mcq
 
-    # 3. Run evaluation on QA dataset
+    # 3. Run evaluation on MATH-QA dataset (IMPORTANT: needs MATHEvaluator)
+    # This requires creating a .meta.json file - see README for details
     ais_bench \
         --models vllm_api_general_chat \
-        --custom-dataset-path datasets/custom_eval_qa.jsonl \
+        --custom-dataset-path datasets/custom_eval_math_qa.jsonl \
         --mode all \
-        --work-dir outputs/custom_eval_qa
+        --work-dir outputs/custom_eval_math_qa
 """
 
 import argparse
@@ -361,25 +363,30 @@ class DatasetSampler:
         """Create combined dataset from multiple sources.
 
         Returns:
-            (mcq_samples, qa_samples): Two lists for MCQ and QA datasets
+            (mcq_samples, math_qa_samples, code_qa_samples): Three lists
+            - mcq_samples: CEval, MMLU, GPQA (choice questions)
+            - math_qa_samples: AIME, MATH (math problems, need MATHEvaluator)
+            - code_qa_samples: LiveCodeBench (code generation)
         """
 
         print("\n" + "="*80)
         print("Creating Custom Sampled Dataset")
         print("="*80 + "\n")
 
-        mcq_samples = []  # CEval, MMLU, GPQA
-        qa_samples = []   # AIME, MATH, LiveCodeBench
+        mcq_samples = []       # CEval, MMLU, GPQA
+        math_qa_samples = []   # AIME, MATH (use MATHEvaluator)
+        code_qa_samples = []   # LiveCodeBench (use code execution)
 
-        # Sample QA datasets
+        # Sample MATH-type QA datasets (AIME + MATH)
         if aime_count > 0:
-            qa_samples.extend(self.sample_aime2024(aime_count))
+            math_qa_samples.extend(self.sample_aime2024(aime_count))
 
         if math_count > 0:
-            qa_samples.extend(self.sample_math500(math_count))
+            math_qa_samples.extend(self.sample_math500(math_count))
 
+        # Sample code generation QA dataset
         if livecodebench_count > 0:
-            qa_samples.extend(self.sample_livecodebench(livecodebench_count))
+            code_qa_samples.extend(self.sample_livecodebench(livecodebench_count))
 
         # Sample MCQ datasets
         if ceval_count > 0:
@@ -394,12 +401,15 @@ class DatasetSampler:
         # Shuffle if requested
         if shuffle:
             random.shuffle(mcq_samples)
-            random.shuffle(qa_samples)
-            print(f"\n✓ Shuffled MCQ and QA datasets separately")
+            random.shuffle(math_qa_samples)
+            random.shuffle(code_qa_samples)
+            print(f"\n✓ Shuffled MCQ, MATH-QA, and Code-QA datasets separately")
 
-        return mcq_samples, qa_samples
+        return mcq_samples, math_qa_samples, code_qa_samples
 
-    def save_datasets(self, mcq_data: List[Dict[str, Any]], qa_data: List[Dict[str, Any]],
+    def save_datasets(self, mcq_data: List[Dict[str, Any]],
+                      math_qa_data: List[Dict[str, Any]],
+                      code_qa_data: List[Dict[str, Any]],
                       output_prefix: str):
         """Save MCQ and QA datasets to separate JSONL files."""
         output_path = Path(output_prefix)
@@ -407,7 +417,8 @@ class DatasetSampler:
 
         # Determine output file paths
         mcq_file = output_path.parent / f"{output_path.name}_mcq.jsonl"
-        qa_file = output_path.parent / f"{output_path.name}_qa.jsonl"
+        math_qa_file = output_path.parent / f"{output_path.name}_math_qa.jsonl"
+        code_qa_file = output_path.parent / f"{output_path.name}_code_qa.jsonl"
 
         print(f"\n{'='*80}")
         print(f"Saving datasets...")
@@ -418,7 +429,7 @@ class DatasetSampler:
             with open(mcq_file, 'w', encoding='utf-8') as f:
                 for item in mcq_data:
                     f.write(json.dumps(item, ensure_ascii=False) + '\n')
-            print(f"✓ MCQ dataset: {len(mcq_data)} samples → {mcq_file}")
+            print(f"✓ MCQ dataset:     {len(mcq_data)} samples → {mcq_file}")
 
             # Print MCQ statistics
             mcq_counts = {}
@@ -434,28 +445,49 @@ class DatasetSampler:
 
         print()
 
-        # Save QA dataset
-        if qa_data:
-            with open(qa_file, 'w', encoding='utf-8') as f:
-                for item in qa_data:
+        # Save MATH-QA dataset
+        if math_qa_data:
+            with open(math_qa_file, 'w', encoding='utf-8') as f:
+                for item in math_qa_data:
                     f.write(json.dumps(item, ensure_ascii=False) + '\n')
-            print(f"✓ QA dataset:  {len(qa_data)} samples → {qa_file}")
+            print(f"✓ MATH-QA dataset: {len(math_qa_data)} samples → {math_qa_file}")
 
-            # Print QA statistics
-            qa_counts = {}
-            for item in qa_data:
+            # Print MATH-QA statistics
+            math_qa_counts = {}
+            for item in math_qa_data:
                 source = item.get('source_dataset', 'unknown')
-                qa_counts[source] = qa_counts.get(source, 0) + 1
-            print("  QA composition:")
-            for source, count in sorted(qa_counts.items()):
-                percentage = count / len(qa_data) * 100
+                math_qa_counts[source] = math_qa_counts.get(source, 0) + 1
+            print("  MATH-QA composition:")
+            for source, count in sorted(math_qa_counts.items()):
+                percentage = count / len(math_qa_data) * 100
                 print(f"    {source:15s}: {count:4d} samples ({percentage:5.1f}%)")
         else:
-            print("⚠ No QA samples, skipping QA file")
+            print("⚠ No MATH-QA samples, skipping MATH-QA file")
+
+        print()
+
+        # Save Code-QA dataset
+        if code_qa_data:
+            with open(code_qa_file, 'w', encoding='utf-8') as f:
+                for item in code_qa_data:
+                    f.write(json.dumps(item, ensure_ascii=False) + '\n')
+            print(f"✓ Code-QA dataset: {len(code_qa_data)} samples → {code_qa_file}")
+
+            # Print Code-QA statistics
+            code_qa_counts = {}
+            for item in code_qa_data:
+                source = item.get('source_dataset', 'unknown')
+                code_qa_counts[source] = code_qa_counts.get(source, 0) + 1
+            print("  Code-QA composition:")
+            for source, count in sorted(code_qa_counts.items()):
+                percentage = count / len(code_qa_data) * 100
+                print(f"    {source:15s}: {count:4d} samples ({percentage:5.1f}%)")
+        else:
+            print("⚠ No Code-QA samples, skipping Code-QA file")
 
         print(f"\n{'='*80}")
-        total = len(mcq_data) + len(qa_data)
-        print(f"✓ Total: {total} samples ({len(mcq_data)} MCQ + {len(qa_data)} QA)")
+        total = len(mcq_data) + len(math_qa_data) + len(code_qa_data)
+        print(f"✓ Total: {total} samples ({len(mcq_data)} MCQ + {len(math_qa_data)} MATH-QA + {len(code_qa_data)} Code-QA)")
         print(f"{'='*80}\n")
 
 
@@ -524,8 +556,8 @@ def main():
     # Create sampler
     sampler = DatasetSampler(seed=args.seed)
 
-    # Create datasets (returns MCQ and QA separately)
-    mcq_dataset, qa_dataset = sampler.create_dataset(
+    # Create datasets (returns MCQ, MATH-QA, Code-QA separately)
+    mcq_dataset, math_qa_dataset, code_qa_dataset = sampler.create_dataset(
         aime_count=args.aime_count,
         math_count=args.math_count,
         ceval_count=args.ceval_count,
@@ -536,8 +568,8 @@ def main():
     )
 
     # Save datasets
-    if mcq_dataset or qa_dataset:
-        sampler.save_datasets(mcq_dataset, qa_dataset, args.output)
+    if mcq_dataset or math_qa_dataset or code_qa_dataset:
+        sampler.save_datasets(mcq_dataset, math_qa_dataset, code_qa_dataset, args.output)
         return 0
     else:
         print("\n❌ No data was sampled. Please check dataset paths.")
