@@ -523,8 +523,8 @@ def main():
     parser.add_argument(
         '--livecodebench-count',
         type=int,
-        default=20,
-        help='Number of samples from LiveCodeBench (default: 20)'
+        default=0,
+        help='LiveCodeBench NOT supported for custom sampling (default: 0, use official dataset)'
     )
     parser.add_argument(
         '--output',

@@ -156,6 +156,10 @@ def make_mcq_gen_config(meta):
         pred_role='BOT',
     )
 
+    # Add pred_postprocessor if specified in meta.json
+    if 'pred_postprocessor' in meta:
+        eval_cfg['pred_postprocessor'] = dict(type=meta['pred_postprocessor'])
+
     dataset = dict(
         abbr=meta['abbr'],
         type=CustomDataset,
@@ -200,6 +204,10 @@ def make_qa_gen_config(meta):
                        **meta.get('evaluator_kwargs', {})),
         pred_role='BOT',
     )
+
+    # Add pred_postprocessor if specified in meta.json
+    if 'pred_postprocessor' in meta:
+        eval_cfg['pred_postprocessor'] = dict(type=meta['pred_postprocessor'])
 
     dataset = dict(
         abbr=meta['abbr'],
