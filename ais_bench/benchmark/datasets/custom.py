@@ -110,7 +110,12 @@ class CustomDataset(BaseDataset):
 def stringfy_types(obj):
     for k, v in obj.items():
         if k == 'type':
-            obj[k] = f'{v.__module__}.{v.__name__}'
+            # If v is already a string (from meta.json), keep it as is
+            if isinstance(v, str):
+                obj[k] = v
+            else:
+                # Convert class object to string
+                obj[k] = f'{v.__module__}.{v.__name__}'
         elif isinstance(v, dict):
             stringfy_types(v)
     return obj
