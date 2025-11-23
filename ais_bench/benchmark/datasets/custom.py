@@ -274,7 +274,15 @@ def parse_example_dataset(config):
             # user set custom-dataset-meta-path does not exists
             raise ValueError(f'The file path specified by parameter "custom-dataset-meta-path" does not exist: {meta_path}')
         read_from_file_meta = {}
-    parsed_meta['meta_json_conf'] = read_from_file_meta
+
+    # Separate meta.json into two parts:
+    # 1. Sampling config (for meta_json_conf, will be validated by check_meta_json_dict)
+    # 2. Inference/eval config (for meta top-level, used by make_*_gen_config)
+    sampling_conf_keys = {'request_count', 'sampling_mode', 'output_config'}
+    meta_json_conf = {k: v for k, v in read_from_file_meta.items() if k in sampling_conf_keys}
+    infer_eval_conf = {k: v for k, v in read_from_file_meta.items() if k not in sampling_conf_keys}
+
+    parsed_meta['meta_json_conf'] = meta_json_conf
 
     # get config meta
     config_meta = copy.deepcopy(config)
@@ -282,6 +290,7 @@ def parse_example_dataset(config):
     # merge meta
     meta = {}
     meta.update(parsed_meta)
+    meta.update(infer_eval_conf)  # Add evaluator, template, etc. to meta top-level
     meta.update(config_meta)
 
     return meta
