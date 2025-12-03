@@ -1,6 +1,14 @@
 # Copyright (c) 2024, LiveCodeBench and its contributors.
 # Copyright (c) 2023, OpenCompass and its contributors.
 # Copyright (c) 2025, AISBench and its contributors.
+#
+# PATCHED VERSION - Fix version_tag error for local datasets
+# This file fixes the issue where version_tag parameter is not supported
+# when loading local jsonl files with HuggingFace datasets library.
+#
+# To apply this patch:
+#   cp configs/ais_bench_patches/livecodebench/livecodebench.py \
+#      /path/to/ais_bench/benchmark/datasets/livecodebench/livecodebench.py
 
 import base64
 import json
@@ -100,11 +108,22 @@ class LCBCodeGenerationDataset(BaseDataset):
 
         path = get_data_path(path, local_mode=True)
 
-        dataset = load_dataset(
-            path,  # 'livecodebench/code_generation_lite'
-            split='test',
-            version_tag=release_version,
-            trust_remote_code=True)
+        # PATCH: Check if path is local (contains jsonl files) or remote (HuggingFace repo)
+        import os
+        is_local = os.path.exists(path) and os.path.isdir(path)
+
+        # version_tag is only supported for remote datasets, not local jsonl files
+        if is_local:
+            dataset = load_dataset(
+                path,
+                split='test',
+                trust_remote_code=True)
+        else:
+            dataset = load_dataset(
+                path,  # 'livecodebench/code_generation_lite'
+                split='test',
+                version_tag=release_version,
+                trust_remote_code=True)
 
         dataset = dataset.map(transform)
 
@@ -207,12 +226,24 @@ class LCBSelfRepairDataset(BaseDataset):
                 question=question, code=code, metadata=metadata)
             item['prompt'] = prompt
 
-            return
+            return item
 
-        dataset = load_dataset(path,
-                               split='test',
-                               version_tag=release_version,
-                               trust_remote_code=True)
+        path = get_data_path(path, local_mode=local_mode)
+
+        # PATCH: Check if path is local or remote
+        import os
+        is_local = os.path.exists(path) and os.path.isdir(path)
+
+        # version_tag is only supported for remote datasets
+        if is_local:
+            dataset = load_dataset(path,
+                                   split='test',
+                                   trust_remote_code=True)
+        else:
+            dataset = load_dataset(path,
+                                   split='test',
+                                   version_tag=release_version,
+                                   trust_remote_code=True)
         dataset = dataset.map(transform)
 
         return DatasetDict({'test': dataset, 'train': dataset})
