@@ -16,7 +16,7 @@ models = [
         batch_size=16,
         trust_remote_code=False,
         generation_kwargs = dict(
-            temperature = 1,
+            temperature = 0,
             top_k = 1,
             top_p = 1
         ),
