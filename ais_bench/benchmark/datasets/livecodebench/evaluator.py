@@ -1,6 +1,6 @@
 import ast
 import json
-import subprocess
+import multiprocessing
 import sys
 import os.path as osp
 from collections import defaultdict
@@ -19,64 +19,50 @@ from .extract_utils import (extract_code_execution, extract_code_generation,
                             extract_test_output_code)
 from .livecodebench import LCBCodeGenerationDataset
 from .pass_k_utils import compute_metrics_from_results
+from .testing_util import run_test
 from concurrent.futures import ProcessPoolExecutor, TimeoutError as FutureTimeoutError
 
 
+def _temp_run(sample, generation, debug, result, metadata_list, timeout):
+    """Helper function for multiprocessing - runs test and stores results."""
+    res, metadata = run_test(sample, test=generation, debug=debug, timeout=timeout)
+    result.append(res)
+    metadata_list.append(metadata)
+
+
 def codegen_check_correctness(sample, generation, timeout, debug=True):
+    """Check correctness of code generation with a global timeout.
+    
+    Uses multiprocessing.Process to match LiveCodeBench official implementation.
+    The global timeout is to catch some extreme/rare cases not handled by the 
+    timeouts inside `run_test`.
+    """
     logger = get_logger()
     per_case = len(json.loads(sample['input_output'])['inputs'])
     total_timeout = (timeout + 1) * per_case + 5
 
-    payload = {
-        'sample': sample,
-        'generation': generation,
-        'debug': debug,
-        'timeout': timeout
-    }
+    manager = multiprocessing.Manager()
+    result = manager.list()
+    metadata_list = manager.list()
 
-    try:
-        # use text=True to get str, capture_output=True capture stdout/stderr
-        current_dir = osp.dirname(osp.abspath(__file__))
-        runner_path = osp.join(current_dir, "test_runner.py")
-        proc = subprocess.run(
-            [sys.executable, runner_path],
-            input=json.dumps(payload),
-            capture_output=True,
-            text=True,
-            timeout=total_timeout
-        )
-    except subprocess.TimeoutExpired:
-        logger.info('global timeout (subprocess.TimeoutExpired)')
-        # return all failed placeholder results
-        return ([-1] * per_case), {}
-    except Exception:
-        logger.exception('failed to spawn test_runner subprocess')
+    p = multiprocessing.Process(
+        target=_temp_run,
+        args=(sample, generation, debug, result, metadata_list, timeout),
+    )
+    p.start()
+    p.join(timeout=total_timeout)
+
+    if p.is_alive():
+        p.kill()
+        p.join()  # Ensure process is cleaned up
+
+    if not result:
+        # Process timed out or crashed - all tests failed
+        if debug:
+            logger.info('global timeout (multiprocessing)')
         return ([-1] * per_case), {}
 
-    stdout = (proc.stdout or "").strip()
-    stderr = (proc.stderr or "").strip()
-
-    if proc.returncode != 0:
-        logger.warning('test_runner exited with non-zero code %s', proc.returncode)
-        logger.debug('test_runner stdout: %s', stdout)
-        logger.debug('test_runner stderr: %s', stderr)
-        # try to parse JSON from stdout (may contain error field)
-    try:
-        if not stdout:
-            raise ValueError("empty stdout from test_runner")
-        data = json.loads(stdout)
-        # expected structure: {'res': ..., 'meta': ..., 'error': ...}
-        if data.get('error'):
-            logger.warning('test_runner returned error: %s', data.get('error'))
-        res = data.get('res')
-        meta = data.get('meta')
-        if res is None:
-            raise ValueError("result 'res' missing or None")
-        return res, (meta or {})
-    except Exception as e:
-        # parse failed or data illegal
-        logger.info('---- test_runner stdout ----\n%s', stdout)
-        return ([-1] * per_case), {}
+    return result[0], (metadata_list[0] if metadata_list else {})
 
 
 def evaluate_generations_by_problem(problem_generations: list, sample: list,

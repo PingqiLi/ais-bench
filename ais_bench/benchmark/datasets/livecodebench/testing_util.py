@@ -28,7 +28,14 @@ if not hasattr(inspect, 'getargspec'):
     inspect.getargspec = _getargspec
 
 import numpy as np
-from pyext import RuntimeModule
+import types
+
+class RuntimeModule:
+    @staticmethod
+    def from_string(name, path, code):
+        module = types.ModuleType(name)
+        exec(code, module.__dict__)
+        return module
 
 
 def truncatefn(s, length=300):
